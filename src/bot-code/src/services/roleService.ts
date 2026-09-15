@@ -25,35 +25,41 @@ export interface GuildRoleMapping {
 export class RoleService {
   private guildRoles = new Map<string, GuildRoleMapping>();
   private dataFilePath = path.join(process.cwd(), "guild_roles.json");
+  private writeQueue: Promise<void> = Promise.resolve();
 
   constructor() {
     this.loadFromDisk();
   }
 
-  private loadFromDisk(): void {
+  private async loadFromDisk(): Promise<void> {
     try {
       if (fs.existsSync(this.dataFilePath)) {
-        const raw = fs.readFileSync(this.dataFilePath, "utf8");
+        const raw = await fs.promises.readFile(this.dataFilePath, "utf8");
         const parsed = JSON.parse(raw);
         for (const key of Object.keys(parsed)) {
           this.guildRoles.set(key, parsed[key]);
         }
       }
-    } catch {
-      // Fallback cleanly to in-memory store
+    } catch (err) {
+      console.warn("[RoleService] Warning: Unable to parse guild_roles.json, falling back to memory store:", err);
     }
   }
 
-  private persistToDisk(): void {
-    try {
-      const obj: Record<string, GuildRoleMapping> = {};
-      this.guildRoles.forEach((val, key) => {
-        obj[key] = val;
+  private async persistToDisk(): Promise<void> {
+    // Chain writes to serialize async operations and avoid file corruption
+    this.writeQueue = this.writeQueue
+      .then(async () => {
+        const obj: Record<string, GuildRoleMapping> = {};
+        this.guildRoles.forEach((val, key) => {
+          obj[key] = val;
+        });
+        const tempPath = `${this.dataFilePath}.tmp`;
+        await fs.promises.writeFile(tempPath, JSON.stringify(obj, null, 2), "utf8");
+        await fs.promises.rename(tempPath, this.dataFilePath);
+      })
+      .catch((err) => {
+        console.error("[RoleService] Failed to persist role mappings to disk:", err);
       });
-      fs.writeFileSync(this.dataFilePath, JSON.stringify(obj, null, 2), "utf8");
-    } catch {
-      // Ignore disk write errors if read-only
-    }
   }
 
   /**

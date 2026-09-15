@@ -8,6 +8,7 @@ import { TriageService } from "../services/triageService.js";
 import { GeminiModerationService } from "../services/geminiModerationService.js";
 import { LoggingService } from "../services/loggingService.js";
 import { RoleService } from "../services/roleService.js";
+import { PolicyEngine, ModerationClassification } from "../services/policyEngine.js";
 
 export async function handleMessageCreate(
   message: Message,
@@ -33,85 +34,73 @@ export async function handleMessageCreate(
     // 3. Triage & Token Efficiency Filter
     const triage = triageService.evaluate(rawContent);
 
-    let flagged = false;
-    let category = "NONE";
-    let severity: "NONE" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" = "NONE";
-    let recommendedAction = "ALLOW";
-    let confidence = 1.0;
-    let reason = triage.reason;
-    let highlightedPhrases: string[] = [];
-    let ageAppropriateNotes = "";
-    let tokensUsed = 0;
+    let rawClassification: any;
 
     if (!triage.shouldCallGemini && triage.localVerdict) {
       // Handled entirely by Tier-1 or Tier-2 local triage
-      flagged = triage.localVerdict.flagged;
-      category = triage.localVerdict.category;
-      severity = triage.localVerdict.severity;
-      recommendedAction = triage.localVerdict.recommendedAction;
-      reason = triage.localVerdict.reason;
-      tokensUsed = 0;
+      rawClassification = {
+        flagged: triage.localVerdict.flagged,
+        category: triage.localVerdict.category,
+        severity: triage.localVerdict.severity,
+        confidence: 0.95,
+        reason: triage.localVerdict.reason,
+        highlightedPhrases: [],
+        ageAppropriateNotes: "Local triage evaluation.",
+        tokensUsed: 0,
+      };
     } else {
       // Tier-3: Pass to Gemini 3.8 Flash for deep contextual analysis
       const aiResult = await geminiService.analyzeMessage(rawContent, message.author.tag);
-      flagged = aiResult.flagged;
-      category = aiResult.category;
-      severity = aiResult.severity;
-      recommendedAction = aiResult.recommendedAction;
-      confidence = aiResult.confidence;
-      reason = aiResult.reason;
-      highlightedPhrases = aiResult.highlightedPhrases;
-      ageAppropriateNotes = aiResult.ageAppropriateNotes;
-      tokensUsed = aiResult.tokensUsed;
+      rawClassification = {
+        flagged: aiResult.flagged,
+        category: aiResult.category,
+        severity: aiResult.severity,
+        confidence: aiResult.confidence,
+        reason: aiResult.reason,
+        highlightedPhrases: aiResult.highlightedPhrases,
+        ageAppropriateNotes: aiResult.ageAppropriateNotes,
+        tokensUsed: aiResult.tokensUsed,
+      };
 
-      // Cache the verdict for future duplicate messages
-      triageService.cacheVerdict(rawContent, {
-        flagged,
-        category,
-        severity,
-        recommendedAction,
-        reason: `Cached from Gemini: ${reason}`,
-      });
+      // Cache the verdict for future duplicate messages if not an API error
+      if (!aiResult.isApiErrorFallback) {
+        triageService.cacheVerdict(rawContent, {
+          flagged: aiResult.flagged,
+          category: aiResult.category,
+          severity: aiResult.severity,
+          recommendedAction: aiResult.recommendedAction,
+          reason: `Cached from Gemini: ${aiResult.reason}`,
+        });
+      }
     }
 
-    // 4. Action Execution if Flagged
-    if (flagged) {
-      let actionExecuted = "LOGGED";
+    // 4. ARCHITECTURAL MANDATE: Validate classification & evaluate via PolicyEngine
+    // Pipeline: User message -> AI classifier -> validated classification -> policy engine -> Discord action
+    const validatedClassification: ModerationClassification = PolicyEngine.validateClassification(rawClassification);
+    const policyDecision = PolicyEngine.evaluatePolicy(validatedClassification, message.guild.name);
 
-      // Execute automated enforcement
-      switch (recommendedAction) {
+    // 5. Action Execution if Policy dictates an action other than ALLOW
+    if (policyDecision.action !== "ALLOW") {
+      // Direct message notification to the user if policy dictates
+      if (policyDecision.notifyUser && policyDecision.userMessage) {
+        await message.author.send({ content: policyDecision.userMessage }).catch(() => null);
+      }
+
+      switch (policyDecision.action) {
         case "DELETE":
           await message.delete().catch(() => null);
-          await message.author
-            .send({
-              content: `⚠️ Your message in **${message.guild.name}** was automatically removed for violating teen community standards: **${reason}**`,
-            })
-            .catch(() => null);
-          actionExecuted = "MESSAGE_DELETED";
           break;
 
         case "WARN":
-          await message.author
-            .send({
-              content: `⚠️ Notice: Your recent message in **${message.guild.name}** triggered our community content standards: **${reason}**`,
-            })
-            .catch(() => null);
-          actionExecuted = "USER_WARNED";
+          // User already notified via DM if enabled
           break;
 
         case "TIMEOUT_1H":
         case "TIMEOUT_24H": {
-          const hours = recommendedAction === "TIMEOUT_1H" ? 1 : 24;
-          const durationMs = hours * 60 * 60 * 1000;
+          const duration = policyDecision.durationMs || (policyDecision.action === "TIMEOUT_1H" ? 3600000 : 86400000);
           await message.delete().catch(() => null);
           if (member && member.moderatable) {
-            await member.timeout(durationMs, `AegisMod Auto-Mod: [${category}] ${reason}`).catch(() => null);
-            await message.author
-              .send({
-                content: `🔇 You have been placed on timeout in **${message.guild.name}** for **${hours} hour(s)** due to: **${reason}**`,
-              })
-              .catch(() => null);
-            actionExecuted = `DELETED_AND_TIMEOUT_${hours}H`;
+            await member.timeout(duration, `AegisMod Policy: [${policyDecision.category}] ${policyDecision.reason}`).catch(() => null);
           }
           break;
         }
@@ -119,33 +108,34 @@ export async function handleMessageCreate(
         case "BAN": {
           await message.delete().catch(() => null);
           if (member && member.bannable) {
-            await member
-              .send({
-                content: `🔨 You have been banned from **${message.guild.name}** for severe policy breach: **${reason}**`,
-              })
-              .catch(() => null);
-            await member.ban({ reason: `AegisMod Critical Safety: [${category}] ${reason}` }).catch(() => null);
-            actionExecuted = "BANNED_CRITICAL_VIOLATION";
+            await member.ban({ reason: `AegisMod Policy: [${policyDecision.category}] ${policyDecision.reason}` }).catch(() => null);
           }
           break;
         }
       }
 
-      // 5. Send rich audit record to dedicated #mod-logs channel
+      // 6. Send rich audit record to dedicated #mod-logs channel with optional staff alert
+      const guildRoles = roleService.getGuildRoles(message.guild.id);
+      const staffRoleIds = guildRoles ? [...guildRoles.adminRoleIds, ...guildRoles.moderatorRoleIds] : [];
+
       await loggingService.logAIAction(
         message,
         {
-          flagged,
-          category,
-          severity,
-          recommendedAction: recommendedAction as any,
-          confidence,
-          reason,
-          highlightedPhrases,
-          ageAppropriateNotes,
-          tokensUsed,
+          flagged: validatedClassification.flagged,
+          category: validatedClassification.category,
+          severity: validatedClassification.severity,
+          recommendedAction: policyDecision.action as any,
+          confidence: validatedClassification.confidence,
+          reason: validatedClassification.reason,
+          highlightedPhrases: validatedClassification.highlightedPhrases,
+          ageAppropriateNotes: validatedClassification.ageAppropriateNotes || "",
+          tokensUsed: validatedClassification.tokensUsed || 0,
         },
-        actionExecuted
+        policyDecision.executedActionDescription,
+        {
+          requiresStaffNotification: policyDecision.requiresStaffNotification,
+          staffRoleIds,
+        }
       );
     }
   } catch (err) {

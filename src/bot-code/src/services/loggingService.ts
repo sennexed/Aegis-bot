@@ -109,7 +109,8 @@ export class LoggingService {
   public async logAIAction(
     message: Message,
     aiResult: AIAnalysisOutput,
-    actionTaken: string
+    actionTaken: string,
+    options?: { requiresStaffNotification?: boolean; staffRoleIds?: string[] }
   ) {
     if (!message.guild) return;
     const logChannel = await this.ensureLogChannel(message.guild);
@@ -146,7 +147,18 @@ export class LoggingService {
       });
     }
 
-    await logChannel.send({ embeds: [embed] });
+    let contentAlert: string | undefined = undefined;
+    if (options?.requiresStaffNotification) {
+      const pingText = options.staffRoleIds && options.staffRoleIds.length > 0
+        ? options.staffRoleIds.map((r) => `<@&${r}>`).join(" ")
+        : "@here";
+      contentAlert = `🚨 **CRITICAL YOUTH SAFETY ALERT:** Immediate staff review required! ${pingText}`;
+    }
+
+    await logChannel.send({
+      content: contentAlert,
+      embeds: [embed],
+    });
   }
 
   /**

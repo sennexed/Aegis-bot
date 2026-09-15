@@ -25,7 +25,8 @@ export class TriageService {
     "ong", "ngl", "tbh", "idk", "idc", "brb", "gtg", "gn", "gm", "glhf", "ez",
     "pog", "poggers", "clutch", "sheesh", "bet", "no cap", "cap", "fax", "ok",
     "okay", "k", "sure", "nice", "cool", "ye", "yes", "yea", "yeah", "nah", "no",
-    "nope", "hi", "hello", "hey", "yo", "sup", "whatsup", "wassup", "cya", "bye"
+    "nope", "hi", "hello", "hey", "yo", "sup", "whatsup", "wassup", "cya", "bye",
+    "bro", "bruh", "dude", "man", "mate", "team", "play", "game", "good", "great"
   ]);
 
   private zeroToleranceRegex = /\b(kys|k\.y\.s|kill yourself|kill ur self|die in a fire|suicide|send nudes|send me nudes|trade pics|drop snap 16|drop your insta dm|meet up in person secretly)\b/i;

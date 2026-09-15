@@ -4,6 +4,8 @@
  */
 
 import { Guild, GuildMember, User } from "discord.js";
+import fs from "fs";
+import path from "path";
 import { LoggingService } from "./loggingService.js";
 import { RoleService } from "./roleService.js";
 
@@ -23,11 +25,54 @@ export interface InfractionRecord {
 export class TraditionalModService {
   private infractions = new Map<string, InfractionRecord[]>(); // guildId:userId -> InfractionRecord[]
   private caseCounter = 1000;
+  private infractionsFilePath = path.join(process.cwd(), "infractions.json");
+  private writeQueue: Promise<void> = Promise.resolve();
 
   constructor(
     private loggingService: LoggingService,
     private roleService: RoleService
-  ) {}
+  ) {
+    this.loadFromDisk();
+  }
+
+  private async loadFromDisk(): Promise<void> {
+    try {
+      if (fs.existsSync(this.infractionsFilePath)) {
+        const raw = await fs.promises.readFile(this.infractionsFilePath, "utf8");
+        const parsed = JSON.parse(raw);
+        if (parsed.infractions && typeof parsed.infractions === "object") {
+          for (const key of Object.keys(parsed.infractions)) {
+            this.infractions.set(key, parsed.infractions[key]);
+          }
+        }
+        if (typeof parsed.caseCounter === "number") {
+          this.caseCounter = parsed.caseCounter;
+        }
+      }
+    } catch (err) {
+      console.warn("[TraditionalModService] Unable to load infractions.json, starting fresh:", err);
+    }
+  }
+
+  private async persistToDisk(): Promise<void> {
+    this.writeQueue = this.writeQueue
+      .then(async () => {
+        const obj: Record<string, InfractionRecord[]> = {};
+        this.infractions.forEach((val, key) => {
+          obj[key] = val;
+        });
+        const data = {
+          caseCounter: this.caseCounter,
+          infractions: obj,
+        };
+        const tempPath = `${this.infractionsFilePath}.tmp`;
+        await fs.promises.writeFile(tempPath, JSON.stringify(data, null, 2), "utf8");
+        await fs.promises.rename(tempPath, this.infractionsFilePath);
+      })
+      .catch((err) => {
+        console.error("[TraditionalModService] Failed to persist infractions to disk:", err);
+      });
+  }
 
   /**
    * Bans a member from the guild with optional message pruning
@@ -224,6 +269,7 @@ export class TraditionalModService {
     };
     list.push(record);
     this.infractions.set(key, list);
+    this.persistToDisk();
     return record;
   }
 
