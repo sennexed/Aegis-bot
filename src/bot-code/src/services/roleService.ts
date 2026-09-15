@@ -1,0 +1,154 @@
+/**
+ * Role Service
+ * Handles interactive role setup (Owner, Admin, Moderator) using Discord RoleSelectMenuBuilder,
+ * role hierarchy validations, permission checks, and guild configurations.
+ */
+
+import {
+  ActionRowBuilder,
+  RoleSelectMenuBuilder,
+  GuildMember,
+  Guild,
+  PermissionFlagsBits,
+} from "discord.js";
+
+export interface GuildRoleMapping {
+  guildId: string;
+  ownerRoleId: string | null;
+  adminRoleIds: string[];
+  moderatorRoleIds: string[];
+  configuredAt: number;
+}
+
+export class RoleService {
+  // In-memory persistent cache (in production this connects to SQLite/Postgres/JSON)
+  private guildRoles = new Map<string, GuildRoleMapping>();
+
+  /**
+   * Generates the Discord Role Select Menu components for server onboarding
+   */
+  public createSetupRoleSelects(guildId: string): ActionRowBuilder<RoleSelectMenuBuilder>[] {
+    // 1. Owner Role Select Menu
+    const ownerSelect = new RoleSelectMenuBuilder()
+      .setCustomId(`setup:role:owner:${guildId}`)
+      .setPlaceholder("Select Server Owner / Executive Role")
+      .setMinValues(1)
+      .setMaxValues(1);
+
+    // 2. Admin Roles Select Menu
+    const adminSelect = new RoleSelectMenuBuilder()
+      .setCustomId(`setup:role:admin:${guildId}`)
+      .setPlaceholder("Select Administrator Roles (Full Control)")
+      .setMinValues(1)
+      .setMaxValues(5);
+
+    // 3. Moderator Roles Select Menu
+    const modSelect = new RoleSelectMenuBuilder()
+      .setCustomId(`setup:role:mod:${guildId}`)
+      .setPlaceholder("Select Moderator Roles (Kick, Ban, Mute, Warn)")
+      .setMinValues(1)
+      .setMaxValues(10);
+
+    return [
+      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(ownerSelect),
+      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(adminSelect),
+      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(modSelect),
+    ];
+  }
+
+  /**
+   * Saves role mappings configured via Discord Select Menus
+   */
+  public saveGuildRoles(
+    guildId: string,
+    ownerRoleId: string | null,
+    adminRoleIds: string[],
+    moderatorRoleIds: string[]
+  ): GuildRoleMapping {
+    const mapping: GuildRoleMapping = {
+      guildId,
+      ownerRoleId,
+      adminRoleIds,
+      moderatorRoleIds,
+      configuredAt: Date.now(),
+    };
+    this.guildRoles.set(guildId, mapping);
+    return mapping;
+  }
+
+  public getGuildRoles(guildId: string): GuildRoleMapping | undefined {
+    return this.guildRoles.get(guildId);
+  }
+
+  /**
+   * Checks if member is exempt from moderation (Staff, Bot, or Owner)
+   */
+  public isStaffOrExempt(member: GuildMember): boolean {
+    if (member.user.bot) return true;
+    if (member.id === member.guild.ownerId) return true;
+    if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
+
+    const config = this.getGuildRoles(member.guild.id);
+    if (!config) return false;
+
+    // Check owner role
+    if (config.ownerRoleId && member.roles.cache.has(config.ownerRoleId)) {
+      return true;
+    }
+
+    // Check admin roles
+    if (config.adminRoleIds.some((id) => member.roles.cache.has(id))) {
+      return true;
+    }
+
+    // Check moderator roles
+    if (config.moderatorRoleIds.some((id) => member.roles.cache.has(id))) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Validates if executor can moderate the target based on Discord hierarchy
+   */
+  public canModerateMember(
+    executor: GuildMember,
+    target: GuildMember,
+    action: "BAN" | "KICK" | "MUTE" | "WARN"
+  ): { allowed: boolean; reason?: string } {
+    // Cannot moderate server owner
+    if (target.id === target.guild.ownerId) {
+      return { allowed: false, reason: "You cannot moderate the Server Owner." };
+    }
+
+    // Cannot moderate oneself
+    if (executor.id === target.id) {
+      return { allowed: false, reason: "You cannot take moderation action on yourself." };
+    }
+
+    // Guild Owner can moderate anyone
+    if (executor.id === executor.guild.ownerId) {
+      return { allowed: true };
+    }
+
+    // Role hierarchy check
+    if (executor.roles.highest.position <= target.roles.highest.position) {
+      return {
+        allowed: false,
+        reason: "Your highest role is lower or equal to the target's highest role in Discord's hierarchy.",
+      };
+    }
+
+    // Bot permission check
+    const botMember = target.guild.members.me;
+    if (botMember && botMember.roles.highest.position <= target.roles.highest.position) {
+      return {
+        allowed: false,
+        reason: "The Bot's role is lower than the target member's role and cannot perform this action.",
+      };
+    }
+
+    return { allowed: true };
+  }
+}
