@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Shield, Bot, Download, Server, Sparkles, Check, CheckCircle2 } from "lucide-react";
 import JSZip from "jszip";
 import { BOT_FILES } from "../data/botFiles";
+import COMPILED_DIST_FILES from "../data/compiledBotDist.json";
 
 interface HeaderProps {
   activeTab: string;
@@ -22,10 +23,19 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
         zip.file(f.path, f.content);
       });
 
+      // Include pre-compiled dist/ JavaScript files so vanilla node runs out of the box
+      COMPILED_DIST_FILES.forEach((f: { path: string; content: string }) => {
+        zip.file(f.path, f.content);
+        if (f.path === "dist/index.js") {
+          // Provide root index.js proxy as well for default host entrypoint runners
+          zip.file("index.js", `import "./dist/index.js";\n`);
+        }
+      });
+
       // Add .env.example
       zip.file(
         ".env.example",
-        `DISCORD_BOT_TOKEN="your_discord_bot_token_here"\nDISCORD_CLIENT_ID="your_application_client_id_here"\nGEMINI_API_KEY="your_gemini_api_key_here"\nNODE_ENV="production"\nPORT=3000\n`
+        `DISCORD_BOT_TOKEN="your_discord_bot_token_here"\nDISCORD_CLIENT_ID="your_application_client_id_here"\nGEMINI_API_KEY="your_gemini_api_key_here"\nMODERATION_POLICY_LEVEL="STRICT_TEEN"\nNODE_ENV="production"\n`
       );
 
       // Add tsconfig.json

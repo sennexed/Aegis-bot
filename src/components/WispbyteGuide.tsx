@@ -149,9 +149,9 @@ export const WispbyteGuide: React.FC = () => {
                     <span className="text-[11px] text-zinc-500">Very lightweight footprint</span>
                   </div>
                   <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200">
-                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">Startup Command</span>
-                    <span className="text-xs font-bold text-indigo-600 mt-0.5 block">npm start</span>
-                    <span className="text-[11px] text-zinc-500">or npx tsx src/index.ts</span>
+                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">Main File / Startup</span>
+                    <span className="text-xs font-bold text-indigo-600 mt-0.5 block">index.js</span>
+                    <span className="text-[11px] text-zinc-500">or dist/index.js (or npm start)</span>
                   </div>
                 </div>
               </div>
