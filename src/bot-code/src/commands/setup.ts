@@ -22,7 +22,8 @@ export const setupCommand = {
   async execute(
     interaction: ChatInputCommandInteraction,
     roleService: RoleService,
-    loggingService: LoggingService
+    loggingService: LoggingService,
+    syncCommands?: (guildId: string, isSetupComplete: boolean) => Promise<void>
   ) {
     if (!interaction.guild) {
       return interaction.reply({
@@ -99,6 +100,11 @@ export const setupCommand = {
 
       // Save role mapping
       roleService.saveGuildRoles(interaction.guildId!, ownerRole, adminRoles, modRoles);
+
+      // Dynamically unlock and register moderation commands in this server
+      if (syncCommands) {
+        await syncCommands(interaction.guildId!, true);
+      }
 
       // Auto-create or ensure dedicated #mod-logs channel
       const staffRoles = [...adminRoles, ...modRoles];

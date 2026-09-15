@@ -7,6 +7,7 @@ import {
   Terminal,
   ExternalLink,
   ShieldCheck,
+  Shield,
   AlertCircle,
   Copy,
   Check,
@@ -297,20 +298,20 @@ NODE_ENV="production"`}
 
                 <div className="mt-3 bg-[#1e1f22] p-3.5 rounded-xl border border-zinc-800 font-mono text-[11px] text-zinc-300 leading-relaxed">
                   <div className="text-zinc-500">[Pterodactyl] Starting container...</div>
-                  <div className="text-zinc-500">Registering global slash commands with Discord API...</div>
-                  <div className="text-emerald-400 font-semibold">
-                    ✅ Successfully registered slash commands (/setup, /ban, /kick, /mute, /warn, /cases).
-                  </div>
+                  <div className="text-zinc-400">✅ Global commands updated: only /setup is visible by default until server is configured.</div>
                   <div className="text-indigo-400 font-semibold">
                     🛡️ AegisMod is online! Logged in as AegisMod#1234
                   </div>
                 </div>
 
-                <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2">
-                  <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>
-                    Your bot is now live 24/7! Open Discord and type <code className="bg-white px-1.5 py-0.5 rounded font-bold font-mono">/setup</code> to select your moderator roles and provision <code className="bg-white px-1.5 py-0.5 rounded font-bold font-mono">#mod-logs</code>!
-                  </span>
+                <div className="mt-4 p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-950 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-900">
+                    <Shield className="w-4 h-4 text-amber-600" />
+                    Setup-First Command Security Workflow
+                  </div>
+                  <p className="text-amber-900 leading-relaxed">
+                    Before setup, only <code className="bg-white px-1.5 py-0.5 rounded font-bold font-mono">/setup</code> is visible in Discord. All moderation commands (<code className="bg-white px-1 py-0.5 rounded font-mono">/ban</code>, <code className="bg-white px-1 py-0.5 rounded font-mono">/kick</code>, <code className="bg-white px-1 py-0.5 rounded font-mono">/mute</code>, <code className="bg-white px-1 py-0.5 rounded font-mono">/warn</code>, <code className="bg-white px-1 py-0.5 rounded font-mono">/cases</code>) stay completely hidden until an Administrator runs <code className="bg-white px-1.5 py-0.5 rounded font-bold font-mono">/setup</code> to configure staff roles and <code className="bg-white px-1.5 py-0.5 rounded font-mono">#mod-logs</code>. Once saved, AegisMod dynamically activates and displays all moderation commands in your server!
+                  </p>
                 </div>
               </div>
             </div>

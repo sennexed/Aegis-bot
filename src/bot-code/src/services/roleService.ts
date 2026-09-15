@@ -11,6 +11,8 @@ import {
   Guild,
   PermissionFlagsBits,
 } from "discord.js";
+import fs from "fs";
+import path from "path";
 
 export interface GuildRoleMapping {
   guildId: string;
@@ -21,8 +23,38 @@ export interface GuildRoleMapping {
 }
 
 export class RoleService {
-  // In-memory persistent cache (in production this connects to SQLite/Postgres/JSON)
   private guildRoles = new Map<string, GuildRoleMapping>();
+  private dataFilePath = path.join(process.cwd(), "guild_roles.json");
+
+  constructor() {
+    this.loadFromDisk();
+  }
+
+  private loadFromDisk(): void {
+    try {
+      if (fs.existsSync(this.dataFilePath)) {
+        const raw = fs.readFileSync(this.dataFilePath, "utf8");
+        const parsed = JSON.parse(raw);
+        for (const key of Object.keys(parsed)) {
+          this.guildRoles.set(key, parsed[key]);
+        }
+      }
+    } catch {
+      // Fallback cleanly to in-memory store
+    }
+  }
+
+  private persistToDisk(): void {
+    try {
+      const obj: Record<string, GuildRoleMapping> = {};
+      this.guildRoles.forEach((val, key) => {
+        obj[key] = val;
+      });
+      fs.writeFileSync(this.dataFilePath, JSON.stringify(obj, null, 2), "utf8");
+    } catch {
+      // Ignore disk write errors if read-only
+    }
+  }
 
   /**
    * Generates the Discord Role Select Menu components for server onboarding
@@ -73,7 +105,12 @@ export class RoleService {
       configuredAt: Date.now(),
     };
     this.guildRoles.set(guildId, mapping);
+    this.persistToDisk();
     return mapping;
+  }
+
+  public isGuildConfigured(guildId: string): boolean {
+    return this.guildRoles.has(guildId);
   }
 
   public getGuildRoles(guildId: string): GuildRoleMapping | undefined {

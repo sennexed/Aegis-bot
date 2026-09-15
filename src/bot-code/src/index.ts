@@ -50,6 +50,31 @@ const triageService = new TriageService();
 const geminiService = new GeminiModerationService(process.env.GEMINI_API_KEY);
 
 // 3. Register Slash Commands
+export async function syncGuildCommands(guildId: string, isSetupComplete: boolean) {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  const clientId = process.env.DISCORD_CLIENT_ID;
+  if (!token || !clientId) return;
+
+  const rest = new REST({ version: "10" }).setToken(token);
+
+  // If server is not setup yet, ONLY expose /setup command
+  // Once setup is completed, expose /setup AND all moderation commands (/ban, /kick, /mute, /warn, /cases)
+  const commandsToRegister = isSetupComplete
+    ? [setupCommand.data.toJSON(), ...moderationCommands.map((c) => c.data.toJSON())]
+    : [setupCommand.data.toJSON()];
+
+  try {
+    await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+      body: commandsToRegister,
+    });
+    console.log(
+      `[Commands] Guild ${guildId}: registered ${commandsToRegister.length} commands (Setup complete: ${isSetupComplete})`
+    );
+  } catch (err) {
+    console.error(`Failed to register guild commands for ${guildId}:`, err);
+  }
+}
+
 async function registerSlashCommands() {
   const token = process.env.DISCORD_BOT_TOKEN;
   const clientId = process.env.DISCORD_CLIENT_ID;
@@ -59,13 +84,21 @@ async function registerSlashCommands() {
     return;
   }
 
-  const commands = [setupCommand.data.toJSON(), ...moderationCommands.map((c) => c.data.toJSON())];
   const rest = new REST({ version: "10" }).setToken(token);
 
   try {
-    console.log("Registering global slash commands with Discord API...");
-    await rest.put(Routes.applicationCommands(clientId), { body: commands });
-    console.log("✅ Successfully registered slash commands (/setup, /ban, /kick, /mute, /warn, /cases).");
+    // Clear any previous global moderation commands so guilds strictly follow their setup status
+    // and globally register only /setup as base
+    await rest.put(Routes.applicationCommands(clientId), {
+      body: [setupCommand.data.toJSON()],
+    });
+    console.log("✅ Global commands updated: only /setup is default until server is configured.");
+
+    // Sync each joined guild based on whether /setup has been completed
+    for (const [guildId] of client.guilds.cache) {
+      const isConfigured = roleService.isGuildConfigured(guildId);
+      await syncGuildCommands(guildId, isConfigured);
+    }
   } catch (err) {
     console.error("Failed to register slash commands:", err);
   }
@@ -84,13 +117,27 @@ client.once(Events.ClientReady, async (readyClient) => {
   setInterval(() => triageService.clearExpired(), 15 * 60 * 1000);
 });
 
+// Guild Join Event (New Server Added)
+client.on(Events.GuildCreate, async (guild) => {
+  console.log(`Joined new guild: ${guild.name} (${guild.id}) - registering /setup only until configured`);
+  await syncGuildCommands(guild.id, false);
+});
+
 // 5. Interaction Create Event (Slash Commands & Role Selects)
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isChatInputCommand()) {
-    const { commandName } = interaction;
+    const { commandName, guildId } = interaction;
 
     if (commandName === "setup") {
-      return setupCommand.execute(interaction, roleService, loggingService);
+      return setupCommand.execute(interaction, roleService, loggingService, syncGuildCommands);
+    }
+
+    // Safety guard: if guild is not configured yet, decline execution and prompt /setup
+    if (guildId && !roleService.isGuildConfigured(guildId)) {
+      return interaction.reply({
+        content: "⚠️ **AegisMod is not set up on this server yet.**\nAn Administrator must run `/setup` first to configure staff roles and `#mod-logs` before moderation commands are unlocked.",
+        ephemeral: true,
+      });
     }
 
     const modCmd = moderationCommands.find((c) => c.data.name === commandName);

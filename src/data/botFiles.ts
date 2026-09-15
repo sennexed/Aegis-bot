@@ -62,6 +62,31 @@ const triageService = new TriageService();
 const geminiService = new GeminiModerationService(process.env.GEMINI_API_KEY);
 
 // 3. Register Slash Commands
+export async function syncGuildCommands(guildId: string, isSetupComplete: boolean) {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  const clientId = process.env.DISCORD_CLIENT_ID;
+  if (!token || !clientId) return;
+
+  const rest = new REST({ version: "10" }).setToken(token);
+
+  // If server is not setup yet, ONLY expose /setup command
+  // Once setup is completed, expose /setup AND all moderation commands (/ban, /kick, /mute, /warn, /cases)
+  const commandsToRegister = isSetupComplete
+    ? [setupCommand.data.toJSON(), ...moderationCommands.map((c) => c.data.toJSON())]
+    : [setupCommand.data.toJSON()];
+
+  try {
+    await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+      body: commandsToRegister,
+    });
+    console.log(
+      \`[Commands] Guild \${guildId}: registered \${commandsToRegister.length} commands (Setup complete: \${isSetupComplete})\`
+    );
+  } catch (err) {
+    console.error(\`Failed to register guild commands for \${guildId}:\`, err);
+  }
+}
+
 async function registerSlashCommands() {
   const token = process.env.DISCORD_BOT_TOKEN;
   const clientId = process.env.DISCORD_CLIENT_ID;
@@ -71,13 +96,20 @@ async function registerSlashCommands() {
     return;
   }
 
-  const commands = [setupCommand.data.toJSON(), ...moderationCommands.map((c) => c.data.toJSON())];
   const rest = new REST({ version: "10" }).setToken(token);
 
   try {
-    console.log("Registering global slash commands with Discord API...");
-    await rest.put(Routes.applicationCommands(clientId), { body: commands });
-    console.log("✅ Successfully registered slash commands (/setup, /ban, /kick, /mute, /warn, /cases).");
+    // Globally register only /setup as base
+    await rest.put(Routes.applicationCommands(clientId), {
+      body: [setupCommand.data.toJSON()],
+    });
+    console.log("✅ Global commands updated: only /setup is visible by default until server is configured.");
+
+    // Sync each joined guild based on whether /setup has been completed
+    for (const [guildId] of client.guilds.cache) {
+      const isConfigured = roleService.isGuildConfigured(guildId);
+      await syncGuildCommands(guildId, isConfigured);
+    }
   } catch (err) {
     console.error("Failed to register slash commands:", err);
   }
@@ -96,13 +128,27 @@ client.once(Events.ClientReady, async (readyClient) => {
   setInterval(() => triageService.clearExpired(), 15 * 60 * 1000);
 });
 
+// Guild Join Event (New Server Added)
+client.on(Events.GuildCreate, async (guild) => {
+  console.log(\`Joined new guild: \${guild.name} (\${guild.id}) - registering /setup only until configured\`);
+  await syncGuildCommands(guild.id, false);
+});
+
 // 5. Interaction Create Event (Slash Commands & Role Selects)
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isChatInputCommand()) {
-    const { commandName } = interaction;
+    const { commandName, guildId } = interaction;
 
     if (commandName === "setup") {
-      return setupCommand.execute(interaction, roleService, loggingService);
+      return setupCommand.execute(interaction, roleService, loggingService, syncGuildCommands);
+    }
+
+    // Safety guard: if guild is not configured yet, decline execution and prompt /setup
+    if (guildId && !roleService.isGuildConfigured(guildId)) {
+      return interaction.reply({
+        content: "⚠️ **AegisMod is not set up on this server yet.**\\nAn Administrator must run \`/setup\` first to configure staff roles and \`#mod-logs\` before moderation commands are unlocked.",
+        ephemeral: true,
+      });
     }
 
     const modCmd = moderationCommands.find((c) => c.data.name === commandName);
@@ -384,6 +430,8 @@ export class TriageService {
   GuildMember,
   PermissionFlagsBits,
 } from "discord.js";
+import fs from "fs";
+import path from "path";
 
 export interface GuildRoleMapping {
   guildId: string;
@@ -395,6 +443,37 @@ export interface GuildRoleMapping {
 
 export class RoleService {
   private guildRoles = new Map<string, GuildRoleMapping>();
+  private dataFilePath = path.join(process.cwd(), "guild_roles.json");
+
+  constructor() {
+    this.loadFromDisk();
+  }
+
+  private loadFromDisk(): void {
+    try {
+      if (fs.existsSync(this.dataFilePath)) {
+        const raw = fs.readFileSync(this.dataFilePath, "utf8");
+        const parsed = JSON.parse(raw);
+        for (const key of Object.keys(parsed)) {
+          this.guildRoles.set(key, parsed[key]);
+        }
+      }
+    } catch {
+      // Fallback cleanly
+    }
+  }
+
+  private persistToDisk(): void {
+    try {
+      const obj: Record<string, GuildRoleMapping> = {};
+      this.guildRoles.forEach((val, key) => {
+        obj[key] = val;
+      });
+      fs.writeFileSync(this.dataFilePath, JSON.stringify(obj, null, 2), "utf8");
+    } catch {
+      // Ignore disk write errors
+    }
+  }
 
   public createSetupRoleSelects(guildId: string): ActionRowBuilder<RoleSelectMenuBuilder>[] {
     const ownerSelect = new RoleSelectMenuBuilder()
@@ -436,7 +515,12 @@ export class RoleService {
       configuredAt: Date.now(),
     };
     this.guildRoles.set(guildId, mapping);
+    this.persistToDisk();
     return mapping;
+  }
+
+  public isGuildConfigured(guildId: string): boolean {
+    return this.guildRoles.has(guildId);
   }
 
   public getGuildRoles(guildId: string): GuildRoleMapping | undefined {
@@ -983,7 +1067,8 @@ export const setupCommand = {
   async execute(
     interaction: ChatInputCommandInteraction,
     roleService: RoleService,
-    loggingService: LoggingService
+    loggingService: LoggingService,
+    syncCommands?: (guildId: string, isSetupComplete: boolean) => Promise<void>
   ) {
     if (!interaction.guild) {
       return interaction.reply({
@@ -1057,6 +1142,11 @@ export const setupCommand = {
       }
 
       roleService.saveGuildRoles(interaction.guildId!, ownerRole, adminRoles, modRoles);
+
+      // Unlock and register commands for this server
+      if (syncCommands) {
+        await syncCommands(interaction.guildId!, true);
+      }
 
       const staffRoles = [...adminRoles, ...modRoles];
       if (ownerRole) staffRoles.push(ownerRole);
