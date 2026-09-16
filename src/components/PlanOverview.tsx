@@ -302,10 +302,18 @@ export const PlanOverview: React.FC = () => {
           </div>
 
           <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50">
-            <div className="font-mono text-xs font-bold text-indigo-600">TraditionalModService</div>
-            <h4 className="font-bold text-sm text-zinc-900 mt-1">Manual Command Engine</h4>
+            <div className="font-mono text-xs font-bold text-indigo-600">AutoModService</div>
+            <h4 className="font-bold text-sm text-zinc-900 mt-1">Standard AutoMod & Discord Native Sync</h4>
             <p className="text-xs text-zinc-600 mt-1">
-              Executes slash commands (<code className="text-zinc-800">/ban</code>, <code className="text-zinc-800">/kick</code>, <code className="text-zinc-800">/mute</code>, <code className="text-zinc-800">/warn</code>, <code className="text-zinc-800">/cases</code>) with duration parsers (e.g. <code className="text-zinc-800">10m</code>, <code className="text-zinc-800">1h</code>, <code className="text-zinc-800">1d</code>) and infraction case history.
+              Zero-latency local filters for invite links, phishing domains, mass mentions, rapid floods, excessive caps, and zalgo text. Includes <code className="text-zinc-800">/automod</code> toggles and native Discord server-side rule provisioning.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50">
+            <div className="font-mono text-xs font-bold text-indigo-600">TraditionalModService & Diagnostics</div>
+            <h4 className="font-bold text-sm text-zinc-900 mt-1">Manual Commands & Pipeline Simulation</h4>
+            <p className="text-xs text-zinc-600 mt-1">
+              Executes slash commands (<code className="text-zinc-800">/ban</code>, <code className="text-zinc-800">/kick</code>, <code className="text-zinc-800">/mute</code>, <code className="text-zinc-800">/warn</code>, <code className="text-zinc-800">/cases</code>) plus <code className="text-zinc-800">/testmod</code> for safe simulation of the entire AI & AutoMod pipeline without taking destructive action.
             </p>
           </div>
 

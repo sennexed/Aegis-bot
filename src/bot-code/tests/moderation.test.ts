@@ -10,6 +10,8 @@
 
 import { TriageService } from "../src/services/triageService.js";
 import { PolicyEngine, ModerationClassification } from "../src/services/policyEngine.js";
+import { AutoModService } from "../src/services/autoModService.js";
+import { GeminiModerationService } from "../src/services/geminiModerationService.js";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -49,7 +51,76 @@ async function runTests() {
     "Triage should intercept predatory solicitation instantly at Tier-2"
   );
 
-  // 4. Policy Engine - Predatory Grooming Escalation
+  // 4. Standard AutoMod - Anti-Invite Link
+  const autoMod = new AutoModService();
+  const inviteCheck = autoMod.checkContent("Join my cool server: discord.gg/hacked123", "user1", "guild1");
+  assert(
+    inviteCheck.triggered === true && inviteCheck.category === "INVITE_LINK_SPAM",
+    "AutoMod must catch unauthorized discord.gg invite links"
+  );
+
+  // 5. Standard AutoMod - Anti-Phishing Scam Link
+  const phishingCheck = autoMod.checkContent("Free Nitro for everyone click here: http://discrod-app.gift/claim", "user2", "guild1");
+  assert(
+    phishingCheck.triggered === true && phishingCheck.category === "PHISHING_OR_SCAM",
+    "AutoMod must detect phishing/scam lookalike domains"
+  );
+
+  // 6. Standard AutoMod - Anti-Mass Mention
+  const mentionCheck = autoMod.checkContent("hello @user1 @user2 @user3 @user4 @user5 @user6", "user3", "guild1", 6);
+  assert(
+    mentionCheck.triggered === true && mentionCheck.category === "MASS_MENTION_SPAM",
+    "AutoMod must intercept mass mentions exceeding threshold"
+  );
+
+  // 7. Standard AutoMod - Anti-Spam / Rapid Message Flood
+  // User sends 6 messages quickly
+  let floodTriggered = false;
+  for (let i = 0; i < 6; i++) {
+    const floodCheck = autoMod.checkContent(`rapid message payload ${i}`, "spammer_user", "guild1");
+    if (floodCheck.triggered && floodCheck.category === "FLOOD_OR_SPAM") {
+      floodTriggered = true;
+      break;
+    }
+  }
+  assert(floodTriggered, "AutoMod sliding window must trigger FLOOD_OR_SPAM on rapid message bursts");
+
+  // 8. Standard AutoMod - Anti-Excessive Caps
+  const capsCheck = autoMod.checkContent("HEY EVERYONE STOP TALKING AND LOOK AT THIS RIGHT NOW PLEASE", "user4", "guild1");
+  assert(
+    capsCheck.triggered === true && capsCheck.category === "EXCESSIVE_CAPS",
+    "AutoMod must catch messages with excessive uppercase text"
+  );
+
+  // 9. Standard AutoMod - Anti-Zalgo / Glitch Text
+  const zalgoCheck = autoMod.checkContent("h̷̛̰ḛ̸̡l̵̡̰l̵̡̰o̵̡̰ t̷̛̰h̷̛̰ḛ̸̡r̸̡̰ḛ̵̡", "user5", "guild1");
+  assert(
+    zalgoCheck.triggered === true && zalgoCheck.category === "GLITCH_OR_ZALGO",
+    "AutoMod must catch zalgo glitch combining mark text"
+  );
+
+  // 10. Standard AutoMod - Zero-Tolerance Banned Word
+  const slurCheck = autoMod.checkContent("You are a f@ggot", "user6", "guild1");
+  assert(
+    slurCheck.triggered === true && slurCheck.category === "HATE_SPEECH",
+    "AutoMod must instantly catch leetspeak obfuscated hate slurs"
+  );
+
+  // 11. Policy Engine - AutoMod Phishing Escalation
+  const phishingPolicy = PolicyEngine.evaluatePolicy({
+    flagged: true,
+    category: "PHISHING_OR_SCAM",
+    severity: "CRITICAL",
+    confidence: 1.0,
+    reason: "Phishing link detected",
+    highlightedPhrases: ["discrod-app.gift"],
+  }, "Test Server");
+  assert(
+    phishingPolicy.action === "TIMEOUT_24H" && phishingPolicy.requiresStaffNotification === true,
+    "PolicyEngine must map PHISHING_OR_SCAM to 24h timeout and notify staff"
+  );
+
+  // 12. Policy Engine - Predatory Grooming Escalation
   const groomingClass: ModerationClassification = PolicyEngine.validateClassification({
     flagged: true,
     category: "SEXUAL_GROOMING_OR_PREDATORY",
@@ -63,7 +134,7 @@ async function runTests() {
     "PolicyEngine must immediately map SEXUAL_GROOMING_OR_PREDATORY to BAN with staff alert"
   );
 
-  // 5. Policy Engine - Self-Harm Escalation
+  // 13. Policy Engine - Self-Harm Escalation
   const selfHarmClass: ModerationClassification = PolicyEngine.validateClassification({
     flagged: true,
     category: "SELF_HARM",
@@ -77,7 +148,7 @@ async function runTests() {
     "PolicyEngine must map SELF_HARM to TIMEOUT_24H and alert staff"
   );
 
-  // 6. Policy Engine - Hate Speech Escalation
+  // 14. Policy Engine - Hate Speech Escalation
   const hateClass: ModerationClassification = PolicyEngine.validateClassification({
     flagged: true,
     category: "HATE_SPEECH",
@@ -91,7 +162,7 @@ async function runTests() {
     "PolicyEngine must map HIGH hate speech to TIMEOUT_1H with staff notification"
   );
 
-  // 7. Policy Engine - Prompt Injection Defense
+  // 15. Policy Engine - Prompt Injection Defense
   const injectionClass: ModerationClassification = PolicyEngine.validateClassification({
     flagged: true,
     category: "PROMPT_INJECTION_OR_JAILBREAK",
@@ -105,7 +176,7 @@ async function runTests() {
     "PolicyEngine must delete prompt injection attempts and notify staff"
   );
 
-  // 8. Policy Engine - Untrusted / Malformed Classification Sanitization
+  // 16. Policy Engine - Untrusted / Malformed Classification Sanitization
   const bogusClass = PolicyEngine.validateClassification({
     flagged: "yes",
     category: "RANDOM_HACKED_CATEGORY",
@@ -118,7 +189,15 @@ async function runTests() {
     "PolicyEngine must safely reject and sanitize unauthorized classifications to ALLOW"
   );
 
-  console.log("\n🎉 All AegisMod Automated Tests Passed Successfully!\n");
+  // 17. GeminiModerationService - Heuristic Fallback Resilience
+  const geminiFallback = new GeminiModerationService(""); // No API key -> must gracefully fall back
+  const fallbackResult = await geminiFallback.analyzeMessage("kys right now", "BadUser");
+  assert(
+    fallbackResult.flagged === true && fallbackResult.category === "SELF_HARM",
+    "GeminiModerationService must catch severe safety violations even when API key is missing or offline"
+  );
+
+  console.log("\n🎉 All 17 AegisMod Automated Tests Passed Successfully!\n");
 }
 
 runTests().catch((err) => {

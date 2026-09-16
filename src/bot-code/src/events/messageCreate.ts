@@ -8,6 +8,7 @@ import { TriageService } from "../services/triageService.js";
 import { GeminiModerationService } from "../services/geminiModerationService.js";
 import { LoggingService } from "../services/loggingService.js";
 import { RoleService } from "../services/roleService.js";
+import { AutoModService } from "../services/autoModService.js";
 import { PolicyEngine, ModerationClassification } from "../services/policyEngine.js";
 
 export async function handleMessageCreate(
@@ -15,7 +16,8 @@ export async function handleMessageCreate(
   triageService: TriageService,
   geminiService: GeminiModerationService,
   loggingService: LoggingService,
-  roleService: RoleService
+  roleService: RoleService,
+  autoModService?: AutoModService
 ) {
   // 1. Guard clauses: Ignore bots, DMs, or empty messages
   if (message.author.bot || !message.guild || !message.content?.trim()) {
@@ -23,7 +25,7 @@ export async function handleMessageCreate(
   }
 
   // 2. Staff exemption check
-  const member = message.member;
+  const member = message.member || (await message.guild.members.fetch(message.author.id).catch(() => null));
   if (member && roleService.isStaffOrExempt(member)) {
     return;
   }
@@ -31,46 +33,65 @@ export async function handleMessageCreate(
   try {
     const rawContent = message.content;
 
-    // 3. Triage & Token Efficiency Filter
-    const triage = triageService.evaluate(rawContent);
-
+    // 3. Step 1: Standard AutoMod Heuristic & Security Layer (Deterministic local protection)
     let rawClassification: any;
 
-    if (!triage.shouldCallGemini && triage.localVerdict) {
-      // Handled entirely by Tier-1 or Tier-2 local triage
-      rawClassification = {
-        flagged: triage.localVerdict.flagged,
-        category: triage.localVerdict.category,
-        severity: triage.localVerdict.severity,
-        confidence: 0.95,
-        reason: triage.localVerdict.reason,
-        highlightedPhrases: [],
-        ageAppropriateNotes: "Local triage evaluation.",
-        tokensUsed: 0,
-      };
-    } else {
-      // Tier-3: Pass to Gemini 3.8 Flash for deep contextual analysis
-      const aiResult = await geminiService.analyzeMessage(rawContent, message.author.tag);
-      rawClassification = {
-        flagged: aiResult.flagged,
-        category: aiResult.category,
-        severity: aiResult.severity,
-        confidence: aiResult.confidence,
-        reason: aiResult.reason,
-        highlightedPhrases: aiResult.highlightedPhrases,
-        ageAppropriateNotes: aiResult.ageAppropriateNotes,
-        tokensUsed: aiResult.tokensUsed,
-      };
+    if (autoModService) {
+      const autoModResult = autoModService.checkMessage(message);
+      if (autoModResult.triggered) {
+        rawClassification = {
+          flagged: true,
+          category: autoModResult.category || "SEVERE_PROFANITY_OR_ABUSE",
+          severity: autoModResult.severity || "MEDIUM",
+          confidence: 1.0,
+          reason: autoModResult.reason || "Triggered local AutoMod rule",
+          highlightedPhrases: autoModResult.matchedContent ? [autoModResult.matchedContent] : [],
+          ageAppropriateNotes: "Deterministic Standard AutoMod filter.",
+          tokensUsed: 0,
+        };
+      }
+    }
 
-      // Cache the verdict for future duplicate messages if not an API error
-      if (!aiResult.isApiErrorFallback) {
-        triageService.cacheVerdict(rawContent, {
+    // Step 2: Triage & Token Efficiency Filter (if not already flagged by AutoMod)
+    if (!rawClassification) {
+      const triage = triageService.evaluate(rawContent);
+
+      if (!triage.shouldCallGemini && triage.localVerdict) {
+        // Handled entirely by Tier-1 or Tier-2 local triage
+        rawClassification = {
+          flagged: triage.localVerdict.flagged,
+          category: triage.localVerdict.category,
+          severity: triage.localVerdict.severity,
+          confidence: 0.95,
+          reason: triage.localVerdict.reason,
+          highlightedPhrases: [],
+          ageAppropriateNotes: "Local triage evaluation.",
+          tokensUsed: 0,
+        };
+      } else {
+        // Step 3: Pass to Gemini 3.8 Flash for deep contextual analysis
+        const aiResult = await geminiService.analyzeMessage(rawContent, message.author.tag);
+        rawClassification = {
           flagged: aiResult.flagged,
           category: aiResult.category,
           severity: aiResult.severity,
-          recommendedAction: aiResult.recommendedAction,
-          reason: `Cached from Gemini: ${aiResult.reason}`,
-        });
+          confidence: aiResult.confidence,
+          reason: aiResult.reason,
+          highlightedPhrases: aiResult.highlightedPhrases,
+          ageAppropriateNotes: aiResult.ageAppropriateNotes,
+          tokensUsed: aiResult.tokensUsed,
+        };
+
+        // Cache the verdict for future duplicate messages if not an API error
+        if (!aiResult.isApiErrorFallback) {
+          triageService.cacheVerdict(rawContent, {
+            flagged: aiResult.flagged,
+            category: aiResult.category,
+            severity: aiResult.severity,
+            recommendedAction: aiResult.recommendedAction,
+            reason: `Cached from Gemini: ${aiResult.reason}`,
+          });
+        }
       }
     }
 

@@ -48,31 +48,116 @@ const BENIGN_GAMER_SLANG = new Set([
   "nope", "hi", "hello", "hey", "yo", "sup", "whatsup", "wassup", "cya", "bye"
 ]);
 
-function runLocalTriage(text: string): { status: "CLEAN_PASS" | "SUSPICIOUS" | "LOCAL_FLAG"; reason?: string; category?: string } {
+function runLocalTriage(text: string): { 
+  status: "CLEAN_PASS" | "SUSPICIOUS" | "LOCAL_FLAG"; 
+  reason?: string; 
+  category?: string;
+  severity?: string;
+  recommendedAction?: string;
+  ruleName?: string;
+  highlightedPhrases?: string[];
+} {
   const normalized = text.trim().toLowerCase();
   
-  // 1. Very short benign words
-  if (normalized.length <= 4 && (BENIGN_GAMER_SLANG.has(normalized) || /^[a-z0-9!?. ]{1,4}$/.test(normalized))) {
+  // 1. Anti-Invite Link: Unauthorized discord.gg or discord.com/invite links
+  const inviteRegex = /(?:https?:\/\/)?(?:www\.)?(?:discord\.(?:gg|io|me|li)|discord(?:app)?\.com\/invite)\/([a-zA-Z0-9_-]+)/i;
+  const inviteMatch = text.match(inviteRegex);
+  if (inviteMatch) {
+    return {
+      status: "LOCAL_FLAG",
+      ruleName: "Anti-Invite Links",
+      category: "INVITE_LINK_SPAM",
+      severity: "MEDIUM",
+      recommendedAction: "DELETE",
+      reason: "Unauthorized Discord server invite link detected by Standard AutoMod.",
+      highlightedPhrases: [inviteMatch[0]],
+    };
+  }
+
+  // 2. Anti-Phishing & Malicious Scam Domains
+  const phishingRegex = /(?:discorcl|dlscord|discrod|disccord|disscord|discord-app|discord-nitro|free-nitro|nitro-airdrop|gift-discord|discord-gift|steamcommuniity|steamcomminuty|steamcommunyt|steamcommunitys|trade-offer|steam-gift|grabify\.link|iplogger\.org|yip\.su|blasze\.com)/i;
+  const suspiciousTldRegex = /(?:https?:\/\/)[^\s/$.?#].[^\s]*\.(?:ru|xyz|top|click|link|skin|tk|ml|ga|cf|gift|download|fun|biz|monster|rest)(?:\/[^\s]*)?/i;
+  const phishMatch = text.match(phishingRegex) || text.match(suspiciousTldRegex);
+  if (phishMatch) {
+    return {
+      status: "LOCAL_FLAG",
+      ruleName: "Anti-Phishing & Scam Filter",
+      category: "PHISHING_OR_SCAM",
+      severity: "CRITICAL",
+      recommendedAction: "TIMEOUT_24H",
+      reason: "Suspected phishing, fake Nitro, or token-logging link detected by Standard AutoMod.",
+      highlightedPhrases: [phishMatch[0]],
+    };
+  }
+
+  // 3. Anti-Zalgo & Glitch Unicode
+  const zalgoRegex = /[\u0300-\u036f\u0483-\u0489\u1dc0-\u1dff\u20d0-\u20ff\ufe20-\ufe2f]/g;
+  const zalgoMatches = text.match(zalgoRegex);
+  if (zalgoMatches && zalgoMatches.length >= 6) {
+    return {
+      status: "LOCAL_FLAG",
+      ruleName: "Anti-Zalgo & Glitch Text",
+      category: "GLITCH_OR_ZALGO",
+      severity: "MEDIUM",
+      recommendedAction: "DELETE",
+      reason: "Excessive combining unicode marks (zalgo/glitch text) detected by Standard AutoMod.",
+      highlightedPhrases: zalgoMatches.slice(0, 5),
+    };
+  }
+
+  // 4. Anti-Excessive Caps
+  const lettersOnly = text.replace(/[^a-zA-Z]/g, "");
+  if (lettersOnly.length >= 15) {
+    const uppercaseCount = (text.match(/[A-Z]/g) || []).length;
+    const capsPercentage = (uppercaseCount / lettersOnly.length) * 100;
+    if (capsPercentage >= 75) {
+      return {
+        status: "LOCAL_FLAG",
+        ruleName: "Anti-Excessive Caps",
+        category: "EXCESSIVE_CAPS",
+        severity: "LOW",
+        recommendedAction: "DELETE",
+        reason: `Excessive uppercase characters (${Math.round(capsPercentage)}%) detected by Standard AutoMod.`,
+        highlightedPhrases: [text.slice(0, 30)],
+      };
+    }
+  }
+
+  // 5. Zero-tolerance severe hate speech, explicit slurs, self-harm, and grooming
+  const zeroToleranceRegex = /\b(kys|k\.y\.s|kill yourself|kill ur self|die in a fire|suicide|send nudes|send me nudes|trade pics|how old are you snap|drop snap 16|drop your insta dm|meet up in person secretly|faggot|nigger|retard|tranny)\b/i;
+  const zeroMatch = text.match(zeroToleranceRegex);
+  if (zeroMatch) {
+    const matched = zeroMatch[0].toLowerCase();
+    const isSelfHarm = /kys|kill|suicide|die in a fire/i.test(matched);
+    const isHate = /faggot|nigger|retard|tranny/i.test(matched);
+    const isPredatory = /send nudes|trade pics|drop snap|secretly/i.test(matched);
+
+    const category = isSelfHarm ? "SELF_HARM" : isHate ? "HATE_SPEECH" : "SEXUAL_GROOMING_OR_PREDATORY";
+    const recommendedAction = isPredatory ? "BAN" : (isSelfHarm || isHate) ? "TIMEOUT_24H" : "TIMEOUT_1H";
+
+    return { 
+      status: "LOCAL_FLAG", 
+      ruleName: "Zero-Tolerance Safety Filter",
+      reason: `Immediate high-risk keyword pattern detected by Tier-1 local filter: "${matched}"`, 
+      category,
+      severity: "CRITICAL",
+      recommendedAction,
+      highlightedPhrases: [zeroMatch[0]],
+    };
+  }
+
+  // 6. Very short benign words
+  if (normalized.length <= 4 && (BENIGN_GAMER_SLANG.has(normalized) || /^[a-z0-9!?. ~]{1,4}$/.test(normalized))) {
     return { status: "CLEAN_PASS" };
   }
 
-  // 2. All words in message are benign conversational words
+  // 7. All words in message are benign conversational words
   const words = normalized.split(/\s+/);
   if (words.length <= 5 && words.every(w => BENIGN_GAMER_SLANG.has(w.replace(/[^a-z]/g, "")))) {
     return { status: "CLEAN_PASS" };
   }
 
-  // 3. Fast regex check for zero-tolerance severe hate speech / explicit predatory patterns
-  const zeroToleranceRegex = /\b(kys|k\.y\.s|kill yourself|kill ur self|die in a fire|suicide|send nudes|send me nudes|trade pics|how old are you snap|drop snap 16|drop your insta dm|meet up in person secretly)\b/i;
-  if (zeroToleranceRegex.test(text)) {
-    return { 
-      status: "LOCAL_FLAG", 
-      reason: "Immediate high-risk keyword pattern detected by Tier-1 local filter", 
-      category: text.toLowerCase().includes("kill") || text.toLowerCase().includes("kys") ? "SELF_HARM" : "SEXUAL_GROOMING_OR_PREDATORY"
-    };
-  }
-
-  // 4. Default: Send to Gemini Flash for deep context & nuanced teenage safety evaluation
+  // 8. Default: Send to Gemini Flash for deep context & nuanced teenage safety evaluation
   return { status: "SUSPICIOUS" };
 }
 
@@ -110,7 +195,7 @@ app.post("/api/moderate", async (req: Request, res: Response) => {
     });
   }
 
-  // Run Tier 1 Local Triage
+  // Run Tier 1 Local Triage & Standard AutoMod
   if (!bypassTriage) {
     const triage = runLocalTriage(trimmed);
     if (triage.status === "CLEAN_PASS") {
@@ -129,6 +214,24 @@ app.post("/api/moderate", async (req: Request, res: Response) => {
       };
       moderationCache.set(cacheKey, { result: cleanResult, timestamp: Date.now() });
       return res.json(cleanResult);
+    }
+
+    if (triage.status === "LOCAL_FLAG") {
+      const flagResult = {
+        flagged: true,
+        category: triage.category || "SEVERE_PROFANITY_OR_ABUSE",
+        severity: triage.severity || "HIGH",
+        recommendedAction: triage.recommendedAction || "DELETE",
+        confidence: 1.0,
+        reason: triage.reason || "Intercepted by AegisMod Standard AutoMod filter (0 tokens consumed).",
+        highlightedPhrases: triage.highlightedPhrases || [trimmed],
+        ageAppropriateNotes: "Deterministic Standard AutoMod filter safeguard for teenage communities.",
+        source: triage.ruleName ? `STANDARD_AUTOMOD (${triage.ruleName})` : "STANDARD_AUTOMOD",
+        tokensUsed: 0,
+        latencyMs: Date.now() - startTime,
+      };
+      moderationCache.set(cacheKey, { result: flagResult, timestamp: Date.now() });
+      return res.json(flagResult);
     }
   }
 
@@ -183,42 +286,60 @@ Severities:
 
 Output structured JSON strictly matching the provided schema.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: `Evaluate the following Discord message sent by "${author}":\n"${trimmed}"`,
-      config: {
-        systemInstruction,
-        temperature: 0.1,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            flagged: { type: Type.BOOLEAN, description: "Whether the message violates community teen standards" },
-            category: { 
-              type: Type.STRING, 
-              description: "Violation category: NONE, CYBERBULLYING, HARASSMENT, SEXUAL_GROOMING_OR_PREDATORY, SELF_HARM, HATE_SPEECH, SEVERE_PROFANITY_OR_ABUSE, DOXXING_OR_PII" 
+    const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
+    let response: any = null;
+    let successfulModel = "gemini-3.8-flash";
+    let lastError: any = null;
+
+    for (const model of candidateModels) {
+      try {
+        response = await ai.models.generateContent({
+          model,
+          contents: `Evaluate the following Discord message sent by "${author}":\n"${trimmed}"`,
+          config: {
+            systemInstruction,
+            temperature: 0.1,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                flagged: { type: Type.BOOLEAN, description: "Whether the message violates community teen standards" },
+                category: { 
+                  type: Type.STRING, 
+                  description: "Violation category: NONE, CYBERBULLYING, HARASSMENT, SEXUAL_GROOMING_OR_PREDATORY, SELF_HARM, HATE_SPEECH, SEVERE_PROFANITY_OR_ABUSE, DOXXING_OR_PII" 
+                },
+                severity: { 
+                  type: Type.STRING, 
+                  description: "NONE, LOW, MEDIUM, HIGH, CRITICAL" 
+                },
+                recommendedAction: { 
+                  type: Type.STRING, 
+                  description: "ALLOW, WARN, DELETE, TIMEOUT_1H, TIMEOUT_24H, BAN" 
+                },
+                confidence: { type: Type.NUMBER, description: "Confidence score between 0.0 and 1.0" },
+                reason: { type: Type.STRING, description: "Concise explanation for moderator logs" },
+                highlightedPhrases: { 
+                  type: Type.ARRAY, 
+                  items: { type: Type.STRING },
+                  description: "Specific abusive or violating substrings" 
+                },
+                ageAppropriateNotes: { type: Type.STRING, description: "Specific guidance considering the 16-year-old audience" }
+              },
+              required: ["flagged", "category", "severity", "recommendedAction", "confidence", "reason"],
             },
-            severity: { 
-              type: Type.STRING, 
-              description: "NONE, LOW, MEDIUM, HIGH, CRITICAL" 
-            },
-            recommendedAction: { 
-              type: Type.STRING, 
-              description: "ALLOW, WARN, DELETE, TIMEOUT_1H, TIMEOUT_24H, BAN" 
-            },
-            confidence: { type: Type.NUMBER, description: "Confidence score between 0.0 and 1.0" },
-            reason: { type: Type.STRING, description: "Concise explanation for moderator logs" },
-            highlightedPhrases: { 
-              type: Type.ARRAY, 
-              items: { type: Type.STRING },
-              description: "Specific abusive or violating substrings" 
-            },
-            ageAppropriateNotes: { type: Type.STRING, description: "Specific guidance considering the 16-year-old audience" }
           },
-          required: ["flagged", "category", "severity", "recommendedAction", "confidence", "reason"],
-        },
-      },
-    });
+        });
+        successfulModel = model;
+        break;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[API Moderate] Model ${model} encountered error or spike: ${err?.message || err}. Attempting fallback...`);
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error("All candidate Gemini models temporarily unavailable.");
+    }
 
     const parsed = JSON.parse(response.text || "{}");
     const estimatedTokens = Math.ceil(trimmed.length / 3.5) + 380; // system prompt + input + output tokens
@@ -229,10 +350,10 @@ Output structured JSON strictly matching the provided schema.`;
       severity: parsed.severity || "NONE",
       recommendedAction: parsed.recommendedAction || "ALLOW",
       confidence: parsed.confidence ?? 0.9,
-      reason: parsed.reason || "Analysis completed by Gemini 3.8 Flash",
+      reason: parsed.reason || `Analysis completed by ${successfulModel}`,
       highlightedPhrases: parsed.highlightedPhrases || [],
       ageAppropriateNotes: parsed.ageAppropriateNotes || "Strict teenage community guidelines enforced.",
-      source: "GEMINI_3_8_FLASH",
+      source: successfulModel.toUpperCase().replace(/-/g, "_"),
       tokensUsed: estimatedTokens,
       latencyMs: Date.now() - startTime,
     };

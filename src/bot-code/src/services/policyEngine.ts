@@ -17,7 +17,13 @@ export type ViolationCategory =
   | "HATE_SPEECH"
   | "SEVERE_PROFANITY_OR_ABUSE"
   | "DOXXING_OR_PII"
-  | "PROMPT_INJECTION_OR_JAILBREAK";
+  | "PROMPT_INJECTION_OR_JAILBREAK"
+  | "INVITE_LINK_SPAM"
+  | "PHISHING_OR_SCAM"
+  | "MASS_MENTION_SPAM"
+  | "FLOOD_OR_SPAM"
+  | "EXCESSIVE_CAPS"
+  | "GLITCH_OR_ZALGO";
 
 export type SeverityLevel = "NONE" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
@@ -69,6 +75,12 @@ export class PolicyEngine {
       "SEVERE_PROFANITY_OR_ABUSE",
       "DOXXING_OR_PII",
       "PROMPT_INJECTION_OR_JAILBREAK",
+      "INVITE_LINK_SPAM",
+      "PHISHING_OR_SCAM",
+      "MASS_MENTION_SPAM",
+      "FLOOD_OR_SPAM",
+      "EXCESSIVE_CAPS",
+      "GLITCH_OR_ZALGO",
     ]);
 
     const validSeverities: Set<string> = new Set(["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL"]);
@@ -255,6 +267,85 @@ export class PolicyEngine {
         requiresStaffNotification: true,
         notifyUser: true,
         userMessage: `⚠️ System command bypass attempts are not permitted in **${guildName}**.`,
+      };
+    }
+
+    // 8. AutoMod: Phishing & Malicious Scams -> 24h Timeout + Delete + Staff Ping
+    if (classification.category === "PHISHING_OR_SCAM") {
+      return {
+        action: "TIMEOUT_24H",
+        executedActionDescription: "DELETED_AND_TIMEOUT_24H_PHISHING",
+        category: classification.category,
+        severity: "CRITICAL",
+        confidence: classification.confidence,
+        reason: classification.reason,
+        durationMs: 24 * 60 * 60 * 1000,
+        requiresStaffNotification: true,
+        notifyUser: true,
+        userMessage: `⚠️ You have been placed on a 24-hour timeout in **${guildName}** for distributing suspected phishing or malicious links.`,
+      };
+    }
+
+    // 9. AutoMod: Mass Mention Spam -> 1h Timeout + Delete + Staff Ping
+    if (classification.category === "MASS_MENTION_SPAM") {
+      return {
+        action: "TIMEOUT_1H",
+        executedActionDescription: "DELETED_AND_TIMEOUT_1H_MASS_MENTION",
+        category: classification.category,
+        severity: "HIGH",
+        confidence: classification.confidence,
+        reason: classification.reason,
+        durationMs: 60 * 60 * 1000,
+        requiresStaffNotification: true,
+        notifyUser: true,
+        userMessage: `⚠️ Your message was removed and you have been timed out for 1 hour in **${guildName}** for mass mention spam.`,
+      };
+    }
+
+    // 10. AutoMod: Invite Link Spam -> Delete + Warning
+    if (classification.category === "INVITE_LINK_SPAM") {
+      return {
+        action: "DELETE",
+        executedActionDescription: "MESSAGE_DELETED_INVITE_LINK",
+        category: classification.category,
+        severity: "MEDIUM",
+        confidence: classification.confidence,
+        reason: classification.reason,
+        requiresStaffNotification: false,
+        notifyUser: true,
+        userMessage: `⚠️ Unauthorized Discord server invite links are not permitted in **${guildName}**.`,
+      };
+    }
+
+    // 11. AutoMod: Fast Spam / Flood -> Delete
+    if (classification.category === "FLOOD_OR_SPAM") {
+      return {
+        action: "DELETE",
+        executedActionDescription: "MESSAGE_DELETED_SPAM_FLOOD",
+        category: classification.category,
+        severity: "MEDIUM",
+        confidence: classification.confidence,
+        reason: classification.reason,
+        requiresStaffNotification: false,
+        notifyUser: true,
+        userMessage: `⚠️ Please slow down! Rapid message flooding is prohibited in **${guildName}**.`,
+      };
+    }
+
+    // 12. AutoMod: Excessive Caps & Zalgo -> Delete
+    if (classification.category === "EXCESSIVE_CAPS" || classification.category === "GLITCH_OR_ZALGO") {
+      return {
+        action: "DELETE",
+        executedActionDescription: classification.category === "EXCESSIVE_CAPS" ? "MESSAGE_DELETED_CAPS" : "MESSAGE_DELETED_ZALGO",
+        category: classification.category,
+        severity: classification.severity,
+        confidence: classification.confidence,
+        reason: classification.reason,
+        requiresStaffNotification: false,
+        notifyUser: true,
+        userMessage: classification.category === "EXCESSIVE_CAPS"
+          ? `⚠️ Please avoid sending messages in all uppercase in **${guildName}**.`
+          : `⚠️ Messages containing glitch or excessive zalgo characters are not permitted in **${guildName}**.`,
       };
     }
 

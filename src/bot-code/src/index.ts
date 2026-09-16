@@ -20,9 +20,12 @@ import { RoleService } from "./services/roleService.js";
 import { TraditionalModService } from "./services/traditionalModService.js";
 import { TriageService } from "./services/triageService.js";
 import { GeminiModerationService } from "./services/geminiModerationService.js";
+import { AutoModService } from "./services/autoModService.js";
 
 import { setupCommand } from "./commands/setup.js";
 import { moderationCommands } from "./commands/moderation.js";
+import { autoModCommand } from "./commands/automod.js";
+import { testModCommand } from "./commands/testmod.js";
 
 import { handleMessageCreate } from "./events/messageCreate.js";
 import { handleMessageUpdate } from "./events/messageUpdate.js";
@@ -48,6 +51,7 @@ const roleService = new RoleService();
 const modService = new TraditionalModService(loggingService, roleService);
 const triageService = new TriageService();
 const geminiService = new GeminiModerationService(process.env.GEMINI_API_KEY);
+const autoModService = new AutoModService();
 
 // 3. Register Slash Commands
 export async function syncGuildCommands(guildId: string, isSetupComplete: boolean) {
@@ -58,9 +62,16 @@ export async function syncGuildCommands(guildId: string, isSetupComplete: boolea
   const rest = new REST({ version: "10" }).setToken(token);
 
   // If server is not setup yet, ONLY expose /setup command
-  // Once setup is completed, expose /setup AND all moderation commands (/ban, /kick, /mute, /warn, /cases)
+  // Once setup is completed, expose /setup, /automod, /testmod, AND all traditional moderation commands (/ban, /kick, /mute, /warn, /cases)
+  const fullCommands = [
+    setupCommand.data.toJSON(),
+    autoModCommand.data.toJSON(),
+    testModCommand.data.toJSON(),
+    ...moderationCommands.map((c) => c.data.toJSON()),
+  ];
+
   const commandsToRegister = isSetupComplete
-    ? [setupCommand.data.toJSON(), ...moderationCommands.map((c) => c.data.toJSON())]
+    ? fullCommands
     : [setupCommand.data.toJSON()];
 
   try {
@@ -140,6 +151,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
     }
 
+    if (commandName === "automod") {
+      return autoModCommand.execute(interaction, autoModService);
+    }
+
+    if (commandName === "testmod") {
+      return testModCommand.execute(interaction, autoModService, triageService, geminiService);
+    }
+
     const modCmd = moderationCommands.find((c) => c.data.name === commandName);
     if (modCmd) {
       return modCmd.execute(interaction, modService);
@@ -149,11 +168,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // 6. Message Event Listeners
 client.on(Events.MessageCreate, (message) => {
-  handleMessageCreate(message, triageService, geminiService, loggingService, roleService);
+  handleMessageCreate(message, triageService, geminiService, loggingService, roleService, autoModService);
 });
 
 client.on(Events.MessageUpdate, (oldMsg, newMsg) => {
-  handleMessageUpdate(oldMsg, newMsg, loggingService, triageService, geminiService, roleService);
+  handleMessageUpdate(oldMsg, newMsg, loggingService, triageService, geminiService, roleService, autoModService);
 });
 
 client.on(Events.MessageDelete, (message) => {

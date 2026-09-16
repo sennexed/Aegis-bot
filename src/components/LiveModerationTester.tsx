@@ -22,6 +22,24 @@ const PRESET_MESSAGES = [
     expected: "Fast Triage Pass (0 Tokens)",
   },
   {
+    label: "AutoMod: Invite Link Spam",
+    author: "RaidBot",
+    content: "Join our active trading server discord.gg/free-nitro-deals right now!!",
+    expected: "AutoMod: INVITE_LINK_SPAM (DELETE)",
+  },
+  {
+    label: "AutoMod: Phishing / Scam Domain",
+    author: "SteamScammer",
+    content: "Claim 3 months of free Discord Nitro here: https://discrod-app.gift/claim-nitro",
+    expected: "AutoMod: PHISHING_OR_SCAM (24H TIMEOUT)",
+  },
+  {
+    label: "AutoMod: Glitch / Zalgo Lag Text",
+    author: "Lagger",
+    content: "h̷̛̰ḛ̸̡l̵̡̰l̵̡̰o̵̡̰ t̷̛̰h̷̛̰ḛ̸̡r̸̡̰ḛ̵̡ crash your discord app",
+    expected: "AutoMod: GLITCH_OR_ZALGO (DELETE)",
+  },
+  {
     label: "Cyberbullying / Mockery",
     author: "ToxicUser",
     content: "Nobody in this server likes you, you're pathetic. Log off and never come back.",

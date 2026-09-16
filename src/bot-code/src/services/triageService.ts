@@ -48,8 +48,8 @@ export class TriageService {
       };
     }
 
-    // 1. Check for single harmless words / short reactions
-    if (normalized.length <= 4 && (this.benignSlang.has(normalized) || /^[a-z0-9!?. ]{1,4}$/.test(normalized))) {
+    // 1. Check for single harmless words / short reactions or simple punctuation
+    if (this.benignSlang.has(normalized) || /^[\p{Emoji}\s!?.~]{1,4}$/u.test(normalized)) {
       return {
         shouldCallGemini: false,
         localVerdict: {
@@ -57,7 +57,7 @@ export class TriageService {
           category: "NONE",
           severity: "NONE",
           recommendedAction: "ALLOW",
-          reason: "Triage Tier-1: Short benign chat slang."
+          reason: "Triage Tier-1: Short benign chat slang or emoji."
         },
         reason: "Fast filter: Benign chat (0 tokens consumed)"
       };
