@@ -1,6 +1,6 @@
 /**
  * Gemini Moderation Service
- * Connects directly to Google's Gemini 3.5 Flash API using the official @google/genai SDK.
+ * Connects directly to Google's Gemini 3.8 Flash API using the official @google/genai SDK.
  * Optimized with structured schema responses and teenage community safety guidelines.
  */
 
@@ -22,7 +22,7 @@ export interface AIAnalysisOutput {
 
 export class GeminiModerationService {
   private ai: GoogleGenAI;
-  private readonly modelName = "gemini-3.5-flash";
+  private readonly modelName = "gemini-3.8-flash";
 
   constructor(apiKey?: string) {
     const key = apiKey || process.env.GEMINI_API_KEY;
@@ -114,7 +114,7 @@ export class GeminiModerationService {
         severity: parsed.severity || "NONE",
         recommendedAction: parsed.recommendedAction || "ALLOW",
         confidence: typeof parsed.confidence === "number" ? Math.max(0, Math.min(1, parsed.confidence)) : 0.9,
-        reason: parsed.reason || "Evaluated by Gemini 3.5 Flash",
+        reason: parsed.reason || "Evaluated by Gemini 3.8 Flash",
         highlightedPhrases: Array.isArray(parsed.highlightedPhrases) ? parsed.highlightedPhrases : [],
         ageAppropriateNotes: parsed.ageAppropriateNotes || "Strict teenage community guidelines enforced.",
         tokensUsed: estimatedTokens,
