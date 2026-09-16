@@ -9,6 +9,7 @@ import {
   PermissionFlagsBits,
   EmbedBuilder,
   GuildMember,
+  MessageFlags,
 } from "discord.js";
 import { TraditionalModService } from "../services/traditionalModService.js";
 
@@ -36,7 +37,7 @@ export const moderationCommands = [
 
       const targetMember = interaction.guild?.members.cache.get(targetUser.id);
       if (!targetMember) {
-        return interaction.reply({ content: "That user is not currently in this server.", ephemeral: true });
+        return interaction.reply({ content: "That user is not currently in this server.", flags: MessageFlags.Ephemeral });
       }
 
       await interaction.deferReply();
@@ -72,7 +73,7 @@ export const moderationCommands = [
 
       const targetMember = interaction.guild?.members.cache.get(targetUser.id);
       if (!targetMember) {
-        return interaction.reply({ content: "That user is not currently in this server.", ephemeral: true });
+        return interaction.reply({ content: "That user is not currently in this server.", flags: MessageFlags.Ephemeral });
       }
 
       await interaction.deferReply();
@@ -112,13 +113,13 @@ export const moderationCommands = [
       if (!durationMs) {
         return interaction.reply({
           content: "Invalid duration format. Use: `10m` (minutes), `2h` (hours), `1d` (days).",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
       const targetMember = interaction.guild?.members.cache.get(targetUser.id);
       if (!targetMember) {
-        return interaction.reply({ content: "That user is not currently in this server.", ephemeral: true });
+        return interaction.reply({ content: "That user is not currently in this server.", flags: MessageFlags.Ephemeral });
       }
 
       await interaction.deferReply();
@@ -154,7 +155,7 @@ export const moderationCommands = [
 
       const targetMember = interaction.guild?.members.cache.get(targetUser.id);
       if (!targetMember) {
-        return interaction.reply({ content: "That user is not currently in this server.", ephemeral: true });
+        return interaction.reply({ content: "That user is not currently in this server.", flags: MessageFlags.Ephemeral });
       }
 
       await interaction.deferReply();
@@ -185,7 +186,7 @@ export const moderationCommands = [
       if (cases.length === 0) {
         return interaction.reply({
           content: `No recorded moderation infractions for **${targetUser.tag}**. Clean record!`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -203,7 +204,7 @@ export const moderationCommands = [
         });
       });
 
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     },
   },
 ];

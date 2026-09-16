@@ -12,6 +12,7 @@ import {
   Routes,
   Events,
   ActivityType,
+  MessageFlags,
 } from "discord.js";
 import dotenv from "dotenv";
 
@@ -147,7 +148,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (guildId && !roleService.isGuildConfigured(guildId)) {
       return interaction.reply({
         content: "⚠️ **AegisMod is not set up on this server yet.**\nAn Administrator must run `/setup` first to configure staff roles and `#mod-logs` before moderation commands are unlocked.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 

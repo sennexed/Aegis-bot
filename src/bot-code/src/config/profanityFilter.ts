@@ -175,6 +175,15 @@ export const PROFANITY_FILTER = {
   checkProfanity(content: string): { severity: string; word: string } | null {
     const normalized = content.toLowerCase();
 
+    const matchesWord = (target: string, word: string): boolean => {
+      if (word.includes("*")) {
+        return target.includes(word);
+      }
+      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`(^|[^a-zA-Z0-9])${escaped}([^a-zA-Z0-9]|$)`, "i");
+      return regex.test(target);
+    };
+
     // Check HIGH severity first
     for (const word of this.highSeverity) {
       if (normalized.includes(word)) {
@@ -184,16 +193,14 @@ export const PROFANITY_FILTER = {
 
     // Check MEDIUM severity
     for (const word of this.mediumSeverity) {
-      const regex = new RegExp(`\\b${word}\\b`, "i");
-      if (regex.test(normalized)) {
+      if (matchesWord(normalized, word)) {
         return { severity: "MEDIUM", word };
       }
     }
 
     // Check LOW severity
     for (const word of this.lowSeverity) {
-      const regex = new RegExp(`\\b${word}\\b`, "i");
-      if (regex.test(normalized)) {
+      if (matchesWord(normalized, word)) {
         return { severity: "LOW", word };
       }
     }

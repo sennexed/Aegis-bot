@@ -10,6 +10,7 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
   EmbedBuilder,
+  MessageFlags,
 } from "discord.js";
 import { AutoModService } from "../services/autoModService.js";
 import { TriageService } from "../services/triageService.js";
@@ -35,10 +36,10 @@ export const testModCommand = {
     geminiService: GeminiModerationService
   ) {
     if (!interaction.guild) {
-      return interaction.reply({ content: "This command can only be run in a server.", ephemeral: true });
+      return interaction.reply({ content: "This command can only be run in a server.", flags: MessageFlags.Ephemeral });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const content = interaction.options.getString("content", true);
     const authorTag = interaction.user.tag;

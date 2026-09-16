@@ -197,7 +197,14 @@ async function runTests() {
     "GeminiModerationService must catch severe safety violations even when API key is missing or offline"
   );
 
-  console.log("\n🎉 All 17 AegisMod Automated Tests Passed Successfully!\n");
+  // 18. Profanity Filter Integration
+  const profanityCheck = autoMod.checkContent("You are an asshole and dumbass", "user1", "guild1");
+  assert(
+    profanityCheck.triggered === true && profanityCheck.category === "SEVERE_PROFANITY_OR_ABUSE",
+    "AutoMod must catch severe abusive profanity using PROFANITY_FILTER"
+  );
+
+  console.log("\n🎉 All 18 AegisMod Automated Tests Passed Successfully!\n");
 }
 
 runTests().catch((err) => {

@@ -9,6 +9,7 @@ import {
   PermissionFlagsBits,
   EmbedBuilder,
   ComponentType,
+  MessageFlags,
 } from "discord.js";
 import { RoleService } from "../services/roleService.js";
 import { LoggingService } from "../services/loggingService.js";
@@ -28,11 +29,11 @@ export const setupCommand = {
     if (!interaction.guild) {
       return interaction.reply({
         content: "This command can only be run inside a Discord server.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     // 1. Generate Interactive Role Select Menus
     const selectRows = roleService.createSetupRoleSelects(interaction.guild.id);
@@ -83,7 +84,7 @@ export const setupCommand = {
       if (menuInteraction.user.id !== interaction.user.id) {
         return menuInteraction.reply({
           content: "Only the administrator who invoked /setup can configure roles.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 

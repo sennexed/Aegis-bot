@@ -11,6 +11,7 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
   EmbedBuilder,
+  MessageFlags,
 } from "discord.js";
 import { AutoModService, AutoModConfig } from "../services/autoModService.js";
 
@@ -53,7 +54,7 @@ export const autoModCommand = {
 
   async execute(interaction: ChatInputCommandInteraction, autoModService: AutoModService) {
     if (!interaction.guild) {
-      return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+      return interaction.reply({ content: "This command can only be used in a server.", flags: MessageFlags.Ephemeral });
     }
 
     const subcommand = interaction.options.getSubcommand();
@@ -109,7 +110,7 @@ export const autoModCommand = {
         .setFooter({ text: "Use /automod toggle <rule> <enabled> to adjust settings | /automod sync for native Discord rules" })
         .setTimestamp();
 
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
 
     if (subcommand === "toggle") {
@@ -120,12 +121,12 @@ export const autoModCommand = {
 
       return interaction.reply({
         content: `✅ Updated AutoMod rule **${rule}**: **${enabled ? "ENABLED" : "DISABLED"}**.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     if (subcommand === "sync") {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const result = await autoModService.syncDiscordNativeRules(interaction.guild);
 
       const embed = new EmbedBuilder()

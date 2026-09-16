@@ -20,6 +20,7 @@ import {
 } from "discord.js";
 import fs from "fs";
 import path from "path";
+import { PROFANITY_FILTER } from "../config/profanityFilter.js";
 
 export interface AutoModConfig {
   antiInvite: boolean;
@@ -247,6 +248,33 @@ export class AutoModService {
             recommendedAction,
             reason: `Immediate local AutoMod trigger for zero-tolerance keyword: "${kw}"`,
             matchedContent: kw,
+          };
+        }
+      }
+
+      // Profanity Filter dictionary check (High, Medium, and Low severity)
+      const profanity = PROFANITY_FILTER.checkProfanity(normalized);
+      if (profanity) {
+        if (profanity.severity === "HIGH") {
+          const isSelfHarm = /kys|suicide|kill|die/i.test(profanity.word);
+          return {
+            triggered: true,
+            ruleName: "Severe Safety & Exploitation Filter",
+            category: isSelfHarm ? "SELF_HARM" : "SEXUAL_GROOMING_OR_PREDATORY",
+            severity: "CRITICAL",
+            recommendedAction: "TIMEOUT_24H",
+            reason: `Zero-tolerance severe term intercepted: "${profanity.word}"`,
+            matchedContent: profanity.word,
+          };
+        } else if (profanity.severity === "MEDIUM") {
+          return {
+            triggered: true,
+            ruleName: "Profanity & Targeted Abuse Filter",
+            category: "SEVERE_PROFANITY_OR_ABUSE",
+            severity: "HIGH",
+            recommendedAction: "TIMEOUT_1H",
+            reason: `Heavy profanity or abusive language detected: "${profanity.word}"`,
+            matchedContent: profanity.word,
           };
         }
       }
