@@ -39,6 +39,10 @@ interface CacheEntry {
 const moderationCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+// Model Circuit Breaker Cooldown Tracker for 503 / 429 Demand Spikes
+const serverModelCooldowns = new Map<string, number>();
+const MODEL_COOLDOWN_MS = 45 * 1000;
+
 // Tier 1 Fast Triage Filter for Token Efficiency (bypasses Gemini for benign short messages)
 const BENIGN_GAMER_SLANG = new Set([
   "gg", "ggwp", "ggs", "lol", "lmao", "lmfao", "rofl", "w", "l", "fr", "frfr",
@@ -286,9 +290,22 @@ Severities:
 
 Output structured JSON strictly matching the provided schema.`;
 
-    const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
+    const now = Date.now();
+    const allCandidateModels = [
+      process.env.GEMINI_MODEL || "gemini-3.8-flash",
+      "gemini-3.1-flash-lite",
+      "gemini-2.5-flash",
+      "gemini-flash-latest",
+    ];
+    const uniqueModels = Array.from(new Set(allCandidateModels));
+    const readyModels = uniqueModels.filter((m) => {
+      const cd = serverModelCooldowns.get(m);
+      return !cd || now >= cd;
+    });
+    const candidateModels = readyModels.length > 0 ? readyModels : uniqueModels;
+
     let response: any = null;
-    let successfulModel = "gemini-3.8-flash";
+    let successfulModel = candidateModels[0];
     let lastError: any = null;
 
     for (const model of candidateModels) {
@@ -330,10 +347,23 @@ Output structured JSON strictly matching the provided schema.`;
           },
         });
         successfulModel = model;
+        serverModelCooldowns.delete(model);
         break;
       } catch (err: any) {
         lastError = err;
-        console.warn(`[API Moderate] Model ${model} encountered error or spike: ${err?.message || err}. Attempting fallback...`);
+        const rawErr = err?.message || String(err);
+        const isHighDemand = /503|UNAVAILABLE|high demand|temporarily unavailable/i.test(rawErr);
+        const isRateLimit = /429|RESOURCE_EXHAUSTED|quota/i.test(rawErr);
+
+        if (isHighDemand) {
+          serverModelCooldowns.set(model, Date.now() + MODEL_COOLDOWN_MS);
+          console.warn(`[API Moderate] ⚠️ Model '${model}' experiencing high demand (503). Set 45s cooldown; switching to next model.`);
+        } else if (isRateLimit) {
+          serverModelCooldowns.set(model, Date.now() + 30000);
+          console.warn(`[API Moderate] ⚠️ Model '${model}' rate-limited (429). Set 30s cooldown; switching to next model.`);
+        } else {
+          console.warn(`[API Moderate] Model ${model} encountered error: ${rawErr}. Attempting fallback...`);
+        }
       }
     }
 

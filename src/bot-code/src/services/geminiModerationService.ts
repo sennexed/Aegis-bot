@@ -6,6 +6,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { TEEN_SAFETY_RUBRIC } from "../config/safetyRubric.js";
+import { PROFANITY_FILTER } from "../config/profanityFilter.js";
 
 export interface AIAnalysisOutput {
   flagged: boolean;
@@ -23,8 +24,14 @@ export interface AIAnalysisOutput {
 export class GeminiModerationService {
   private ai: GoogleGenAI;
   private readonly primaryModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-  private readonly fallbackModels = ["gemini-flash-latest", "gemini-3.1-flash-lite"];
+  private readonly fallbackModels = [
+    "gemini-3.1-flash-lite", // Fast, high-capacity throughput fallback
+    "gemini-2.5-flash",      // Established high-availability flash
+    "gemini-flash-latest",   // General latest alias
+  ];
   private hasApiKey: boolean;
+  private modelCooldowns = new Map<string, number>();
+  private readonly COOLDOWN_DURATION_MS = 45 * 1000; // 45 seconds cooldown during spikes
 
   constructor(apiKey?: string) {
     const key = apiKey !== undefined ? apiKey : process.env.GEMINI_API_KEY;
@@ -40,6 +47,25 @@ export class GeminiModerationService {
         },
       },
     });
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Retrieves candidate models ordered by priority, filtering out those currently on circuit-breaker cooldown
+   */
+  private getCandidateModels(): string[] {
+    const now = Date.now();
+    const allModels = Array.from(new Set([this.primaryModel, ...this.fallbackModels]));
+    const readyModels = allModels.filter((m) => {
+      const cooldownUntil = this.modelCooldowns.get(m);
+      return !cooldownUntil || now >= cooldownUntil;
+    });
+
+    // If all models are cooled down, attempt all of them anyway
+    return readyModels.length > 0 ? readyModels : allModels;
   }
 
   /**
@@ -96,83 +122,113 @@ export class GeminiModerationService {
       '"""',
     ].join("\n");
 
-    const modelsToAttempt = [this.primaryModel, ...this.fallbackModels];
+    const modelsToAttempt = this.getCandidateModels();
 
     for (const model of modelsToAttempt) {
-      try {
-        const response = await this.ai.models.generateContent({
-          model,
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: analysisPrompt,
-                },
-              ],
-            },
-          ],
-          config: {
-            systemInstruction: TEEN_SAFETY_RUBRIC.geminiSystemInstruction,
-            temperature: 0.1,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                flagged: { type: Type.BOOLEAN, description: "Whether content breaches teen community rules" },
-                category: {
-                  type: Type.STRING,
-                  description: "NONE, CYBERBULLYING, HARASSMENT, SEXUAL_GROOMING_OR_PREDATORY, SELF_HARM, HATE_SPEECH, SEVERE_PROFANITY_OR_ABUSE, DOXXING_OR_PII, PROMPT_INJECTION_OR_JAILBREAK",
-                },
-                severity: {
-                  type: Type.STRING,
-                  description: "NONE, LOW, MEDIUM, HIGH, CRITICAL",
-                },
-                recommendedAction: {
-                  type: Type.STRING,
-                  description: "ALLOW, WARN, DELETE, TIMEOUT_1H, TIMEOUT_24H, BAN",
-                },
-                confidence: { type: Type.NUMBER, description: "Confidence score between 0.0 and 1.0" },
-                reason: { type: Type.STRING, description: "Clear explanation for Discord mod log embed" },
-                highlightedPhrases: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                  description: "Violating words or substrings",
-                },
-                ageAppropriateNotes: {
-                  type: Type.STRING,
-                  description: "Notes reflecting standards for 16-year-old teens",
-                },
+      let attempts = 0;
+      const maxModelAttempts = model === this.primaryModel ? 2 : 1;
+
+      while (attempts < maxModelAttempts) {
+        attempts++;
+        try {
+          const response = await this.ai.models.generateContent({
+            model,
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: analysisPrompt,
+                  },
+                ],
               },
-              required: ["flagged", "category", "severity", "recommendedAction", "confidence", "reason"],
+            ],
+            config: {
+              systemInstruction: TEEN_SAFETY_RUBRIC.geminiSystemInstruction,
+              temperature: 0.1,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  flagged: { type: Type.BOOLEAN, description: "Whether content breaches teen community rules" },
+                  category: {
+                    type: Type.STRING,
+                    description: "NONE, CYBERBULLYING, HARASSMENT, SEXUAL_GROOMING_OR_PREDATORY, SELF_HARM, HATE_SPEECH, SEVERE_PROFANITY_OR_ABUSE, DOXXING_OR_PII, PROMPT_INJECTION_OR_JAILBREAK",
+                  },
+                  severity: {
+                    type: Type.STRING,
+                    description: "NONE, LOW, MEDIUM, HIGH, CRITICAL",
+                  },
+                  recommendedAction: {
+                    type: Type.STRING,
+                    description: "ALLOW, WARN, DELETE, TIMEOUT_1H, TIMEOUT_24H, BAN",
+                  },
+                  confidence: { type: Type.NUMBER, description: "Confidence score between 0.0 and 1.0" },
+                  reason: { type: Type.STRING, description: "Clear explanation for Discord mod log embed" },
+                  highlightedPhrases: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: "Violating words or substrings",
+                  },
+                  ageAppropriateNotes: {
+                    type: Type.STRING,
+                    description: "Notes reflecting standards for 16-year-old teens",
+                  },
+                },
+                required: ["flagged", "category", "severity", "recommendedAction", "confidence", "reason"],
+              },
             },
-          },
-        });
+          });
 
-        const parsed = this.parseModelJsonResponse(response.text || "");
-        const estimatedTokens = Math.ceil(sanitized.length / 3.5) + 380;
+          const parsed = this.parseModelJsonResponse(response.text || "");
+          const estimatedTokens = Math.ceil(sanitized.length / 3.5) + 380;
 
-        return {
-          flagged: !!parsed.flagged,
-          category: parsed.category || "NONE",
-          severity: parsed.severity || "NONE",
-          recommendedAction: parsed.recommendedAction || "ALLOW",
-          confidence: typeof parsed.confidence === "number" ? Math.max(0, Math.min(1, parsed.confidence)) : 0.9,
-          reason: parsed.reason || `Evaluated by Gemini AI (${model})`,
-          highlightedPhrases: Array.isArray(parsed.highlightedPhrases) ? parsed.highlightedPhrases : [],
-          ageAppropriateNotes: parsed.ageAppropriateNotes || "Strict teenage community guidelines enforced.",
-          tokensUsed: estimatedTokens,
-        };
-      } catch (err: any) {
-        console.warn(`[GeminiModerationService] Attempt with model '${model}' failed:`, err?.message || err);
-        // Continue to fallback model if available
+          // Clear any active cooldown on successful call
+          this.modelCooldowns.delete(model);
+
+          return {
+            flagged: !!parsed.flagged,
+            category: parsed.category || "NONE",
+            severity: parsed.severity || "NONE",
+            recommendedAction: parsed.recommendedAction || "ALLOW",
+            confidence: typeof parsed.confidence === "number" ? Math.max(0, Math.min(1, parsed.confidence)) : 0.9,
+            reason: parsed.reason || `Evaluated by Gemini AI (${model})`,
+            highlightedPhrases: Array.isArray(parsed.highlightedPhrases) ? parsed.highlightedPhrases : [],
+            ageAppropriateNotes: parsed.ageAppropriateNotes || "Strict teenage community guidelines enforced.",
+            tokensUsed: estimatedTokens,
+          };
+        } catch (err: any) {
+          const rawErr = err?.message || String(err);
+          const isHighDemand = /503|UNAVAILABLE|high demand|temporarily unavailable/i.test(rawErr);
+          const isRateLimit = /429|RESOURCE_EXHAUSTED|quota/i.test(rawErr);
+
+          if (isHighDemand) {
+            if (attempts < maxModelAttempts) {
+              // Quick backoff retry on instantaneous concurrent spike
+              await this.sleep(350 + Math.floor(Math.random() * 200));
+              continue;
+            }
+            this.modelCooldowns.set(model, Date.now() + this.COOLDOWN_DURATION_MS);
+            console.warn(
+              `[GeminiModerationService] ⚠️ Model '${model}' experiencing temporary high demand (503). Set 45s cooldown; switching to next model in pool.`
+            );
+          } else if (isRateLimit) {
+            this.modelCooldowns.set(model, Date.now() + 30000);
+            console.warn(
+              `[GeminiModerationService] ⚠️ Model '${model}' rate-limited (429). Set 30s cooldown; switching to next model.`
+            );
+          } else {
+            console.warn(`[GeminiModerationService] Attempt with model '${model}' failed:`, rawErr);
+          }
+          break; // Break inner retry loop and advance to next candidate model
+        }
       }
     }
 
     // If all Gemini API calls failed, fall back safely to local heuristics
     return this.heuristicFallback(
       sanitized,
-      "Gemini API query encountered temporary connection failure; protected by local fallback safety checks."
+      "Gemini API query encountered temporary demand spike / connection failure; protected by local fallback safety checks."
     );
   }
 
@@ -182,7 +238,7 @@ export class GeminiModerationService {
   private heuristicFallback(content: string, baseReason: string): AIAnalysisOutput {
     const lower = content.toLowerCase();
 
-    // Check high-risk self-harm or predatory keywords
+    // Check high-risk self-harm keywords
     if (/kys|kill yourself|kill ur self|suicide|die in a fire/i.test(lower)) {
       return {
         flagged: true,
@@ -198,6 +254,7 @@ export class GeminiModerationService {
       };
     }
 
+    // Check predatory keywords
     if (/send nudes|trade pics|drop snap 16|meet up in person secretly/i.test(lower)) {
       return {
         flagged: true,
@@ -208,6 +265,39 @@ export class GeminiModerationService {
         reason: `${baseReason} Triggered by predatory solicitation patterns.`,
         highlightedPhrases: ["predatory keywords"],
         ageAppropriateNotes: "Zero tolerance for underage sexual exploitation.",
+        tokensUsed: 0,
+        isApiErrorFallback: true,
+      };
+    }
+
+    // Check hate speech & severe slurs
+    if (/faggot|nigger|retard|tranny/i.test(lower)) {
+      return {
+        flagged: true,
+        category: "HATE_SPEECH",
+        severity: "HIGH",
+        recommendedAction: "TIMEOUT_1H",
+        confidence: 0.95,
+        reason: `${baseReason} Intercepted by zero-tolerance hate speech filter.`,
+        highlightedPhrases: ["prohibited slurs"],
+        ageAppropriateNotes: "Zero tolerance for hate speech in teen communities.",
+        tokensUsed: 0,
+        isApiErrorFallback: true,
+      };
+    }
+
+    // Check profanity filter
+    const profanity = PROFANITY_FILTER.checkProfanity(lower);
+    if (profanity && (profanity.severity === "HIGH" || profanity.severity === "MEDIUM")) {
+      return {
+        flagged: true,
+        category: "SEVERE_PROFANITY_OR_ABUSE",
+        severity: profanity.severity === "HIGH" ? "CRITICAL" : "HIGH",
+        recommendedAction: profanity.severity === "HIGH" ? "TIMEOUT_24H" : "TIMEOUT_1H",
+        confidence: 0.9,
+        reason: `${baseReason} Prohibited abusive content: "${profanity.word}".`,
+        highlightedPhrases: [profanity.word],
+        ageAppropriateNotes: "Filtered by local safety dictionary.",
         tokensUsed: 0,
         isApiErrorFallback: true,
       };
