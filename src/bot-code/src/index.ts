@@ -30,6 +30,7 @@ import { ANALYTICS_SERVICE } from "./services/analyticsService.js";
 import { DutyService } from "./services/dutyService.js";
 import { ModMailService } from "./services/modMailService.js";
 import { AuditExportService } from "./services/auditExportService.js";
+import { LoaService } from "./services/loaService.js";
 
 import { setupCommand } from "./commands/setup.js";
 import { moderationCommands } from "./commands/moderation.js";
@@ -45,6 +46,7 @@ import { dutyCommand } from "./commands/duty.js";
 import { modMailCommand } from "./commands/modmail.js";
 import { exportLogsCommand } from "./commands/exportlogs.js";
 import { reportCommand } from "./commands/report.js";
+import { loaCommand } from "./commands/loa.js";
 
 import { handleMessageCreate } from "./events/messageCreate.js";
 import { handleMessageUpdate } from "./events/messageUpdate.js";
@@ -77,6 +79,7 @@ const channelPolicyService = new ChannelPolicyService();
 const dutyService = new DutyService();
 const modMailService = new ModMailService();
 const auditExportService = new AuditExportService();
+const loaService = new LoaService();
 
 // 3. Register Slash Commands
 export async function syncGuildCommands(guildId: string, isSetupComplete: boolean) {
@@ -102,6 +105,7 @@ export async function syncGuildCommands(guildId: string, isSetupComplete: boolea
     modMailCommand.data.toJSON(),
     exportLogsCommand.data.toJSON(),
     reportCommand.data.toJSON(),
+    loaCommand.data.toJSON(),
     ...moderationCommands.map((c) => c.data.toJSON()),
   ];
 
@@ -196,7 +200,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (channel && channel.isTextBased()) {
         const reportedMsg = await channel.messages.fetch(messageId).catch(() => null);
         if (reportedMsg) {
-          const staffPing = roleService.getStaffPing(interaction.guild.id, dutyService);
+          const staffPing = roleService.getStaffPing(interaction.guild.id, dutyService, loaService);
           await loggingService.logUserReport(interaction.guild, interaction.user, reportedMsg, reason, staffPing);
         }
       }
@@ -274,6 +278,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
     }
 
+    // LOA Approval / Denial Buttons
+    if (scope === "loa") {
+      if (!roleService.isAdminOrOwner(staffMember)) {
+        return interaction.reply({
+          content: "⛔ Only Administrators or Server Owners can approve or deny Leave of Absence requests.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      const loaId = targetUserId;
+      if (action === "approve") {
+        const res = loaService.approveLoa(interaction.guild.id, loaId, interaction.user.id, interaction.user.tag);
+        return interaction.reply({
+          content: res.success ? `✅ ${res.message}` : `⚠️ ${res.message}`,
+        });
+      } else if (action === "deny") {
+        const res = loaService.denyLoa(interaction.guild.id, loaId, interaction.user.id, interaction.user.tag);
+        return interaction.reply({
+          content: res.success ? `❌ ${res.message}` : `⚠️ ${res.message}`,
+        });
+      }
+    }
+
     // Report Actions
     if (scope === "report") {
       if (action === "dismiss") {
@@ -336,15 +363,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (commandName === "duty") {
-      return dutyCommand.execute(interaction, dutyService, roleService);
+      return dutyCommand.execute(interaction, dutyService, roleService, loaService);
     }
 
     if (commandName === "modmail") {
-      return modMailCommand.execute(interaction, modMailService, roleService, loggingService, dutyService);
+      return modMailCommand.execute(interaction, modMailService, roleService, loggingService, dutyService, loaService);
     }
 
     if (commandName === "report") {
-      return reportCommand.execute(interaction, loggingService, dutyService, roleService);
+      return reportCommand.execute(interaction, loggingService, dutyService, roleService, loaService);
+    }
+
+    if (commandName === "loa") {
+      return loaCommand.execute(interaction, loaService, roleService, loggingService);
     }
 
     if (commandName === "exportlogs") {
@@ -372,7 +403,7 @@ client.on(Events.MessageCreate, async (message) => {
           isStaff: false,
         });
 
-        const staffPing = roleService.getStaffPing(guildId, dutyService);
+        const staffPing = roleService.getStaffPing(guildId, dutyService, loaService);
         await loggingService.logToModLogs(guild, {
           content: `📬 **MOD-MAIL TICKET UPDATE** • ${staffPing}`,
           embeds: [

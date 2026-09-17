@@ -318,6 +318,22 @@ export const PlanOverview: React.FC = () => {
           </div>
 
           <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50">
+            <div className="font-mono text-xs font-bold text-indigo-600">DutyService & ModMailService</div>
+            <h4 className="font-bold text-sm text-zinc-900 mt-1">Staff Shifts & Incident Response</h4>
+            <p className="text-xs text-zinc-600 mt-1">
+              Tracks staff on-duty shifts via <code className="text-zinc-800">/duty on/off/list</code>, powers anonymous DM ticketing via <code className="text-zinc-800">/modmail</code>, and directs community <code className="text-zinc-800">/report</code> alerts to active moderators.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50">
+            <div className="font-mono text-xs font-bold text-indigo-600">LoaService</div>
+            <h4 className="font-bold text-sm text-zinc-900 mt-1">Leave of Absence (LOA) & Burnout Protection</h4>
+            <p className="text-xs text-zinc-600 mt-1">
+              Manages staff leave requests via <code className="text-zinc-800">/loa request/approve/deny/end</code>, preserves staff permissions while on leave, and automatically excludes away staff from emergency pings and duty quotas.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50">
             <div className="font-mono text-xs font-bold text-indigo-600">Event Handlers</div>
             <h4 className="font-bold text-sm text-zinc-900 mt-1">Asynchronous Event Loop</h4>
             <p className="text-xs text-zinc-600 mt-1">

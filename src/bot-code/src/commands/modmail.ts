@@ -14,6 +14,7 @@ import { ModMailService, TicketCategory, TicketStatus } from "../services/modMai
 import { RoleService } from "../services/roleService.js";
 import { LoggingService } from "../services/loggingService.js";
 import { DutyService } from "../services/dutyService.js";
+import { LoaService } from "../services/loaService.js";
 
 export const modMailCommand = {
   data: new SlashCommandBuilder()
@@ -112,7 +113,8 @@ export const modMailCommand = {
     modMailService: ModMailService,
     roleService: RoleService,
     loggingService: LoggingService,
-    dutyService?: DutyService
+    dutyService?: DutyService,
+    loaService?: LoaService
   ) {
     if (!interaction.guild) return;
 
@@ -157,7 +159,7 @@ export const modMailCommand = {
       await interaction.reply({ embeds: [userEmbed], flags: MessageFlags.Ephemeral });
 
       // Notify staff channel with ping of on-duty staff (or staff roles)
-      const staffPing = roleService.getStaffPing(interaction.guild.id, dutyService);
+      const staffPing = roleService.getStaffPing(interaction.guild.id, dutyService, loaService);
       await loggingService.logToModLogs(interaction.guild, {
         content: `📬 **NEW CONFIDENTIAL MOD-MAIL TICKET** • ${staffPing}`,
         embeds: [

@@ -16,6 +16,7 @@ import {
 import { LoggingService } from "../services/loggingService.js";
 import { DutyService } from "../services/dutyService.js";
 import { RoleService } from "../services/roleService.js";
+import { LoaService } from "../services/loaService.js";
 
 export const reportCommand = {
   data: new SlashCommandBuilder()
@@ -46,7 +47,8 @@ export const reportCommand = {
     interaction: ChatInputCommandInteraction,
     loggingService: LoggingService,
     dutyService: DutyService,
-    roleService: RoleService
+    roleService: RoleService,
+    loaService?: LoaService
   ) {
     if (!interaction.guild) return;
 
@@ -70,7 +72,7 @@ export const reportCommand = {
     }
 
     // Ping on-duty staff (or staff roles if nobody is currently /duty on)
-    const staffPing = roleService.getStaffPing(interaction.guild.id, dutyService);
+    const staffPing = roleService.getStaffPing(interaction.guild.id, dutyService, loaService);
     const logChannel = await loggingService.ensureLogChannel(interaction.guild);
 
     const embed = new EmbedBuilder()

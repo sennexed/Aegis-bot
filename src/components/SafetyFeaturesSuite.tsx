@@ -23,6 +23,8 @@ import {
   Copy,
   Check,
   UserPlus,
+  Calendar,
+  Coffee,
 } from "lucide-react";
 import { PHISHING_FILTER } from "../bot-code/src/config/phishingFilter";
 import { POLICY_DEFINITIONS, ChannelPolicyProfile } from "../bot-code/src/services/channelPolicyService";
@@ -229,6 +231,42 @@ export const SafetyFeaturesSuite: React.FC = () => {
     },
   ]);
 
+  // 11. Staff Leave of Absence (LOA) state
+  const [loaRecords, setLoaRecords] = useState([
+    {
+      id: "LOA-1001",
+      userId: "u-99",
+      userTag: "Marcus_Mod#2021",
+      role: "Moderator",
+      reason: "University midterm exams and project deadlines. Will have very limited screen time.",
+      durationDays: 7,
+      startDate: Date.now() - 2 * 24 * 60 * 60 * 1000,
+      endDate: Date.now() + 5 * 24 * 60 * 60 * 1000,
+      status: "APPROVED" as "APPROVED" | "PENDING" | "DENIED" | "EXPIRED",
+      reviewedBy: "ElenaAdmin#0003",
+      reviewedAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
+      reviewNotes: "Good luck with midterms Marcus! See you next Monday.",
+    },
+    {
+      id: "LOA-1002",
+      userId: "u-104",
+      userTag: "ChloeStaff#8812",
+      role: "Junior Moderator",
+      reason: "Family camping trip to national park without reliable cellular/Wi-Fi coverage.",
+      durationDays: 10,
+      startDate: Date.now(),
+      endDate: Date.now() + 10 * 24 * 60 * 60 * 1000,
+      status: "PENDING" as "APPROVED" | "PENDING" | "DENIED" | "EXPIRED",
+      reviewedBy: undefined as string | undefined,
+      reviewedAt: undefined as number | undefined,
+      reviewNotes: undefined as string | undefined,
+    },
+  ]);
+  const [loaReqDays, setLoaReqDays] = useState(7);
+  const [loaReqReason, setLoaReqReason] = useState("High school finals week & college applications. Need temporary time away to focus on studies.");
+  const [loaSuccessNotice, setLoaSuccessNotice] = useState(false);
+  const [loaFilter, setLoaFilter] = useState<"ACTIVE" | "PENDING" | "ALL">("ACTIVE");
+
   // Sample Audit Records for Exporter
   const sampleAuditRecords = [
     { caseId: "CASE-1048", timestamp: "2026-09-17T03:45:00Z", user: "BadActor#9912", mod: "System AutoMod", action: "BAN", reason: "Zero-tolerance predatory grooming attempt detected." },
@@ -247,19 +285,19 @@ export const SafetyFeaturesSuite: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-indigo-600 font-semibold text-sm">
               <Zap className="w-4 h-4" />
-              <span>AegisMod Suite 2.0 • 13 Advanced Safety & Operations Features</span>
+              <span>AegisMod Suite 2.0 • 14 Advanced Safety & Operations Features</span>
             </div>
             <h2 className="text-2xl font-bold text-zinc-900 mt-1">
               Advanced Moderation, Safety & Governance Suite
             </h2>
             <p className="text-sm text-zinc-600 mt-1">
-              Complete hybrid teen safety operations: AI Triage, Anti-Raid Gatekeeper, Staff On-Duty Tracking, Anonymous Mod-Mail, and Compliance Audit Exporter.
+              Complete hybrid teen safety operations: AI Triage, Staff Duty Shifts, Leave of Absence (LOA), Anonymous Mod-Mail, Incident Reports, and Compliance Audit Exporter.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 bg-emerald-50 text-emerald-700 font-medium text-xs rounded-full border border-emerald-200 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5" /> 13 Systems Online
+              <CheckCircle2 className="w-3.5 h-3.5" /> 14 Systems Online
             </span>
           </div>
         </div>
@@ -268,6 +306,7 @@ export const SafetyFeaturesSuite: React.FC = () => {
         <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-zinc-100">
           {[
             { id: "duty", label: "Staff Duty Tracker (/duty)", icon: Clock },
+            { id: "loa", label: "Leave of Absence (/loa)", icon: Calendar },
             { id: "modmail", label: "Anonymous Mod-Mail (/modmail)", icon: Inbox },
             { id: "exportlogs", label: "Audit Exporter (/exportlogs)", icon: FileSpreadsheet },
             { id: "passport", label: "User Passport (/userinfo)", icon: UserCheck },
@@ -1308,7 +1347,374 @@ export const SafetyFeaturesSuite: React.FC = () => {
         </div>
       )}
 
-      {/* SUB-VIEW 12: ANONYMOUS STAFF MOD-MAIL (/modmail) */}
+      {/* SUB-VIEW 11.5: STAFF LEAVE OF ABSENCE (LOA) & COVERAGE (/loa) */}
+      {selectedSubTab === "loa" && (
+        <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-indigo-600" />
+                Staff Leave of Absence (LOA) & Anti-Burnout Suite (`/loa`)
+              </h3>
+              <p className="text-xs text-zinc-600 mt-1">
+                Moderator staff can formally request time away for school exams, family, vacations, or mental health rest. Prevents moderator burnout, exempts staff on leave from emergency pings, and blocks accidental clock-ins.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-indigo-50 text-indigo-700 font-medium text-xs rounded-full border border-indigo-200 flex items-center gap-1.5">
+                <Coffee className="w-3.5 h-3.5" /> Anti-Burnout Protection Active
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3">
+              <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">Total Staff</span>
+              <span className="text-xl font-bold text-zinc-900">4 Moderators</span>
+            </div>
+            <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3">
+              <span className="text-[11px] font-medium text-emerald-700 uppercase tracking-wider block">Clocked In</span>
+              <span className="text-xl font-bold text-emerald-900">
+                {dutyStaff.filter((s) => s.isOnDuty).length} Active On-Duty
+              </span>
+            </div>
+            <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-3">
+              <span className="text-[11px] font-medium text-blue-700 uppercase tracking-wider block">On Approved Leave</span>
+              <span className="text-xl font-bold text-blue-900">
+                {loaRecords.filter((r) => r.status === "APPROVED").length} Staff Away
+              </span>
+            </div>
+            <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-3">
+              <span className="text-[11px] font-medium text-amber-700 uppercase tracking-wider block">Pending Requests</span>
+              <span className="text-xl font-bold text-amber-900">
+                {loaRecords.filter((r) => r.status === "PENDING").length} Awaiting Review
+              </span>
+            </div>
+          </div>
+
+          {/* Duty Protection Notice Banner */}
+          <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+            <div className="flex items-start md:items-center gap-2.5 text-indigo-950">
+              <Clock className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5 md:mt-0" />
+              <span>
+                <strong>Seamless Duty Integration: </strong>
+                Staff on approved LOA are automatically omitted from Mod-Mail & <code>/report</code> alert pings. Attempting to run <code>/duty on</code> prompts the user that their leave is active until their end date or until they run <code>/loa end</code>.
+              </span>
+            </div>
+            <span className="font-mono text-[11px] bg-white px-2.5 py-1 rounded border border-indigo-200 text-indigo-700 whitespace-nowrap self-start md:self-auto">
+              Protected by LoaService
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left 2 Cols: LOA Roster & Pending Actions */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-zinc-700 uppercase tracking-wider">
+                  Staff Leave Roster ({loaRecords.length})
+                </h4>
+                <div className="flex items-center gap-1.5 bg-zinc-100 p-0.5 rounded-lg text-[11px]">
+                  <button
+                    onClick={() => setLoaFilter("ACTIVE")}
+                    className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                      loaFilter === "ACTIVE"
+                        ? "bg-white text-zinc-900 shadow-sm"
+                        : "text-zinc-600 hover:text-zinc-900"
+                    }`}
+                  >
+                    Active Away ({loaRecords.filter((r) => r.status === "APPROVED").length})
+                  </button>
+                  <button
+                    onClick={() => setLoaFilter("PENDING")}
+                    className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                      loaFilter === "PENDING"
+                        ? "bg-white text-zinc-900 shadow-sm"
+                        : "text-zinc-600 hover:text-zinc-900"
+                    }`}
+                  >
+                    Pending Review ({loaRecords.filter((r) => r.status === "PENDING").length})
+                  </button>
+                  <button
+                    onClick={() => setLoaFilter("ALL")}
+                    className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                      loaFilter === "ALL"
+                        ? "bg-white text-zinc-900 shadow-sm"
+                        : "text-zinc-600 hover:text-zinc-900"
+                    }`}
+                  >
+                    All Records
+                  </button>
+                </div>
+              </div>
+
+              {/* Records List */}
+              <div className="space-y-3">
+                {loaRecords
+                  .filter((r) => {
+                    if (loaFilter === "ACTIVE") return r.status === "APPROVED";
+                    if (loaFilter === "PENDING") return r.status === "PENDING";
+                    return true;
+                  })
+                  .map((rec) => {
+                    const daysRemaining = Math.max(
+                      1,
+                      Math.ceil((rec.endDate - Date.now()) / (24 * 60 * 60 * 1000))
+                    );
+
+                    return (
+                      <div
+                        key={rec.id}
+                        className="border border-zinc-200 rounded-xl p-4 bg-zinc-50/50 hover:bg-zinc-50 transition-colors space-y-3"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
+                              {rec.userTag[0]}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-zinc-900">{rec.userTag}</span>
+                                <span className="px-2 py-0.5 bg-zinc-200 text-zinc-700 text-[10px] font-semibold rounded">
+                                  {rec.role}
+                                </span>
+                                <span className="font-mono text-[10px] text-zinc-400">{rec.id}</span>
+                              </div>
+                              <span className="text-xs text-zinc-500">
+                                Duration: <strong>{rec.durationDays} Days</strong> • End:{" "}
+                                {new Date(rec.endDate).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-start sm:self-auto">
+                            {rec.status === "APPROVED" && (
+                              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-lg flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Returns in {daysRemaining}d
+                              </span>
+                            )}
+                            {rec.status === "PENDING" && (
+                              <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-lg flex items-center gap-1">
+                                <AlertTriangle className="w-3.5 h-3.5" /> Needs Admin Review
+                              </span>
+                            )}
+                            {rec.status === "DENIED" && (
+                              <span className="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold rounded-lg">
+                                Denied
+                              </span>
+                            )}
+                            {rec.status === "EXPIRED" && (
+                              <span className="px-2.5 py-1 bg-zinc-200 text-zinc-700 text-xs font-semibold rounded-lg">
+                                Completed / Expired
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Reason Quote */}
+                        <div className="bg-white border border-zinc-200/80 rounded-lg p-3 text-xs text-zinc-700">
+                          <span className="font-semibold text-zinc-500 block mb-1 text-[11px]">Reason for Leave:</span>
+                          <p className="italic text-zinc-800">"{rec.reason}"</p>
+                        </div>
+
+                        {/* Reviewer / Action Bar */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-zinc-200/60 text-xs">
+                          {rec.reviewedBy ? (
+                            <span className="text-zinc-500 text-[11px]">
+                              Approved by <strong>@{rec.reviewedBy}</strong>
+                              {rec.reviewNotes && ` — "${rec.reviewNotes}"`}
+                            </span>
+                          ) : (
+                            <span className="text-amber-700 font-medium text-[11px]">
+                              Requires Administrator or Server Owner approval
+                            </span>
+                          )}
+
+                          <div className="flex items-center gap-2">
+                            {rec.status === "PENDING" && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setLoaRecords(
+                                      loaRecords.map((r) =>
+                                        r.id === rec.id
+                                          ? {
+                                              ...r,
+                                              status: "APPROVED",
+                                              reviewedBy: "SeniorAdmin#0001",
+                                              reviewedAt: Date.now(),
+                                              reviewNotes: "Approved by Head Moderator in dashboard",
+                                            }
+                                          : r
+                                      )
+                                    );
+                                  }}
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                                >
+                                  <Check className="w-3.5 h-3.5" /> Approve (/loa approve)
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setLoaRecords(
+                                      loaRecords.map((r) =>
+                                        r.id === rec.id
+                                          ? {
+                                              ...r,
+                                              status: "DENIED",
+                                              reviewedBy: "SeniorAdmin#0001",
+                                              reviewedAt: Date.now(),
+                                              reviewNotes: "Coverage shortage during requested week",
+                                            }
+                                          : r
+                                      )
+                                    );
+                                  }}
+                                  className="px-2.5 py-1 bg-zinc-200 hover:bg-zinc-300 text-zinc-800 font-medium text-xs rounded-lg transition-colors flex items-center gap-1"
+                                >
+                                  <XCircle className="w-3.5 h-3.5" /> Deny
+                                </button>
+                              </>
+                            )}
+
+                            {rec.status === "APPROVED" && (
+                              <button
+                                onClick={() => {
+                                  setLoaRecords(
+                                    loaRecords.map((r) =>
+                                      r.id === rec.id
+                                        ? { ...r, status: "EXPIRED" }
+                                        : r
+                                    )
+                                  );
+                                }}
+                                className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-medium text-xs rounded-lg border border-zinc-200 transition-colors"
+                              >
+                                End LOA Early (/loa end)
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Right Col: Interactive Request Simulator (/loa request) */}
+            <div className="space-y-4">
+              <div className="border border-zinc-200 rounded-xl p-4 bg-zinc-50/60 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded-lg">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-zinc-900">Request Leave of Absence</h4>
+                    <p className="text-[11px] text-zinc-500">Discord Command: <code>/loa request</code></p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-semibold text-zinc-700">Duration (Days):</label>
+                      <span className="font-mono text-indigo-600 font-bold">{loaReqDays} days</span>
+                    </div>
+                    <div className="flex gap-1.5 mb-2">
+                      {[3, 7, 14, 30].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setLoaReqDays(preset)}
+                          className={`flex-1 py-1 rounded text-xs font-semibold border transition-all ${
+                            loaReqDays === preset
+                              ? "bg-indigo-600 text-white border-indigo-600"
+                              : "bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-100"
+                          }`}
+                        >
+                          {preset}d
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={60}
+                      value={loaReqDays}
+                      onChange={(e) => setLoaReqDays(parseInt(e.target.value))}
+                      className="w-full accent-indigo-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-zinc-700 block mb-1">
+                      Reason for Time Away:
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={loaReqReason}
+                      onChange={(e) => setLoaReqReason(e.target.value)}
+                      className="w-full p-2 border border-zinc-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      placeholder="e.g. Vacation, exams, burnout prevention, family commitments..."
+                    />
+                  </div>
+
+                  {loaSuccessNotice && (
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-[11px] flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                      <span>Request submitted! Alert dispatched to Head Staff in <code>#mod-logs</code>.</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newId = `LOA-${1000 + loaRecords.length + 1}`;
+                      const newRec = {
+                        id: newId,
+                        userId: "u-curr",
+                        userTag: "CurrentMod#1337",
+                        role: "Moderator",
+                        reason: loaReqReason,
+                        durationDays: loaReqDays,
+                        startDate: Date.now(),
+                        endDate: Date.now() + loaReqDays * 24 * 60 * 60 * 1000,
+                        status: "PENDING" as const,
+                        reviewedBy: undefined,
+                        reviewedAt: undefined,
+                        reviewNotes: undefined,
+                      };
+                      setLoaRecords([newRec, ...loaRecords]);
+                      setLoaSuccessNotice(true);
+                      setTimeout(() => setLoaSuccessNotice(false), 4000);
+                    }}
+                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Submit Request (/loa request)
+                  </button>
+                </div>
+              </div>
+
+              {/* Slash Command Quick Reference */}
+              <div className="border border-zinc-200 rounded-xl p-4 bg-white space-y-2.5 text-xs text-zinc-600">
+                <span className="font-bold text-zinc-900 block text-xs">LOA Discord Commands</span>
+                <div className="space-y-1.5 font-mono text-[11px]">
+                  <p><code>/loa request &lt;days&gt; &lt;reason&gt;</code> — Submit leave</p>
+                  <p><code>/loa list [filter]</code> — Inspect active or pending</p>
+                  <p><code>/loa status [@user]</code> — Check return dates</p>
+                  <p><code>/loa approve &lt;id&gt;</code> — Senior staff approval</p>
+                  <p><code>/loa deny &lt;id&gt;</code> — Reject request with notes</p>
+                  <p><code>/loa end</code> — Return early and reactivate duty</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {selectedSubTab === "modmail" && (
         <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

@@ -153,6 +153,27 @@ export class RoleService {
   }
 
   /**
+   * Checks if member has Admin or Server Owner permissions
+   */
+  public isAdminOrOwner(member: GuildMember): boolean {
+    if (member.id === member.guild.ownerId) return true;
+    if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
+
+    const config = this.getGuildRoles(member.guild.id);
+    if (!config) return false;
+
+    if (config.ownerRoleId && member.roles.cache.has(config.ownerRoleId)) {
+      return true;
+    }
+
+    if (config.adminRoleIds.some((id) => member.roles.cache.has(id))) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Validates if executor can moderate the target based on Discord hierarchy
    */
   public canModerateMember(
@@ -202,10 +223,11 @@ export class RoleService {
    */
   public getStaffPing(
     guildId: string,
-    dutyService?: { getOnDutyMentions: (gId: string) => string }
+    dutyService?: { getOnDutyMentions: (gId: string, loaService?: any) => string },
+    loaService?: { isUserOnLoa: (gId: string, uId: string) => boolean }
   ): string {
     if (dutyService) {
-      const onDutyMentions = dutyService.getOnDutyMentions(guildId);
+      const onDutyMentions = dutyService.getOnDutyMentions(guildId, loaService);
       if (onDutyMentions) {
         return `🔔 **ON-DUTY STAFF:** ${onDutyMentions}`;
       }

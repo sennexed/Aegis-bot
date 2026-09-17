@@ -173,14 +173,21 @@ export class DutyService {
 
   /**
    * Retrieves all staff currently on duty in a guild
+   * Excludes any staff members currently on active approved Leave of Absence (LOA)
    */
-  public getOnDutyStaff(guildId: string): StaffShiftRecord[] {
+  public getOnDutyStaff(
+    guildId: string,
+    loaService?: { isUserOnLoa: (guildId: string, userId: string) => boolean }
+  ): StaffShiftRecord[] {
     const guildMap = this.getGuildMap(guildId);
     const now = Date.now();
     const result: StaffShiftRecord[] = [];
 
     for (const record of guildMap.values()) {
       if (record.isOnDuty && record.shiftStartedAt) {
+        if (loaService && loaService.isUserOnLoa(guildId, record.userId)) {
+          continue;
+        }
         const elapsedMinutes = Math.floor((now - record.shiftStartedAt) / 60000);
         result.push({
           ...record,
@@ -195,9 +202,13 @@ export class DutyService {
   /**
    * Returns a space-separated string of user mentions for all on-duty staff
    * e.g. "<@12345> <@67890>"
+   * Automatically excludes staff on Leave of Absence (LOA)
    */
-  public getOnDutyMentions(guildId: string): string {
-    const onDuty = this.getOnDutyStaff(guildId);
+  public getOnDutyMentions(
+    guildId: string,
+    loaService?: { isUserOnLoa: (guildId: string, userId: string) => boolean }
+  ): string {
+    const onDuty = this.getOnDutyStaff(guildId, loaService);
     if (onDuty.length > 0) {
       return onDuty.map((s) => `<@${s.userId}>`).join(" ");
     }

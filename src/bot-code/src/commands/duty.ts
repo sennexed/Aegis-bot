@@ -11,6 +11,7 @@ import {
 } from "discord.js";
 import { DutyService } from "../services/dutyService.js";
 import { RoleService } from "../services/roleService.js";
+import { LoaService } from "../services/loaService.js";
 
 export const dutyCommand = {
   data: new SlashCommandBuilder()
@@ -42,7 +43,8 @@ export const dutyCommand = {
   async execute(
     interaction: ChatInputCommandInteraction,
     dutyService: DutyService,
-    roleService: RoleService
+    roleService: RoleService,
+    loaService?: LoaService
   ) {
     if (!interaction.guild) return;
 
@@ -58,6 +60,16 @@ export const dutyCommand = {
 
     // 1. Clock In (/duty on)
     if (subcommand === "on") {
+      // LOA protection check: Cannot clock in if on active approved LOA
+      if (loaService?.isUserOnLoa(interaction.guild.id, interaction.user.id)) {
+        const activeLoa = loaService.getActiveLoaForUser(interaction.guild.id, interaction.user.id);
+        const endT = activeLoa ? Math.floor(activeLoa.endDate / 1000) : 0;
+        return interaction.reply({
+          content: `🌴 **You are currently on an approved Leave of Absence (${activeLoa?.id || "LOA"})** until <t:${endT}:D> (<t:${endT}:R>).\n\nIf you have returned early and wish to resume moderation duties, please end your LOA first with \`/loa end\`.`,
+          ephemeral: true,
+        });
+      }
+
       const note = interaction.options.getString("note") || undefined;
       const result = dutyService.clockIn(
         interaction.guild.id,
@@ -131,6 +143,23 @@ export const dutyCommand = {
           value: `• On Duty: **${staff.currentShiftMinutes || 0}m**\n• Started: <t:${Math.floor(staff.shiftStartedAt! / 1000)}:R>\n• Note: *${staff.note || "No note provided"}*`,
           inline: true,
         });
+      }
+
+      // Add On-Leave section if any staff are on active approved LOA
+      if (loaService) {
+        const activeLoas = loaService.getGuildLoas(interaction.guild.id, "ACTIVE");
+        if (activeLoas.length > 0) {
+          embed.addFields({
+            name: `🌴 On Leave of Absence (${activeLoas.length})`,
+            value: activeLoas
+              .map(
+                (l) =>
+                  `• <@${l.userId}> (${l.userTag}) — Returns <t:${Math.floor(l.endDate / 1000)}:R> (*"${l.reason.slice(0, 35)}"* )`
+              )
+              .join("\n"),
+            inline: false,
+          });
+        }
       }
 
       return interaction.reply({ embeds: [embed] });
