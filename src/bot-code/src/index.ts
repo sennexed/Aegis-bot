@@ -119,7 +119,7 @@ async function registerSlashCommands() {
 // 4. Client Ready Event
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`🛡️ AegisMod is online! Logged in as ${readyClient.user.tag}`);
-  readyClient.user.setActivity("teen community chat | /setup", {
+  readyClient.user.setActivity("use /setup to set the bot up", {
     type: ActivityType.Watching,
   });
 

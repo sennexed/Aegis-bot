@@ -67,3 +67,66 @@ export interface DiscordEmbedPreview {
   footer?: { text: string };
   timestamp?: string;
 }
+
+export type ServerPowerState = "RUNNING" | "STOPPED" | "STARTING" | "RESTARTING";
+
+export interface WispbyteMetrics {
+  cpuPercent: number;
+  memoryMb: number;
+  memoryLimitMb: number;
+  memoryPercent: number;
+  diskMb: number;
+  diskLimitMb: number;
+  networkInboundKbps: number;
+  networkOutboundKbps: number;
+  discordPingMs: number;
+}
+
+export interface WispbyteBotDetails {
+  name: string;
+  discriminator: string;
+  id: string;
+  avatar: string;
+  guildsCount: number;
+  membersCount: number;
+  channelsCount: number;
+  shardsCount: number;
+  policyLevel: string;
+  autoRestart: boolean;
+  nodeVersion: string;
+  wispbyteNode: string;
+  containerId: string;
+  geminiModel: string;
+}
+
+export interface WispbyteStats {
+  processedMessages: number;
+  violationsPrevented: number;
+  tokensSavedByTriage: number;
+  cacheHitRatioPercent: number;
+}
+
+export interface WispbyteLogItem {
+  id: string;
+  timestamp: string;
+  level: "DAEMON" | "INFO" | "DISCORD" | "AI_MOD" | "AUTOMOD" | "WARN" | "ERROR" | "COMMAND";
+  message: string;
+}
+
+export interface TelemetryEvent {
+  id: string;
+  timestamp: string;
+  author: string;
+  avatar: string;
+  content: string;
+  flagged: boolean;
+  category: string;
+  severity: string;
+  recommendedAction: string;
+  reason: string;
+  source: string;
+  tokensUsed: number;
+  latencyMs: number;
+  highlightedPhrases?: string[];
+}
+

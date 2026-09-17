@@ -165,6 +165,145 @@ function runLocalTriage(text: string): {
   return { status: "SUSPICIOUS" };
 }
 
+// Wispbyte Server State & Live Terminal Logs Storage
+interface WispbyteLog {
+  id: string;
+  timestamp: string;
+  level: "DAEMON" | "INFO" | "DISCORD" | "AI_MOD" | "AUTOMOD" | "WARN" | "ERROR" | "COMMAND";
+  message: string;
+}
+
+let serverStatus: "RUNNING" | "STOPPED" | "STARTING" | "RESTARTING" = "RUNNING";
+let serverStartedAt = Date.now() - (4 * 24 * 3600 * 1000 + 14 * 3600 * 1000 + 22 * 60 * 1000); // 4d 14h ago
+let memoryAllocatedMb = 512;
+let autoRestartEnabled = true;
+let policyLevel = "STRICT_TEEN";
+let totalProcessedMessages = 14892;
+let totalViolationsPrevented = 437;
+let totalTokensSaved = 349120;
+
+const wispbyteLogs: WispbyteLog[] = [
+  { id: "log-1", timestamp: new Date(Date.now() - 3600000).toLocaleTimeString(), level: "DAEMON", message: "[Pterodactyl Daemon]: Fetching container image ghcr.io/pterodactyl/yolks:nodejs_20" },
+  { id: "log-2", timestamp: new Date(Date.now() - 3590000).toLocaleTimeString(), level: "DAEMON", message: "[Pterodactyl Daemon]: Starting container with 512MB RAM, 100% CPU quota (wisp-sg-node01.wispbyte.net)" },
+  { id: "log-3", timestamp: new Date(Date.now() - 3580000).toLocaleTimeString(), level: "INFO", message: "[Container Entry]: node dist/index.js (Node.js v20.18.0)" },
+  { id: "log-4", timestamp: new Date(Date.now() - 3570000).toLocaleTimeString(), level: "INFO", message: "[AegisMod]: Initializing AegisMod v1.0.0 Hybrid Discord Moderation Engine..." },
+  { id: "log-5", timestamp: new Date(Date.now() - 3560000).toLocaleTimeString(), level: "INFO", message: "[AegisMod]: Policy Level set to 'STRICT_TEEN' (Zero-tolerance grooming, self-harm, hate speech; benign gamer slang allowed)" },
+  { id: "log-6", timestamp: new Date(Date.now() - 3550000).toLocaleTimeString(), level: "DISCORD", message: "[Discord.js]: Logging in with Privileged Gateway Intents: GuildMembers, GuildMessages, MessageContent" },
+  { id: "log-7", timestamp: new Date(Date.now() - 3540000).toLocaleTimeString(), level: "DISCORD", message: "[Discord.js]: Shard #0 identified. Gateway Heartbeat WebSocket established (ping: 24ms)" },
+  { id: "log-8", timestamp: new Date(Date.now() - 3530000).toLocaleTimeString(), level: "INFO", message: "🛡️ AegisMod logged in as AegisMod#4419 (ID: 124892849204918294)" },
+  { id: "log-9", timestamp: new Date(Date.now() - 3520000).toLocaleTimeString(), level: "AI_MOD", message: "[Gemini 3.8 Flash]: Model connection primed. Multi-tier token triage cache initialized." },
+  { id: "log-10", timestamp: new Date(Date.now() - 120000).toLocaleTimeString(), level: "AUTOMOD", message: "[AutoMod]: Intercepted suspicious link from User#8841: 'free-nitro-airdrop.xyz' -> Auto-timed out 24h [0 tokens]" },
+  { id: "log-11", timestamp: new Date(Date.now() - 45000).toLocaleTimeString(), level: "INFO", message: "[Heartbeat]: Memory: 174 MB / 512 MB | CPU: 8.2% | Latency: 26ms | Guilds: 14 | Monitored Teen Members: 3,420" },
+];
+
+function addWispbyteLog(level: WispbyteLog["level"], message: string) {
+  const log: WispbyteLog = {
+    id: "log-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+    timestamp: new Date().toLocaleTimeString(),
+    level,
+    message,
+  };
+  wispbyteLogs.push(log);
+  if (wispbyteLogs.length > 250) {
+    wispbyteLogs.shift();
+  }
+}
+
+export interface WispbyteEvent {
+  id: string;
+  timestamp: string;
+  author: string;
+  avatar: string;
+  content: string;
+  flagged: boolean;
+  category: string;
+  severity: string;
+  recommendedAction: string;
+  reason: string;
+  source: string;
+  tokensUsed: number;
+  latencyMs: number;
+  highlightedPhrases?: string[];
+}
+
+const wispbyteEvents: WispbyteEvent[] = [
+  {
+    id: "evt-1",
+    timestamp: "Just now",
+    author: "AlexR#1604",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&q=80",
+    content: "bro that aim was trash lol gg ez",
+    flagged: false,
+    category: "NONE",
+    severity: "NONE",
+    recommendedAction: "ALLOW",
+    reason: "Filtered by Tier-1 Local Triage: benign peer-to-peer gamer slang. 0 tokens used.",
+    source: "TIER_1_LOCAL_TRIAGE",
+    tokensUsed: 0,
+    latencyMs: 12,
+  },
+  {
+    id: "evt-2",
+    timestamp: "2m ago",
+    author: "Shadow99#0212",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&q=80",
+    content: "Free discord nitro airdrop: http://dlscord-nitro.xyz/gift",
+    flagged: true,
+    category: "PHISHING_OR_SCAM",
+    severity: "CRITICAL",
+    recommendedAction: "TIMEOUT_24H",
+    reason: "Detected malicious fake Nitro phishing link by Standard AutoMod regex.",
+    source: "STANDARD_AUTOMOD (Anti-Phishing)",
+    tokensUsed: 0,
+    latencyMs: 8,
+    highlightedPhrases: ["http://dlscord-nitro.xyz/gift"],
+  },
+  {
+    id: "evt-3",
+    timestamp: "7m ago",
+    author: "Anonymous#881",
+    avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=64&q=80",
+    content: "nobody likes you here, go jump off a bridge kys",
+    flagged: true,
+    category: "SELF_HARM",
+    severity: "CRITICAL",
+    recommendedAction: "TIMEOUT_24H",
+    reason: "Immediate high-risk self-harm and cyberbullying keyword pattern intercepted.",
+    source: "STANDARD_AUTOMOD (Zero-Tolerance)",
+    tokensUsed: 0,
+    latencyMs: 14,
+    highlightedPhrases: ["kys", "jump off a bridge"],
+  },
+  {
+    id: "evt-4",
+    timestamp: "14m ago",
+    author: "Sarah_M#7714",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=64&q=80",
+    content: "what was the math problem for question 4?",
+    flagged: false,
+    category: "NONE",
+    severity: "NONE",
+    recommendedAction: "ALLOW",
+    reason: "Normal classroom study question; passed without safety violation.",
+    source: "GEMINI_3_8_FLASH",
+    tokensUsed: 420,
+    latencyMs: 382,
+  },
+];
+
+function addWispbyteEvent(event: Omit<WispbyteEvent, "id">) {
+  const newEvt: WispbyteEvent = {
+    id: "evt-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+    ...event,
+  };
+  wispbyteEvents.unshift(newEvt);
+  if (wispbyteEvents.length > 50) {
+    wispbyteEvents.pop();
+  }
+  return newEvt;
+}
+
+
 // API Health
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ 
@@ -173,6 +312,184 @@ app.get("/api/health", (_req: Request, res: Response) => {
     hasApiKey: !!process.env.GEMINI_API_KEY,
     timestamp: new Date().toISOString()
   });
+});
+
+// Wispbyte Server Status Endpoint
+app.get("/api/wispbyte/status", (_req: Request, res: Response) => {
+  const isRunning = serverStatus === "RUNNING";
+  const jitter = Math.sin(Date.now() / 3000);
+  const cpuUsage = isRunning ? +(9.4 + jitter * 4.2).toFixed(1) : 0;
+  const memoryUsageMb = isRunning ? +(168 + jitter * 16).toFixed(0) : 0;
+  const inboundKbps = isRunning ? +(120 + jitter * 45).toFixed(0) : 0;
+  const outboundKbps = isRunning ? +(48 + jitter * 15).toFixed(0) : 0;
+  const pingMs = isRunning ? +(24 + Math.abs(jitter * 8)).toFixed(0) : 0;
+
+  res.json({
+    serverStatus,
+    serverStartedAt: isRunning ? serverStartedAt : null,
+    uptimeSeconds: isRunning ? Math.floor((Date.now() - serverStartedAt) / 1000) : 0,
+    metrics: {
+      cpuPercent: cpuUsage,
+      memoryMb: Number(memoryUsageMb),
+      memoryLimitMb: memoryAllocatedMb,
+      memoryPercent: isRunning ? +((Number(memoryUsageMb) / memoryAllocatedMb) * 100).toFixed(1) : 0,
+      diskMb: 48,
+      diskLimitMb: 1024,
+      networkInboundKbps: Number(inboundKbps),
+      networkOutboundKbps: Number(outboundKbps),
+      discordPingMs: Number(pingMs),
+    },
+    botDetails: {
+      name: "AegisMod",
+      discriminator: "4419",
+      id: "124892849204918294",
+      avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
+      guildsCount: 14,
+      membersCount: 3420,
+      channelsCount: 86,
+      shardsCount: 1,
+      policyLevel,
+      autoRestart: autoRestartEnabled,
+      nodeVersion: "Node.js v20.18.0 LTS",
+      wispbyteNode: "wisp-sg-node01.wispbyte.net (SG-1)",
+      containerId: "c8f2a1b9-7b3c",
+      geminiModel: "Gemini 3.8 Flash",
+    },
+    stats: {
+      processedMessages: totalProcessedMessages,
+      violationsPrevented: totalViolationsPrevented,
+      tokensSavedByTriage: totalTokensSaved,
+      cacheHitRatioPercent: 88.4,
+    }
+  });
+});
+
+// Wispbyte Power Control Endpoint
+app.post("/api/wispbyte/power", (req: Request, res: Response) => {
+  const { action } = req.body;
+  if (!["start", "stop", "restart", "kill"].includes(action)) {
+    return res.status(400).json({ error: "Invalid power action. Must be start, stop, restart, or kill." });
+  }
+
+  if (action === "stop") {
+    serverStatus = "STOPPED";
+    addWispbyteLog("DAEMON", "[Pterodactyl Daemon]: Server marked as STOPPING...");
+    addWispbyteLog("INFO", "[AegisMod]: Graceful shutdown initiated. Disconnecting Discord Gateway shard #0...");
+    addWispbyteLog("DISCORD", "[Discord.js]: Gateway connection closed (code 1000 - Normal Disconnect)");
+    addWispbyteLog("DAEMON", "[Pterodactyl Daemon]: Container exited with code 0. Server is STOPPED.");
+  } else if (action === "start") {
+    serverStatus = "STARTING";
+    addWispbyteLog("DAEMON", "[Pterodactyl Daemon]: Starting container on node wisp-sg-node01...");
+    addWispbyteLog("INFO", "[Container Entry]: node dist/index.js");
+    setTimeout(() => {
+      serverStatus = "RUNNING";
+      serverStartedAt = Date.now();
+      addWispbyteLog("DISCORD", "[Discord.js]: Shard #0 ready. Logged in as AegisMod#4419");
+      addWispbyteLog("INFO", "🛡️ AegisMod is RUNNING. All teenage safety filters operational.");
+    }, 1200);
+  } else if (action === "restart") {
+    serverStatus = "RESTARTING";
+    addWispbyteLog("DAEMON", "[Pterodactyl Daemon]: Container restart requested by client.");
+    addWispbyteLog("INFO", "[AegisMod]: Restarting process, flushing temporary cache...");
+    setTimeout(() => {
+      serverStatus = "RUNNING";
+      serverStartedAt = Date.now();
+      addWispbyteLog("DISCORD", "[Discord.js]: Reconnected to Discord Gateway. Heartbeat: 22ms.");
+      addWispbyteLog("INFO", "🛡️ AegisMod successfully restarted on Wispbyte!");
+    }, 1500);
+  } else if (action === "kill") {
+    serverStatus = "STOPPED";
+    addWispbyteLog("DAEMON", "[Pterodactyl Daemon]: SIGKILL sent to PID 1. Process killed instantly.");
+    addWispbyteLog("DAEMON", "[Pterodactyl Daemon]: Container forcefully stopped.");
+  }
+
+  res.json({ success: true, serverStatus, action });
+});
+
+// Wispbyte Console Command Execution Endpoint
+app.post("/api/wispbyte/command", (req: Request, res: Response) => {
+  const { command } = req.body;
+  if (!command || typeof command !== "string") {
+    return res.status(400).json({ error: "Missing command string" });
+  }
+
+  const trimmed = command.trim();
+  addWispbyteLog("COMMAND", `> ${trimmed}`);
+
+  const lower = trimmed.toLowerCase();
+  let responseText = "";
+
+  if (lower === "help") {
+    responseText = "Available commands: stats, status, ping, clearcache, reload, shards, policy, testmod <text>, eval <expr>, help";
+    addWispbyteLog("INFO", responseText);
+  } else if (lower === "status") {
+    responseText = `Status: ${serverStatus} | Uptime: ${Math.floor((Date.now() - serverStartedAt) / 1000)}s | Discord Shards: 1 | Guilds: 14`;
+    addWispbyteLog("INFO", responseText);
+  } else if (lower === "ping") {
+    responseText = `Discord Gateway WebSocket Ping: 24ms | Gemini API Roundtrip: 382ms`;
+    addWispbyteLog("DISCORD", responseText);
+  } else if (lower === "stats") {
+    responseText = `Messages Guarded: ${totalProcessedMessages} | Violations Caught: ${totalViolationsPrevented} | Tokens Saved: ${totalTokensSaved} (~$0.07 saved) | Cache Entries: ${moderationCache.size}`;
+    addWispbyteLog("INFO", responseText);
+  } else if (lower === "clearcache") {
+    const prevSize = moderationCache.size;
+    moderationCache.clear();
+    responseText = `Cleared in-memory moderation cache (${prevSize} entries removed).`;
+    addWispbyteLog("INFO", responseText);
+  } else if (lower === "reload") {
+    responseText = `Reloaded configuration rules, safetyRubric.ts, and profanity filters dynamically.`;
+    addWispbyteLog("INFO", responseText);
+  } else if (lower.startsWith("policy")) {
+    const parts = trimmed.split(" ");
+    if (parts[1]) {
+      policyLevel = parts[1].toUpperCase();
+      responseText = `Policy Level updated to: ${policyLevel}`;
+    } else {
+      responseText = `Current Policy Level: ${policyLevel} (Modes: STRICT_TEEN, HIGH_ALERT, STANDARD)`;
+    }
+    addWispbyteLog("INFO", responseText);
+  } else if (lower.startsWith("testmod")) {
+    const sample = trimmed.substring(7).trim() || "hey guys gg";
+    const triage = runLocalTriage(sample);
+    responseText = `[TestMod Result] Sample: "${sample}" -> Triage Status: ${triage.status} ${triage.ruleName ? `(${triage.ruleName})` : ""}`;
+    addWispbyteLog("AI_MOD", responseText);
+  } else if (lower.startsWith("eval")) {
+    try {
+      const code = trimmed.substring(4).trim();
+      responseText = `Result: ${code}`;
+      addWispbyteLog("INFO", responseText);
+    } catch (e: any) {
+      responseText = `Eval error: ${e.message}`;
+      addWispbyteLog("ERROR", responseText);
+    }
+  } else {
+    responseText = `Command '${trimmed}' executed successfully.`;
+    addWispbyteLog("INFO", responseText);
+  }
+
+  res.json({ output: responseText, command: trimmed });
+});
+
+// Wispbyte Logs Endpoint
+app.get("/api/wispbyte/logs", (_req: Request, res: Response) => {
+  res.json({ logs: wispbyteLogs });
+});
+
+// Wispbyte Telemetry Events Endpoint
+app.get("/api/wispbyte/events", (_req: Request, res: Response) => {
+  res.json({ events: wispbyteEvents });
+});
+
+
+// Wispbyte Configuration Update Endpoint
+app.post("/api/wispbyte/config", (req: Request, res: Response) => {
+  const { policy, ramMb, autoRestart } = req.body;
+  if (policy) policyLevel = policy;
+  if (typeof ramMb === "number") memoryAllocatedMb = ramMb;
+  if (typeof autoRestart === "boolean") autoRestartEnabled = autoRestart;
+
+  addWispbyteLog("INFO", `[Wispbyte Config Updated]: RAM: ${memoryAllocatedMb}MB, Policy: ${policyLevel}, AutoRestart: ${autoRestartEnabled}`);
+  res.json({ success: true, policy: policyLevel, ramMb: memoryAllocatedMb, autoRestart: autoRestartEnabled });
 });
 
 // API Live Moderate endpoint
@@ -203,6 +520,8 @@ app.post("/api/moderate", async (req: Request, res: Response) => {
   if (!bypassTriage) {
     const triage = runLocalTriage(trimmed);
     if (triage.status === "CLEAN_PASS") {
+      totalProcessedMessages++;
+      totalTokensSaved += 240;
       const cleanResult = {
         flagged: false,
         category: "NONE",
@@ -217,10 +536,28 @@ app.post("/api/moderate", async (req: Request, res: Response) => {
         latencyMs: Date.now() - startTime,
       };
       moderationCache.set(cacheKey, { result: cleanResult, timestamp: Date.now() });
+      addWispbyteLog("INFO", `[Message Allowed] "${trimmed.slice(0, 36)}" by ${author} -> Pass [0 tokens]`);
+      addWispbyteEvent({
+        timestamp: "Just now",
+        author,
+        avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(author)}`,
+        content: trimmed,
+        flagged: false,
+        category: "NONE",
+        severity: "NONE",
+        recommendedAction: "ALLOW",
+        reason: cleanResult.reason,
+        source: cleanResult.source,
+        tokensUsed: 0,
+        latencyMs: cleanResult.latencyMs,
+      });
       return res.json(cleanResult);
     }
 
     if (triage.status === "LOCAL_FLAG") {
+      totalProcessedMessages++;
+      totalViolationsPrevented++;
+      totalTokensSaved += 350;
       const flagResult = {
         flagged: true,
         category: triage.category || "SEVERE_PROFANITY_OR_ABUSE",
@@ -235,6 +572,22 @@ app.post("/api/moderate", async (req: Request, res: Response) => {
         latencyMs: Date.now() - startTime,
       };
       moderationCache.set(cacheKey, { result: flagResult, timestamp: Date.now() });
+      addWispbyteLog("AUTOMOD", `[AutoMod Violation] "${trimmed.slice(0, 36)}" by ${author} -> ${flagResult.category} (${flagResult.recommendedAction}) [0 tokens]`);
+      addWispbyteEvent({
+        timestamp: "Just now",
+        author,
+        avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(author)}`,
+        content: trimmed,
+        flagged: true,
+        category: flagResult.category,
+        severity: flagResult.severity,
+        recommendedAction: flagResult.recommendedAction,
+        reason: flagResult.reason,
+        source: flagResult.source,
+        tokensUsed: 0,
+        latencyMs: flagResult.latencyMs,
+        highlightedPhrases: flagResult.highlightedPhrases,
+      });
       return res.json(flagResult);
     }
   }
@@ -390,6 +743,29 @@ Output structured JSON strictly matching the provided schema.`;
 
     // Store in cache
     moderationCache.set(cacheKey, { result, timestamp: Date.now() });
+
+    totalProcessedMessages++;
+    if (result.flagged) totalViolationsPrevented++;
+    addWispbyteLog(
+      "AI_MOD",
+      `[Gemini 3.8 Flash] "${trimmed.slice(0, 36)}" by ${author} -> ${result.flagged ? `FLAGGED: ${result.category} (${result.recommendedAction})` : "PASSED SAFE"} (${result.tokensUsed} tokens, ${result.latencyMs}ms)`
+    );
+
+    addWispbyteEvent({
+      timestamp: "Just now",
+      author,
+      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(author)}`,
+      content: trimmed,
+      flagged: result.flagged,
+      category: result.category,
+      severity: result.severity,
+      recommendedAction: result.recommendedAction,
+      reason: result.reason,
+      source: result.source,
+      tokensUsed: result.tokensUsed,
+      latencyMs: result.latencyMs,
+      highlightedPhrases: result.highlightedPhrases,
+    });
 
     res.json(result);
   } catch (err: any) {

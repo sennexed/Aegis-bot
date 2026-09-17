@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import { Header } from "./components/Header";
+import { WispbyteDashboard } from "./components/WispbyteDashboard/WispbyteDashboard";
 import { PlanOverview } from "./components/PlanOverview";
 import { LiveModerationTester } from "./components/LiveModerationTester";
 import { DiscordSetupSimulator } from "./components/DiscordSetupSimulator";
 import { TraditionalModSandbox } from "./components/TraditionalModSandbox";
 import { TokenEfficiencyCalculator } from "./components/TokenEfficiencyCalculator";
-import { CodeExplorer } from "./components/CodeExplorer";
 import { WispbyteGuide } from "./components/WispbyteGuide";
 import { Shield, Sparkles, Server, Github, ExternalLink } from "lucide-react";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
 
   return (
     <div className="min-h-screen bg-zinc-100/70 text-zinc-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
@@ -19,12 +19,12 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === "dashboard" && <WispbyteDashboard />}
         {activeTab === "overview" && <PlanOverview />}
         {activeTab === "live-tester" && <LiveModerationTester />}
         {activeTab === "setup-sim" && <DiscordSetupSimulator />}
         {activeTab === "traditional-mod" && <TraditionalModSandbox />}
         {activeTab === "token-efficiency" && <TokenEfficiencyCalculator />}
-        {activeTab === "code-explorer" && <CodeExplorer />}
         {activeTab === "wispbyte" && <WispbyteGuide />}
       </main>
 

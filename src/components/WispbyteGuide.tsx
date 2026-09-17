@@ -186,21 +186,21 @@ export const WispbyteGuide: React.FC = () => {
                   Upload Codebase to Wispbyte
                 </h3>
                 <p className="text-xs text-zinc-600 mt-1 leading-relaxed">
-                  Click the <strong>Download Bot Project (.ZIP)</strong> button in the top navigation of this dashboard. Then:
+                  Connect your bot files to your Wispbyte container instance:
                 </p>
 
                 <div className="mt-3 space-y-2 text-xs text-zinc-700">
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
-                    <span>In Wispbyte, click the <strong>Files</strong> tab.</span>
+                    <span>In Wispbyte, open your server container and click the <strong>Files</strong> tab.</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
-                    <span>Drag and drop <code className="bg-zinc-100 px-1.5 py-0.5 rounded font-mono">aegismod-discord-bot.zip</code> into the file manager.</span>
+                    <span>Upload your bot project files into the <code className="bg-zinc-100 px-1.5 py-0.5 rounded font-mono">/home/container/</code> directory.</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
-                    <span>Right click the zip and select <strong>Unarchive</strong>.</span>
+                    <span>Ensure <code className="bg-zinc-100 px-1.5 py-0.5 rounded font-mono">package.json</code> and entrypoints are in the root directory.</span>
                   </div>
                 </div>
               </div>
