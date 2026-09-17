@@ -194,4 +194,32 @@ export class RoleService {
 
     return { allowed: true };
   }
+
+  /**
+   * Generates a ping mention string for staff:
+   * Prioritizes on-duty moderators & admins (<@u1> <@u2>).
+   * Falls back to staff role mentions (<@&modRole>) if nobody is currently on duty.
+   */
+  public getStaffPing(
+    guildId: string,
+    dutyService?: { getOnDutyMentions: (gId: string) => string }
+  ): string {
+    if (dutyService) {
+      const onDutyMentions = dutyService.getOnDutyMentions(guildId);
+      if (onDutyMentions) {
+        return `🔔 **ON-DUTY STAFF:** ${onDutyMentions}`;
+      }
+    }
+
+    const config = this.getGuildRoles(guildId);
+    if (config) {
+      const roleIds = [...config.moderatorRoleIds, ...config.adminRoleIds];
+      if (roleIds.length > 0) {
+        const uniqueRoles = [...new Set(roleIds)];
+        return `🔔 **STAFF ALERT (No staff currently on-duty):** ${uniqueRoles.map((id) => `<@&${id}>`).join(" ")}`;
+      }
+    }
+
+    return `🔔 **STAFF ALERT (No staff currently on-duty):** Please review in #mod-logs.`;
+  }
 }

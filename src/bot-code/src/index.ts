@@ -44,6 +44,7 @@ import { modStatsCommand } from "./commands/modstats.js";
 import { dutyCommand } from "./commands/duty.js";
 import { modMailCommand } from "./commands/modmail.js";
 import { exportLogsCommand } from "./commands/exportlogs.js";
+import { reportCommand } from "./commands/report.js";
 
 import { handleMessageCreate } from "./events/messageCreate.js";
 import { handleMessageUpdate } from "./events/messageUpdate.js";
@@ -100,6 +101,7 @@ export async function syncGuildCommands(guildId: string, isSetupComplete: boolea
     dutyCommand.data.toJSON(),
     modMailCommand.data.toJSON(),
     exportLogsCommand.data.toJSON(),
+    reportCommand.data.toJSON(),
     ...moderationCommands.map((c) => c.data.toJSON()),
   ];
 
@@ -194,12 +196,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (channel && channel.isTextBased()) {
         const reportedMsg = await channel.messages.fetch(messageId).catch(() => null);
         if (reportedMsg) {
-          await loggingService.logUserReport(interaction.guild, interaction.user, reportedMsg, reason);
+          const staffPing = roleService.getStaffPing(interaction.guild.id, dutyService);
+          await loggingService.logUserReport(interaction.guild, interaction.user, reportedMsg, reason, staffPing);
         }
       }
 
       return interaction.reply({
-        content: "✅ **Report Received.** Our moderation staff has been notified in `#mod-logs`.",
+        content: "✅ **Report Received.** On-duty moderators and staff have been alerted in `#mod-logs`.",
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -337,7 +340,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (commandName === "modmail") {
-      return modMailCommand.execute(interaction, modMailService, roleService, loggingService);
+      return modMailCommand.execute(interaction, modMailService, roleService, loggingService, dutyService);
+    }
+
+    if (commandName === "report") {
+      return reportCommand.execute(interaction, loggingService, dutyService, roleService);
     }
 
     if (commandName === "exportlogs") {
@@ -352,7 +359,37 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 // 6. Message Event Listeners
-client.on(Events.MessageCreate, (message) => {
+client.on(Events.MessageCreate, async (message) => {
+  // Support DM replies for active Mod-Mail tickets with on-duty staff ping
+  if (message.channel.isDMBased() && !message.author.bot) {
+    for (const [guildId, guild] of client.guilds.cache) {
+      const activeTicket = modMailService.getActiveTicketForUser(guildId, message.author.id);
+      if (activeTicket) {
+        modMailService.addMessage(guildId, activeTicket.id, {
+          senderId: message.author.id,
+          senderTag: message.author.tag,
+          content: message.content,
+          isStaff: false,
+        });
+
+        const staffPing = roleService.getStaffPing(guildId, dutyService);
+        await loggingService.logToModLogs(guild, {
+          content: `📬 **MOD-MAIL TICKET UPDATE** • ${staffPing}`,
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x38bdf8)
+              .setTitle(`💬 User Reply • Ticket ${activeTicket.id}`)
+              .setDescription(`**${message.author.tag}** sent a new response:\n>>> ${message.content}`)
+              .setFooter({ text: `Reply using /modmail reply ticket_id:${activeTicket.id} message:...` })
+              .setTimestamp(),
+          ],
+        });
+        await message.reply("📬 Your response was forwarded to the on-duty moderation staff. They will reply to you here.");
+        return;
+      }
+    }
+  }
+
   handleMessageCreate(
     message,
     triageService,

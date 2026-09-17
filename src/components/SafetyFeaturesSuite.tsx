@@ -199,6 +199,36 @@ export const SafetyFeaturesSuite: React.FC = () => {
   const [exportFormatTab, setExportFormatTab] = useState<"summary" | "csv" | "json">("summary");
   const [copiedNotification, setCopiedNotification] = useState(false);
 
+  // 10. /report Slash Command & On-Duty Staff Alert state
+  const [reportTarget, setReportTarget] = useState("TrollUser#9102");
+  const [reportReason, setReportReason] = useState("Harassing younger teen members and asking for personal phone numbers in DMs.");
+  const [reportEvidence, setReportEvidence] = useState("https://discord.com/channels/101/202/994");
+  const [reportSentSuccess, setReportSentSuccess] = useState(false);
+  const [simulatedReports, setSimulatedReports] = useState([
+    {
+      id: "REP-401",
+      target: "TrollUser#9102",
+      targetId: "89312019482103912",
+      reporter: "AlexGamer16#1029",
+      channel: "#gaming-banter",
+      reason: "Harassing younger teen members and asking for personal phone numbers in DMs.",
+      evidence: "Jump link: https://discord.com/channels/101/202/994",
+      timestamp: "3 minutes ago",
+      status: "PENDING",
+    },
+    {
+      id: "REP-400",
+      target: "ScamBot#0014",
+      targetId: "77192019482103810",
+      reporter: "Jordan#4891",
+      channel: "#announcements",
+      reason: "Pasting phishing links masquerading as Steam gift cards.",
+      evidence: "Message ID: 119284910294819",
+      timestamp: "18 minutes ago",
+      status: "RESOLVED",
+    },
+  ]);
+
   // Sample Audit Records for Exporter
   const sampleAuditRecords = [
     { caseId: "CASE-1048", timestamp: "2026-09-17T03:45:00Z", user: "BadActor#9912", mod: "System AutoMod", action: "BAN", reason: "Zero-tolerance predatory grooming attempt detected." },
@@ -249,7 +279,7 @@ export const SafetyFeaturesSuite: React.FC = () => {
             { id: "multimodal", label: "Image Screening", icon: ImageIcon },
             { id: "appeals", label: "Appeals System", icon: RefreshCw },
             { id: "analytics", label: "Weekly Digest (/modstats)", icon: BarChart3 },
-            { id: "report", label: "Report to Staff Context Menu", icon: Flag },
+            { id: "report", label: "Incident Reports (/report)", icon: Flag },
           ].map((tab) => {
             const Icon = tab.icon;
             const isSel = selectedSubTab === tab.id;
@@ -828,26 +858,308 @@ export const SafetyFeaturesSuite: React.FC = () => {
         </div>
       )}
 
-      {/* SUB-VIEW 10: REPORT TO STAFF CONTEXT MENU */}
+      {/* SUB-VIEW 10: MEMBER INCIDENT REPORTS (/report & CONTEXT MENU) */}
       {selectedSubTab === "report" && (
-        <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm space-y-4">
-          <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-            <Flag className="w-5 h-5 text-indigo-600" />
-            "Report to Staff" Context Menu & Modals
-          </h3>
-          <p className="text-xs text-zinc-600">
-            Registered as a native Discord Context Menu command (`ApplicationCommandType.Message`). Any member can right click a message, select <strong>Apps &gt; Report to Staff</strong>, fill out a modal explanation, and notify staff in `#mod-logs` with 1-click Delete/Mute options.
-          </p>
+        <div className="space-y-6">
+          <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                  <Flag className="w-5 h-5 text-indigo-600" />
+                  Incident & Member Reports (`/report` & Context Menu)
+                </h3>
+                <p className="text-xs text-zinc-600 mt-1">
+                  Community members can report harassment, threats, and phishing via the <code>/report</code> slash command or by right-clicking messages &gt; <strong>Apps &gt; "Report to Staff"</strong>.
+                </p>
+              </div>
 
-          <div className="border border-zinc-200 rounded-xl p-5 bg-zinc-50/60 max-w-xl space-y-3 text-xs">
-            <div className="font-bold text-zinc-800">How Members Report Messages on Discord:</div>
-            <ol className="list-decimal list-inside space-y-1.5 text-zinc-600">
-              <li>Right-click or tap on any message in any channel.</li>
-              <li>Click <strong>Apps</strong> &gt; <strong>"Report to Staff"</strong>.</li>
-              <li>Discord pops up the AegisMod Report Modal.</li>
-              <li>Member enters their reason (e.g. "Harassing in DMs", "Bullying").</li>
-              <li>AegisMod routes the report directly to `#mod-logs` with quick resolution buttons.</li>
-            </ol>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs font-bold flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-amber-600" />
+                  Pings On-Duty Staff Automatically
+                </span>
+              </div>
+            </div>
+
+            {/* On-Duty Ping Status Banner */}
+            <div className="mt-4 p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2 text-indigo-900">
+                <Clock className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span>
+                  <strong>Active Ping Targets: </strong>
+                  {dutyStaff.filter((s) => s.isOnDuty).length > 0 ? (
+                    <span className="font-mono bg-white px-2 py-0.5 rounded border border-indigo-200 text-indigo-700">
+                      {dutyStaff.filter((s) => s.isOnDuty).map((s) => `@${s.userTag}`).join(" ")}
+                    </span>
+                  ) : (
+                    <span className="font-mono bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
+                      @Moderator @Administrator (Fallback Role Pings)
+                    </span>
+                  )}
+                </span>
+              </div>
+              <span className="text-[11px] text-indigo-700 font-medium">
+                {dutyStaff.filter((s) => s.isOnDuty).length} staff currently clocked in via <code>/duty on</code>
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left: /report Command Simulator Form */}
+            <div className="lg:col-span-5 bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                <h4 className="font-bold text-sm text-zinc-900 flex items-center gap-2">
+                  <Send className="w-4 h-4 text-indigo-600" />
+                  Test Slash Command: <code>/report</code>
+                </h4>
+                <span className="text-[11px] font-mono bg-zinc-100 px-2 py-0.5 rounded text-zinc-600">
+                  User Perspective
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="font-semibold text-zinc-700 block mb-1">
+                    Target User (<code>user</code>):
+                  </label>
+                  <input
+                    type="text"
+                    value={reportTarget}
+                    onChange={(e) => setReportTarget(e.target.value)}
+                    placeholder="e.g. ToxicMember#1024 or @user"
+                    className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-700 block mb-1">
+                    Reason (<code>reason</code>):
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                    placeholder="Describe what occurred..."
+                    className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-700 block mb-1">
+                    Evidence / Context (<code>evidence</code> - optional):
+                  </label>
+                  <input
+                    type="text"
+                    value={reportEvidence}
+                    onChange={(e) => setReportEvidence(e.target.value)}
+                    placeholder="Message link, channel, or quote..."
+                    className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <button
+                  onClick={() => {
+                    const newReport = {
+                      id: `REP-${Math.floor(402 + Math.random() * 50)}`,
+                      target: reportTarget || "ReportedMember#0001",
+                      targetId: `992810${Math.floor(1000 + Math.random() * 9000)}`,
+                      reporter: "You (Discord User)",
+                      channel: "#general-chat",
+                      reason: reportReason || "Inappropriate behavior",
+                      evidence: reportEvidence || "None provided",
+                      timestamp: "Just now",
+                      status: "PENDING",
+                    };
+                    setSimulatedReports([newReport, ...simulatedReports]);
+                    setReportSentSuccess(true);
+                    setTimeout(() => setReportSentSuccess(false), 3000);
+                  }}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Flag className="w-3.5 h-3.5" />
+                  Dispatch <code>/report</code> Command
+                </button>
+
+                {reportSentSuccess && (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs flex items-center gap-2 animate-fadeIn">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Report delivered to <code>#mod-logs</code> with on-duty staff pings!</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-zinc-100 pt-3 text-[11px] text-zinc-500 space-y-1">
+                <div className="font-semibold text-zinc-700">Native Discord Integration:</div>
+                <p>
+                  Members can also right-click any message &gt; <strong>Apps</strong> &gt; <strong>"Report to Staff"</strong> to pop up a modal. Both methods route to <code>#mod-logs</code> and ping on-duty moderators.
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Discord #mod-logs Incident Embed & Quick Action Preview */}
+            <div className="lg:col-span-7 bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-orange-600" />
+                  <h4 className="font-bold text-sm text-zinc-900">#mod-logs Discord Dispatch Feed</h4>
+                </div>
+                <span className="text-[11px] text-zinc-500">Live Simulation</span>
+              </div>
+
+              {/* Discord UI Mock */}
+              <div className="bg-[#313338] text-zinc-200 p-4 rounded-xl font-sans text-xs space-y-3">
+                {/* Ping Content Header */}
+                <div className="text-zinc-300 font-medium flex items-center gap-1.5 flex-wrap border-b border-zinc-700/60 pb-2">
+                  <span className="text-amber-400 font-bold">🔔 ON-DUTY STAFF ALERT:</span>
+                  {dutyStaff.filter((s) => s.isOnDuty).length > 0 ? (
+                    dutyStaff
+                      .filter((s) => s.isOnDuty)
+                      .map((s) => (
+                        <span key={s.id} className="bg-[#3c4270] text-[#c9cdfb] px-1.5 py-0.5 rounded font-mono text-[11px]">
+                          @{s.userTag}
+                        </span>
+                      ))
+                  ) : (
+                    <span className="bg-[#4e3a24] text-amber-300 px-1.5 py-0.5 rounded font-mono text-[11px]">
+                      @Moderator @Admin (Server Roles)
+                    </span>
+                  )}
+                </div>
+
+                {/* Embed Card */}
+                {simulatedReports.length > 0 && (
+                  <div className="border-l-4 border-orange-500 bg-[#2b2d31] p-3.5 rounded-r-lg space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                          <span>🚩 User Report Submitted</span>
+                          <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-1.5 py-0.5 rounded">
+                            {simulatedReports[0].id}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-zinc-400 mt-0.5">
+                          Received {simulatedReports[0].timestamp} via <code>/report</code>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          simulatedReports[0].status === "PENDING"
+                            ? "bg-amber-900/60 text-amber-200 border border-amber-700/50"
+                            : "bg-emerald-900/60 text-emerald-200 border border-emerald-700/50"
+                        }`}
+                      >
+                        {simulatedReports[0].status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-zinc-300">
+                      <div>
+                        <span className="text-[10px] text-zinc-400 font-semibold block">REPORTED MEMBER</span>
+                        <span className="text-rose-400 font-bold">{simulatedReports[0].target}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-zinc-400 font-semibold block">REPORTED BY</span>
+                        <span className="text-zinc-200">{simulatedReports[0].reporter}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] text-zinc-400 font-semibold block">REASON</span>
+                      <p className="text-zinc-100 mt-0.5 bg-black/25 p-2 rounded border border-white/5">
+                        {simulatedReports[0].reason}
+                      </p>
+                    </div>
+
+                    {simulatedReports[0].evidence && (
+                      <div>
+                        <span className="text-[10px] text-zinc-400 font-semibold block">EVIDENCE / CONTEXT</span>
+                        <p className="text-zinc-300 text-[11px] font-mono mt-0.5 truncate">
+                          {simulatedReports[0].evidence}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Discord Action Row Buttons */}
+                    <div className="pt-2 border-t border-zinc-700/60 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => {
+                          setSimulatedReports(
+                            simulatedReports.map((r, i) => (i === 0 ? { ...r, status: "ACTION_TAKEN (1h Timeout)" } : r))
+                          );
+                        }}
+                        className="px-2.5 py-1 bg-[#5865f2] hover:bg-[#4752c4] text-white rounded text-[11px] font-medium transition-colors"
+                      >
+                        Mute 1h
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSimulatedReports(
+                            simulatedReports.map((r, i) => (i === 0 ? { ...r, status: "ACTION_TAKEN (24h Timeout)" } : r))
+                          );
+                        }}
+                        className="px-2.5 py-1 bg-[#4e5058] hover:bg-[#6d6f78] text-white rounded text-[11px] font-medium transition-colors"
+                      >
+                        Mute 24h
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSimulatedReports(
+                            simulatedReports.map((r, i) => (i === 0 ? { ...r, status: "DISMISSED (Pardoned)" } : r))
+                          );
+                        }}
+                        className="px-2.5 py-1 bg-[#4e5058] hover:bg-[#6d6f78] text-white rounded text-[11px] font-medium transition-colors"
+                      >
+                        Dismiss Report
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSimulatedReports(
+                            simulatedReports.map((r, i) => (i === 0 ? { ...r, status: "ACTION_TAKEN (Banned)" } : r))
+                          );
+                        }}
+                        className="px-2.5 py-1 bg-[#da373c] hover:bg-[#a1282c] text-white rounded text-[11px] font-medium transition-colors"
+                      >
+                        Ban Member
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Report History List */}
+              <div className="pt-2 space-y-2">
+                <span className="font-bold text-xs text-zinc-800 block">Recent Reports Queue:</span>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {simulatedReports.map((rep) => (
+                    <div
+                      key={rep.id}
+                      className="p-3 border border-zinc-200 rounded-lg flex items-center justify-between text-xs bg-zinc-50/60"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-zinc-900">{rep.id}</span>
+                          <span className="text-rose-600 font-semibold">{rep.target}</span>
+                          <span className="text-zinc-400">•</span>
+                          <span className="text-zinc-500">by {rep.reporter}</span>
+                        </div>
+                        <p className="text-zinc-600 text-[11px] truncate max-w-sm mt-0.5">{rep.reason}</p>
+                      </div>
+
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          rep.status === "PENDING"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-emerald-100 text-emerald-800"
+                        }`}
+                      >
+                        {rep.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1037,6 +1349,28 @@ export const SafetyFeaturesSuite: React.FC = () => {
               <UserPlus className="w-3.5 h-3.5" />
               Simulate Inbound Ticket
             </button>
+          </div>
+
+          {/* On-Duty Staff Notification Status */}
+          <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 text-indigo-950">
+              <Clock className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span>
+                <strong>On-Duty Ping Alert: </strong>
+                {dutyStaff.filter((s) => s.isOnDuty).length > 0 ? (
+                  <span className="font-mono bg-white px-2 py-0.5 rounded border border-indigo-200 text-indigo-700">
+                    {dutyStaff.filter((s) => s.isOnDuty).map((s) => `@${s.userTag}`).join(" ")}
+                  </span>
+                ) : (
+                  <span className="font-mono bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
+                    @Moderator @Administrator (Server Roles)
+                  </span>
+                )}
+              </span>
+            </div>
+            <span className="text-[11px] text-indigo-700">
+              New tickets and user DM replies auto-ping on-duty staff in <code>#mod-logs</code>
+            </span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

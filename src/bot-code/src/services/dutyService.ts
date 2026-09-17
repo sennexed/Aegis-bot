@@ -193,6 +193,18 @@ export class DutyService {
   }
 
   /**
+   * Returns a space-separated string of user mentions for all on-duty staff
+   * e.g. "<@12345> <@67890>"
+   */
+  public getOnDutyMentions(guildId: string): string {
+    const onDuty = this.getOnDutyStaff(guildId);
+    if (onDuty.length > 0) {
+      return onDuty.map((s) => `<@${s.userId}>`).join(" ");
+    }
+    return "";
+  }
+
+  /**
    * Checks if a specific staff member is currently on duty
    */
   public isOnDuty(guildId: string, userId: string): boolean {

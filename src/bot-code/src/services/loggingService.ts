@@ -201,7 +201,8 @@ export class LoggingService {
     guild: Guild,
     reporter: User,
     reportedMessage: Message,
-    reason: string
+    reason: string,
+    pingContent?: string
   ) {
     const logChannel = await this.ensureLogChannel(guild);
 
@@ -238,7 +239,7 @@ export class LoggingService {
     );
 
     await logChannel.send({
-      content: "⚠️ **NEW USER REPORT:** Please review flagged behavior.",
+      content: pingContent || "⚠️ **NEW USER REPORT:** Please review flagged behavior.",
       embeds: [embed],
       components: [actionRow],
     });
