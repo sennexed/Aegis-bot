@@ -7,6 +7,7 @@ import { DiscordSetupSimulator } from "./components/DiscordSetupSimulator";
 import { TraditionalModSandbox } from "./components/TraditionalModSandbox";
 import { TokenEfficiencyCalculator } from "./components/TokenEfficiencyCalculator";
 import { WispbyteGuide } from "./components/WispbyteGuide";
+import { SafetyFeaturesSuite } from "./components/SafetyFeaturesSuite";
 import { Shield, Sparkles, Server, Github, ExternalLink } from "lucide-react";
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === "dashboard" && <WispbyteDashboard />}
+        {activeTab === "safety-suite" && <SafetyFeaturesSuite />}
         {activeTab === "overview" && <PlanOverview />}
         {activeTab === "live-tester" && <LiveModerationTester />}
         {activeTab === "setup-sim" && <DiscordSetupSimulator />}

@@ -13,6 +13,8 @@ import {
   Events,
   ActivityType,
   MessageFlags,
+  GuildMember,
+  EmbedBuilder,
 } from "discord.js";
 import dotenv from "dotenv";
 
@@ -22,15 +24,25 @@ import { TraditionalModService } from "./services/traditionalModService.js";
 import { TriageService } from "./services/triageService.js";
 import { GeminiModerationService } from "./services/geminiModerationService.js";
 import { AutoModService } from "./services/autoModService.js";
+import { AntiRaidService } from "./services/antiRaidService.js";
+import { ChannelPolicyService } from "./services/channelPolicyService.js";
+import { ANALYTICS_SERVICE } from "./services/analyticsService.js";
 
 import { setupCommand } from "./commands/setup.js";
 import { moderationCommands } from "./commands/moderation.js";
 import { autoModCommand } from "./commands/automod.js";
 import { testModCommand } from "./commands/testmod.js";
+import { userInfoCommand } from "./commands/userinfo.js";
+import { antiRaidCommand } from "./commands/antiraid.js";
+import { channelPolicyCommand } from "./commands/channelpolicy.js";
+import { reportMessageContextMenu } from "./commands/reportMessage.js";
+import { appealCommand } from "./commands/appeal.js";
+import { modStatsCommand } from "./commands/modstats.js";
 
 import { handleMessageCreate } from "./events/messageCreate.js";
 import { handleMessageUpdate } from "./events/messageUpdate.js";
 import { handleMessageDelete } from "./events/messageDelete.js";
+import { handleGuildMemberAdd } from "./events/guildMemberAdd.js";
 
 dotenv.config();
 
@@ -53,6 +65,8 @@ const modService = new TraditionalModService(loggingService, roleService);
 const triageService = new TriageService();
 const geminiService = new GeminiModerationService(process.env.GEMINI_API_KEY);
 const autoModService = new AutoModService();
+const antiRaidService = new AntiRaidService(loggingService);
+const channelPolicyService = new ChannelPolicyService();
 
 // 3. Register Slash Commands
 export async function syncGuildCommands(guildId: string, isSetupComplete: boolean) {
@@ -63,11 +77,17 @@ export async function syncGuildCommands(guildId: string, isSetupComplete: boolea
   const rest = new REST({ version: "10" }).setToken(token);
 
   // If server is not setup yet, ONLY expose /setup command
-  // Once setup is completed, expose /setup, /automod, /testmod, AND all traditional moderation commands (/ban, /kick, /mute, /warn, /cases)
+  // Once setup is completed, expose the full suite of moderation, protection & utility tools
   const fullCommands = [
     setupCommand.data.toJSON(),
     autoModCommand.data.toJSON(),
     testModCommand.data.toJSON(),
+    userInfoCommand.data.toJSON(),
+    antiRaidCommand.data.toJSON(),
+    channelPolicyCommand.data.toJSON(),
+    reportMessageContextMenu.data.toJSON(),
+    appealCommand.data.toJSON(),
+    modStatsCommand.data.toJSON(),
     ...moderationCommands.map((c) => c.data.toJSON()),
   ];
 
@@ -99,8 +119,7 @@ async function registerSlashCommands() {
   const rest = new REST({ version: "10" }).setToken(token);
 
   try {
-    // Clear any previous global moderation commands so guilds strictly follow their setup status
-    // and globally register only /setup as base
+    // Clear global moderation commands and register only /setup as base
     await rest.put(Routes.applicationCommands(clientId), {
       body: [setupCommand.data.toJSON()],
     });
@@ -135,8 +154,128 @@ client.on(Events.GuildCreate, async (guild) => {
   await syncGuildCommands(guild.id, false);
 });
 
-// 5. Interaction Create Event (Slash Commands & Role Selects)
+// Member Join Event (Anti-Raid Gatekeeper)
+client.on(Events.GuildMemberAdd, (member) => {
+  handleGuildMemberAdd(member, antiRaidService);
+});
+
+// 5. Interaction Create Event (Slash Commands, Context Menus, Modals, and Buttons)
 client.on(Events.InteractionCreate, async (interaction) => {
+  // A. Message Context Menu (Report to Staff)
+  if (interaction.isMessageContextMenuCommand()) {
+    if (interaction.commandName === "Report to Staff") {
+      return reportMessageContextMenu.execute(interaction);
+    }
+  }
+
+  // B. Modal Submit (Report to Staff Reason)
+  if (interaction.isModalSubmit()) {
+    if (interaction.customId.startsWith("report_modal:")) {
+      const parts = interaction.customId.split(":");
+      const channelId = parts[1];
+      const messageId = parts[2];
+      const reason = interaction.fields.getTextInputValue("report_reason");
+
+      if (!interaction.guild) return;
+
+      const channel = interaction.guild.channels.cache.get(channelId);
+      if (channel && channel.isTextBased()) {
+        const reportedMsg = await channel.messages.fetch(messageId).catch(() => null);
+        if (reportedMsg) {
+          await loggingService.logUserReport(interaction.guild, interaction.user, reportedMsg, reason);
+        }
+      }
+
+      return interaction.reply({
+        content: "✅ **Report Received.** Our moderation staff has been notified in `#mod-logs`.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+  }
+
+  // C. Interactive Button Clicks (Quick Actions & Appeals)
+  if (interaction.isButton()) {
+    if (!interaction.guild || !interaction.member) return;
+    const staffMember = interaction.member as GuildMember;
+
+    // Verify staff permission
+    if (!roleService.isStaffOrExempt(staffMember)) {
+      return interaction.reply({
+        content: "⛔ Only authorized moderation staff can execute quick action buttons.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    const [scope, action, targetUserId, extra] = interaction.customId.split(":");
+
+    // Quick Action Mod-Log Buttons
+    if (scope === "quickmod") {
+      const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
+
+      if (action === "pardon") {
+        const replyText = `🕊️ **Marked as False Positive / Pardoned** by <@${interaction.user.id}>.`;
+        await interaction.reply({ content: replyText });
+        return;
+      }
+
+      if (!targetMember) {
+        return interaction.reply({ content: "⚠️ Target member is no longer in this server.", flags: MessageFlags.Ephemeral });
+      }
+
+      if (action === "mute1h") {
+        await targetMember.timeout(3600000, `Quick Action by ${interaction.user.tag}`);
+        await interaction.reply({ content: `⏳ <@${targetUserId}> timed out for 1 hour by <@${interaction.user.id}>.` });
+      } else if (action === "mute24h") {
+        await targetMember.timeout(86400000, `Quick Action by ${interaction.user.tag}`);
+        await interaction.reply({ content: `🔇 <@${targetUserId}> timed out for 24 hours by <@${interaction.user.id}>.` });
+      } else if (action === "kick") {
+        await targetMember.kick(`Quick Action by ${interaction.user.tag}`);
+        await interaction.reply({ content: `👢 <@${targetUserId}> kicked from the server by <@${interaction.user.id}>.` });
+      } else if (action === "ban") {
+        await targetMember.ban({ reason: `Quick Action by ${interaction.user.tag}` });
+        await interaction.reply({ content: `🔨 <@${targetUserId}> banned from the server by <@${interaction.user.id}>.` });
+      }
+      return;
+    }
+
+    // Appeal Resolution Buttons
+    if (scope === "appeal") {
+      const appealId = targetUserId; // mapped from split
+      const appealingUserId = extra;
+      const approved = action === "accept";
+
+      const appeal = modService.resolveAppeal(appealId, approved, interaction.user.tag);
+      if (approved && appealingUserId) {
+        const targetMember = await interaction.guild.members.fetch(appealingUserId).catch(() => null);
+        if (targetMember && targetMember.communicationDisabledUntilTimestamp) {
+          await targetMember.timeout(null, `Appeal approved by ${interaction.user.tag}`).catch(() => null);
+        }
+      }
+
+      return interaction.reply({
+        content: approved
+          ? `✅ **Appeal ${appealId} APPROVED** by <@${interaction.user.id}>. User timeout lifted.`
+          : `❌ **Appeal ${appealId} DENIED** by <@${interaction.user.id}>. Infraction stands.`,
+      });
+    }
+
+    // Report Actions
+    if (scope === "report") {
+      if (action === "dismiss") {
+        return interaction.reply({ content: `✅ Report dismissed by <@${interaction.user.id}>.` });
+      } else if (action === "delete") {
+        const [channelId, messageId] = [targetUserId, extra];
+        const channel = interaction.guild.channels.cache.get(channelId);
+        if (channel && channel.isTextBased()) {
+          const msg = await channel.messages.fetch(messageId).catch(() => null);
+          if (msg) await msg.delete().catch(() => null);
+        }
+        return interaction.reply({ content: `🗑️ Reported message deleted by <@${interaction.user.id}>.` });
+      }
+    }
+  }
+
+  // D. Chat Input Slash Commands
   if (interaction.isChatInputCommand()) {
     const { commandName, guildId } = interaction;
 
@@ -147,7 +286,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // Safety guard: if guild is not configured yet, decline execution and prompt /setup
     if (guildId && !roleService.isGuildConfigured(guildId)) {
       return interaction.reply({
-        content: "⚠️ **AegisMod is not set up on this server yet.**\nAn Administrator must run `/setup` first to configure staff roles and `#mod-logs` before moderation commands are unlocked.",
+        content:
+          "⚠️ **AegisMod is not set up on this server yet.**\nAn Administrator must run `/setup` first to configure staff roles and `#mod-logs` before moderation commands are unlocked.",
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -160,6 +300,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return testModCommand.execute(interaction, autoModService, triageService, geminiService);
     }
 
+    if (commandName === "userinfo") {
+      return userInfoCommand.execute(interaction, modService);
+    }
+
+    if (commandName === "antiraid") {
+      return antiRaidCommand.execute(interaction, antiRaidService);
+    }
+
+    if (commandName === "channelpolicy") {
+      return channelPolicyCommand.execute(interaction, channelPolicyService);
+    }
+
+    if (commandName === "appeal") {
+      return appealCommand.execute(interaction, modService, loggingService);
+    }
+
+    if (commandName === "modstats") {
+      return modStatsCommand.execute(interaction);
+    }
+
     const modCmd = moderationCommands.find((c) => c.data.name === commandName);
     if (modCmd) {
       return modCmd.execute(interaction, modService);
@@ -169,7 +329,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // 6. Message Event Listeners
 client.on(Events.MessageCreate, (message) => {
-  handleMessageCreate(message, triageService, geminiService, loggingService, roleService, autoModService);
+  handleMessageCreate(
+    message,
+    triageService,
+    geminiService,
+    loggingService,
+    roleService,
+    autoModService,
+    channelPolicyService,
+    modService
+  );
 });
 
 client.on(Events.MessageUpdate, (oldMsg, newMsg) => {

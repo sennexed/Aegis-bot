@@ -5,6 +5,9 @@
  */
 
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   ChannelType,
   EmbedBuilder,
   Guild,
@@ -155,9 +158,133 @@ export class LoggingService {
       contentAlert = `🚨 **CRITICAL YOUTH SAFETY ALERT:** Immediate staff review required! ${pingText}`;
     }
 
+    // Interactive Discord Mod-Log Quick Action Buttons
+    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`quickmod:pardon:${message.author.id}:${message.id}`)
+        .setLabel("Pardon / False Positive")
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji("🕊️"),
+      new ButtonBuilder()
+        .setCustomId(`quickmod:mute1h:${message.author.id}`)
+        .setLabel("Mute 1h")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("⏳"),
+      new ButtonBuilder()
+        .setCustomId(`quickmod:mute24h:${message.author.id}`)
+        .setLabel("Mute 24h")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("🔇"),
+      new ButtonBuilder()
+        .setCustomId(`quickmod:kick:${message.author.id}`)
+        .setLabel("Kick")
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji("👢"),
+      new ButtonBuilder()
+        .setCustomId(`quickmod:ban:${message.author.id}`)
+        .setLabel("Ban")
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji("🔨")
+    );
+
     await logChannel.send({
       content: contentAlert,
       embeds: [embed],
+      components: [actionRow],
+    });
+  }
+
+  /**
+   * Dispatches log for a user-submitted message report (Context Menu)
+   */
+  public async logUserReport(
+    guild: Guild,
+    reporter: User,
+    reportedMessage: Message,
+    reason: string
+  ) {
+    const logChannel = await this.ensureLogChannel(guild);
+
+    const embed = new EmbedBuilder()
+      .setTitle("🚩 User Report Submitted")
+      .setColor(0xe67e22)
+      .addFields(
+        { name: "Reported Author", value: `${reportedMessage.author.tag} (<@${reportedMessage.author.id}>)`, inline: true },
+        { name: "Reported By", value: `${reporter.tag} (<@${reporter.id}>)`, inline: true },
+        { name: "Channel", value: `<#${reportedMessage.channel.id}>`, inline: true },
+        { name: "User's Reason", value: reason || "No specific reason provided" },
+        {
+          name: "Message Content",
+          value: reportedMessage.content ? `\`\`\`${reportedMessage.content.slice(0, 1000)}\`\`\`` : "*[Embed or Attachment]*",
+        },
+        { name: "Jump to Message", value: `[Click Here to View](${reportedMessage.url})` }
+      )
+      .setFooter({ text: `Message ID: ${reportedMessage.id}` })
+      .setTimestamp();
+
+    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`report:dismiss:${reportedMessage.id}`)
+        .setLabel("Dismiss Report")
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(`quickmod:mute1h:${reportedMessage.author.id}`)
+        .setLabel("Mute Author 1h")
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`report:delete:${reportedMessage.channel.id}:${reportedMessage.id}`)
+        .setLabel("Delete Reported Message")
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    await logChannel.send({
+      content: "⚠️ **NEW USER REPORT:** Please review flagged behavior.",
+      embeds: [embed],
+      components: [actionRow],
+    });
+  }
+
+  /**
+   * Dispatches log for a user punishment appeal
+   */
+  public async logAppealSubmission(
+    guild: Guild,
+    user: User,
+    caseId: string,
+    appealId: string,
+    reason: string
+  ) {
+    const logChannel = await this.ensureLogChannel(guild);
+
+    const embed = new EmbedBuilder()
+      .setTitle("📬 Infraction Appeal Received")
+      .setColor(0x3498db)
+      .setThumbnail(user.displayAvatarURL())
+      .addFields(
+        { name: "Appealing User", value: `${user.tag} (<@${user.id}>)`, inline: true },
+        { name: "Case ID", value: `\`${caseId}\``, inline: true },
+        { name: "Appeal ID", value: `\`${appealId}\``, inline: true },
+        { name: "User's Explanation", value: reason }
+      )
+      .setFooter({ text: "Use buttons below to review and resolve appeal" })
+      .setTimestamp();
+
+    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`appeal:accept:${appealId}:${user.id}`)
+        .setLabel("Approve Appeal (Unmute)")
+        .setStyle(ButtonStyle.Success)
+        .setEmoji("✅"),
+      new ButtonBuilder()
+        .setCustomId(`appeal:deny:${appealId}:${user.id}`)
+        .setLabel("Deny Appeal")
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji("❌")
+    );
+
+    await logChannel.send({
+      embeds: [embed],
+      components: [actionRow],
     });
   }
 

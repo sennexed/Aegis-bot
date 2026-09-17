@@ -22,9 +22,24 @@ export interface InfractionRecord {
   timestamp: number;
 }
 
+export interface AppealRecord {
+  appealId: string;
+  guildId: string;
+  userId: string;
+  userTag: string;
+  caseId: string;
+  reason: string;
+  status: "PENDING" | "APPROVED" | "DENIED";
+  submittedAt: number;
+  reviewedAt?: number;
+  reviewedBy?: string;
+}
+
 export class TraditionalModService {
   private infractions = new Map<string, InfractionRecord[]>(); // guildId:userId -> InfractionRecord[]
+  private appeals = new Map<string, AppealRecord>(); // appealId -> AppealRecord
   private caseCounter = 1000;
+  private appealCounter = 500;
   private infractionsFilePath = path.join(process.cwd(), "infractions.json");
   private writeQueue: Promise<void> = Promise.resolve();
 
@@ -303,5 +318,144 @@ export class TraditionalModService {
     if (hours < 24) return `${hours} hours`;
     const days = Math.floor(hours / 24);
     return `${days} days`;
+  }
+
+  /**
+   * Returns active infractions within a sliding window (e.g. 30 days)
+   */
+  public getRecentStrikes(guildId: string, userId: string, windowDays: number = 30): InfractionRecord[] {
+    const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000;
+    const all = this.getUserCases(guildId, userId);
+    return all.filter((c) => c.timestamp >= cutoff && c.action !== "UNMUTE");
+  }
+
+  /**
+   * Computes automatic progressive penalty based on strike count:
+   * 1st: Warning
+   * 2nd: 1-hour timeout
+   * 3rd: 24-hour timeout
+   * 4th+: Ban
+   */
+  public calculateEscalation(guildId: string, userId: string): {
+    strikeCount: number;
+    recommendedPenalty: "WARN" | "TIMEOUT_1H" | "TIMEOUT_24H" | "BAN";
+    reason: string;
+    durationMs?: number;
+  } {
+    const recent = this.getRecentStrikes(guildId, userId, 30);
+    const count = recent.length + 1; // including the new infraction
+
+    if (count === 1) {
+      return {
+        strikeCount: count,
+        recommendedPenalty: "WARN",
+        reason: "1st Strike: Official DM Warning issued.",
+      };
+    } else if (count === 2) {
+      return {
+        strikeCount: count,
+        recommendedPenalty: "TIMEOUT_1H",
+        durationMs: 60 * 60 * 1000,
+        reason: "2nd Strike within 30 days: Automatic 1-Hour Timeout applied.",
+      };
+    } else if (count === 3) {
+      return {
+        strikeCount: count,
+        recommendedPenalty: "TIMEOUT_24H",
+        durationMs: 24 * 60 * 60 * 1000,
+        reason: "3rd Strike within 30 days: Automatic 24-Hour Timeout applied.",
+      };
+    } else {
+      return {
+        strikeCount: count,
+        recommendedPenalty: "BAN",
+        reason: `${count}th Strike: Exceeded 3 strikes. Automatic Ban triggered.`,
+      };
+    }
+  }
+
+  /**
+   * Computes User Trust Score (0-100%) and Risk Tier for /userinfo Passport
+   */
+  public calculateTrustScore(
+    guildId: string,
+    userId: string,
+    accountCreatedAt: number,
+    joinedAt: number
+  ): {
+    score: number;
+    riskTier: "CLEAN" | "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK";
+    totalInfractions: number;
+    accountAgeDays: number;
+    serverTenureDays: number;
+  } {
+    const now = Date.now();
+    const accountAgeDays = Math.max(0, Math.floor((now - accountCreatedAt) / (86400 * 1000)));
+    const serverTenureDays = Math.max(0, Math.floor((now - joinedAt) / (86400 * 1000)));
+    const infractions = this.getUserCases(guildId, userId);
+
+    let score = 100;
+    // Penalty for infractions
+    for (const inf of infractions) {
+      if (inf.action === "WARN") score -= 10;
+      else if (inf.action === "MUTE") score -= 20;
+      else if (inf.action === "KICK") score -= 35;
+      else if (inf.action === "BAN") score -= 50;
+    }
+
+    // New account penalty
+    if (accountAgeDays < 7) score -= 15;
+    else if (accountAgeDays < 30) score -= 5;
+
+    // Seniority bonus
+    if (serverTenureDays > 90) score += 5;
+
+    score = Math.max(0, Math.min(100, score));
+
+    let riskTier: "CLEAN" | "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" = "CLEAN";
+    if (score < 40) riskTier = "HIGH_RISK";
+    else if (score < 70) riskTier = "MEDIUM_RISK";
+    else if (score < 90) riskTier = "LOW_RISK";
+
+    return {
+      score,
+      riskTier,
+      totalInfractions: infractions.length,
+      accountAgeDays,
+      serverTenureDays,
+    };
+  }
+
+  /**
+   * Registers a user appeal
+   */
+  public createAppeal(guildId: string, userId: string, userTag: string, caseId: string, reason: string): AppealRecord {
+    const appealId = `APP-${++this.appealCounter}`;
+    const record: AppealRecord = {
+      appealId,
+      guildId,
+      userId,
+      userTag,
+      caseId,
+      reason,
+      status: "PENDING",
+      submittedAt: Date.now(),
+    };
+    this.appeals.set(appealId, record);
+    return record;
+  }
+
+  public getPendingAppeals(guildId?: string): AppealRecord[] {
+    const all = Array.from(this.appeals.values());
+    return all.filter((a) => a.status === "PENDING" && (!guildId || a.guildId === guildId));
+  }
+
+  public resolveAppeal(appealId: string, approved: boolean, moderatorTag: string): AppealRecord | null {
+    const record = this.appeals.get(appealId);
+    if (!record) return null;
+    record.status = approved ? "APPROVED" : "DENIED";
+    record.reviewedAt = Date.now();
+    record.reviewedBy = moderatorTag;
+    return record;
   }
 }
