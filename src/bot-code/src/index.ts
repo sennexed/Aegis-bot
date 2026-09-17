@@ -27,6 +27,9 @@ import { AutoModService } from "./services/autoModService.js";
 import { AntiRaidService } from "./services/antiRaidService.js";
 import { ChannelPolicyService } from "./services/channelPolicyService.js";
 import { ANALYTICS_SERVICE } from "./services/analyticsService.js";
+import { DutyService } from "./services/dutyService.js";
+import { ModMailService } from "./services/modMailService.js";
+import { AuditExportService } from "./services/auditExportService.js";
 
 import { setupCommand } from "./commands/setup.js";
 import { moderationCommands } from "./commands/moderation.js";
@@ -38,6 +41,9 @@ import { channelPolicyCommand } from "./commands/channelpolicy.js";
 import { reportMessageContextMenu } from "./commands/reportMessage.js";
 import { appealCommand } from "./commands/appeal.js";
 import { modStatsCommand } from "./commands/modstats.js";
+import { dutyCommand } from "./commands/duty.js";
+import { modMailCommand } from "./commands/modmail.js";
+import { exportLogsCommand } from "./commands/exportlogs.js";
 
 import { handleMessageCreate } from "./events/messageCreate.js";
 import { handleMessageUpdate } from "./events/messageUpdate.js";
@@ -67,6 +73,9 @@ const geminiService = new GeminiModerationService(process.env.GEMINI_API_KEY);
 const autoModService = new AutoModService();
 const antiRaidService = new AntiRaidService(loggingService);
 const channelPolicyService = new ChannelPolicyService();
+const dutyService = new DutyService();
+const modMailService = new ModMailService();
+const auditExportService = new AuditExportService();
 
 // 3. Register Slash Commands
 export async function syncGuildCommands(guildId: string, isSetupComplete: boolean) {
@@ -88,6 +97,9 @@ export async function syncGuildCommands(guildId: string, isSetupComplete: boolea
     reportMessageContextMenu.data.toJSON(),
     appealCommand.data.toJSON(),
     modStatsCommand.data.toJSON(),
+    dutyCommand.data.toJSON(),
+    modMailCommand.data.toJSON(),
+    exportLogsCommand.data.toJSON(),
     ...moderationCommands.map((c) => c.data.toJSON()),
   ];
 
@@ -318,6 +330,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (commandName === "modstats") {
       return modStatsCommand.execute(interaction);
+    }
+
+    if (commandName === "duty") {
+      return dutyCommand.execute(interaction, dutyService, roleService);
+    }
+
+    if (commandName === "modmail") {
+      return modMailCommand.execute(interaction, modMailService, roleService, loggingService);
+    }
+
+    if (commandName === "exportlogs") {
+      return exportLogsCommand.execute(interaction, auditExportService, modService, roleService);
     }
 
     const modCmd = moderationCommands.find((c) => c.data.name === commandName);

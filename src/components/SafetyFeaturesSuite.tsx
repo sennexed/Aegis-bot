@@ -16,12 +16,19 @@ import {
   XCircle,
   RefreshCw,
   Search,
+  Clock,
+  Inbox,
+  FileSpreadsheet,
+  Download,
+  Copy,
+  Check,
+  UserPlus,
 } from "lucide-react";
 import { PHISHING_FILTER } from "../bot-code/src/config/phishingFilter";
 import { POLICY_DEFINITIONS, ChannelPolicyProfile } from "../bot-code/src/services/channelPolicyService";
 
 export const SafetyFeaturesSuite: React.FC = () => {
-  const [selectedSubTab, setSelectedSubTab] = useState<string>("passport");
+  const [selectedSubTab, setSelectedSubTab] = useState<string>("duty");
 
   // 1. Passport state
   const [targetUser, setTargetUser] = useState({
@@ -104,6 +111,104 @@ export const SafetyFeaturesSuite: React.FC = () => {
     },
   ]);
 
+  // 7. Staff Duty Tracker state
+  const [dutyStaff, setDutyStaff] = useState([
+    {
+      id: "u-1",
+      userTag: "Sarah_Mod#4012",
+      role: "Moderator",
+      isOnDuty: true,
+      shiftMinutes: 84,
+      note: "Covering #voice-chat & general teen lounge",
+      totalHours: "28h 15m",
+    },
+    {
+      id: "u-2",
+      userTag: "JakeSenior#9901",
+      role: "Senior Moderator",
+      isOnDuty: true,
+      shiftMinutes: 38,
+      note: "Active triage in #gaming-banter",
+      totalHours: "45h 50m",
+    },
+    {
+      id: "u-3",
+      userTag: "ElenaAdmin#0003",
+      role: "Administrator",
+      isOnDuty: false,
+      shiftMinutes: 0,
+      note: "Off shift",
+      totalHours: "62h 10m",
+    },
+  ]);
+  const [myDutyNote, setMyDutyNote] = useState("Evening safety monitoring & chat triage");
+  const [isSelfOnDuty, setIsSelfOnDuty] = useState(false);
+  const [myShiftMinutes, setMyShiftMinutes] = useState(0);
+
+  // 8. Anonymous Staff Mod-Mail state
+  const [modmailTickets, setModmailTickets] = useState([
+    {
+      id: "MM-1001",
+      userTag: "Jordan#4891",
+      subject: "Unsolicited inappropriate DMs from a server member",
+      category: "BULLYING_HARASSMENT",
+      status: "WAITING_STAFF",
+      updatedAt: "5 minutes ago",
+      messages: [
+        {
+          id: "m-1",
+          sender: "USER",
+          author: "Jordan#4891",
+          content: "Hi moderators, someone named ShadowX in #general-gaming DM'd me asking for my private phone number and home address. I told them no and they called me names.",
+          time: "10:14 AM",
+        },
+      ],
+    },
+    {
+      id: "MM-1002",
+      userTag: "SkyBlue#2319",
+      subject: "Question about warning appeal timeline",
+      category: "APPEAL_INQUIRY",
+      status: "WAITING_USER",
+      updatedAt: "25 minutes ago",
+      messages: [
+        {
+          id: "m-2",
+          sender: "USER",
+          author: "SkyBlue#2319",
+          content: "Hello, I submitted an appeal for CASE-398 yesterday. How long does review take?",
+          time: "09:45 AM",
+        },
+        {
+          id: "m-3",
+          sender: "STAFF",
+          author: "AegisMod Staff (Anonymous)",
+          content: "Hello SkyBlue. Appeals are reviewed within 24 to 48 hours by senior moderators. You will receive a DM notification as soon as a decision is recorded.",
+          time: "09:52 AM",
+        },
+      ],
+    },
+  ]);
+  const [selectedTicketId, setSelectedTicketId] = useState("MM-1001");
+  const [replyText, setReplyText] = useState("");
+  const [sendAnonymous, setSendAnonymous] = useState(true);
+
+  // 9. Audit Log & Transparency Exporter state
+  const [exportTimeframe, setExportTimeframe] = useState("30");
+  const [exportActionFilter, setExportActionFilter] = useState("ALL");
+  const [exportFormatTab, setExportFormatTab] = useState<"summary" | "csv" | "json">("summary");
+  const [copiedNotification, setCopiedNotification] = useState(false);
+
+  // Sample Audit Records for Exporter
+  const sampleAuditRecords = [
+    { caseId: "CASE-1048", timestamp: "2026-09-17T03:45:00Z", user: "BadActor#9912", mod: "System AutoMod", action: "BAN", reason: "Zero-tolerance predatory grooming attempt detected." },
+    { caseId: "CASE-1047", timestamp: "2026-09-17T01:20:00Z", user: "ScamBot#0014", mod: "AegisMod AI", action: "TIMEOUT_24H", reason: "Phishing link distribution: discrod-gift-nitro.ru" },
+    { caseId: "CASE-1046", timestamp: "2026-09-16T22:15:00Z", user: "TrollGuy#4412", mod: "Sarah_Mod#4012", action: "TIMEOUT_1H", reason: "Targeted harassment towards teen members in #gaming" },
+    { caseId: "CASE-1045", timestamp: "2026-09-16T18:05:00Z", user: "Alex#1201", mod: "JakeSenior#9901", action: "WARN", reason: "Excessive uppercase flooding & caps lock spam" },
+    { caseId: "CASE-1044", timestamp: "2026-09-15T14:30:00Z", user: "RaidBot#7719", mod: "Anti-Raid Gatekeeper", action: "BAN", reason: "Mass raid join velocity spike quota exceeded" },
+    { caseId: "CASE-1043", timestamp: "2026-09-15T11:00:00Z", user: "Elena#9921", mod: "Sarah_Mod#4012", action: "UNMUTE", reason: "Appeal APP-102 approved after context review" },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -112,19 +217,19 @@ export const SafetyFeaturesSuite: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-indigo-600 font-semibold text-sm">
               <Zap className="w-4 h-4" />
-              <span>AegisMod Suite 2.0 • 10 Applied Upgrades</span>
+              <span>AegisMod Suite 2.0 • 13 Advanced Safety & Operations Features</span>
             </div>
             <h2 className="text-2xl font-bold text-zinc-900 mt-1">
-              Advanced Moderation, Safety & Gatekeeper Suite
+              Advanced Moderation, Safety & Governance Suite
             </h2>
             <p className="text-sm text-zinc-600 mt-1">
-              All 10 requested teen safety upgrades are integrated and running on Discord.js v14 with Gemini 3.8 Flash.
+              Complete hybrid teen safety operations: AI Triage, Anti-Raid Gatekeeper, Staff On-Duty Tracking, Anonymous Mod-Mail, and Compliance Audit Exporter.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 bg-emerald-50 text-emerald-700 font-medium text-xs rounded-full border border-emerald-200 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5" /> All 10 Features Active
+              <CheckCircle2 className="w-3.5 h-3.5" /> 13 Systems Online
             </span>
           </div>
         </div>
@@ -132,6 +237,9 @@ export const SafetyFeaturesSuite: React.FC = () => {
         {/* Feature Sub-Navigation */}
         <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-zinc-100">
           {[
+            { id: "duty", label: "Staff Duty Tracker (/duty)", icon: Clock },
+            { id: "modmail", label: "Anonymous Mod-Mail (/modmail)", icon: Inbox },
+            { id: "exportlogs", label: "Audit Exporter (/exportlogs)", icon: FileSpreadsheet },
             { id: "passport", label: "User Passport (/userinfo)", icon: UserCheck },
             { id: "interactive-logs", label: "Mod-Log Buttons", icon: Sliders },
             { id: "escalation", label: "Strike Escalation", icon: Scale },
@@ -741,6 +849,651 @@ export const SafetyFeaturesSuite: React.FC = () => {
               <li>AegisMod routes the report directly to `#mod-logs` with quick resolution buttons.</li>
             </ol>
           </div>
+        </div>
+      )}
+
+      {/* SUB-VIEW 11: STAFF ON-DUTY SHIFT TRACKER (/duty) */}
+      {selectedSubTab === "duty" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left: Moderator Duty Station */}
+          <div className="lg:col-span-1 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm space-y-5">
+            <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-indigo-600" />
+              Staff Duty Station (`/duty`)
+            </h3>
+            <p className="text-xs text-zinc-600 leading-relaxed">
+              Moderators toggle active duty shifts so emergency pings, mod-mail, and user reports are only sent to staff currently active.
+            </p>
+
+            <div className={`p-4 rounded-xl border ${isSelfOnDuty ? "bg-emerald-50/70 border-emerald-200" : "bg-zinc-50 border-zinc-200"} space-y-3`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-zinc-700">My Shift Status:</span>
+                <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${isSelfOnDuty ? "bg-emerald-600 text-white" : "bg-zinc-300 text-zinc-700"}`}>
+                  {isSelfOnDuty ? "🟢 ON DUTY" : "⚪ OFF DUTY"}
+                </span>
+              </div>
+
+              {isSelfOnDuty && (
+                <div className="text-xs text-emerald-800 bg-white/80 p-2.5 rounded-lg border border-emerald-100 flex items-center justify-between">
+                  <span>Shift Active:</span>
+                  <span className="font-mono font-bold">{myShiftMinutes} minutes</span>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-medium text-zinc-700 block mb-1">Shift Assignment Note:</label>
+                <input
+                  type="text"
+                  value={myDutyNote}
+                  disabled={isSelfOnDuty}
+                  onChange={(e) => setMyDutyNote(e.target.value)}
+                  placeholder="e.g. Covering #voice-chat until 8 PM"
+                  className="w-full text-xs px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white disabled:bg-zinc-100"
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  if (!isSelfOnDuty) {
+                    setIsSelfOnDuty(true);
+                    setMyShiftMinutes(1);
+                    setDutyStaff([
+                      ...dutyStaff,
+                      {
+                        id: `self-${Date.now()}`,
+                        userTag: "You (Active Moderator)",
+                        role: "Moderator",
+                        isOnDuty: true,
+                        shiftMinutes: 1,
+                        note: myDutyNote || "Active chat monitoring",
+                        totalHours: "12h 40m",
+                      },
+                    ]);
+                  } else {
+                    setIsSelfOnDuty(false);
+                    setDutyStaff(dutyStaff.filter((s) => !s.userTag.startsWith("You")));
+                  }
+                }}
+                className={`w-full py-2 px-4 rounded-lg font-semibold text-xs transition-colors flex items-center justify-center gap-2 ${
+                  isSelfOnDuty
+                    ? "bg-rose-600 hover:bg-rose-700 text-white"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                {isSelfOnDuty ? "Clock Out (/duty off)" : "Clock In (/duty on)"}
+              </button>
+            </div>
+
+            <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-900 space-y-2">
+              <div className="font-bold flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                Anti-Burnout & Alert Routing
+              </div>
+              <p className="text-[11px] leading-relaxed text-indigo-800">
+                Staff can step away for school or sleep without turning off notifications entirely. When off-duty, AegisMod suppresses non-critical pings.
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Active Roster & Statistics */}
+          <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-indigo-600" />
+                  Active Moderation Roster (`/duty list`)
+                </h3>
+                <span className="text-xs text-zinc-500">Live view of on-duty staff coverage</span>
+              </div>
+              <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold">
+                {dutyStaff.filter((s) => s.isOnDuty).length} Staff On Shift
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {dutyStaff.map((staff) => (
+                <div
+                  key={staff.id}
+                  className={`p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    staff.isOnDuty ? "bg-white border-zinc-200 shadow-sm" : "bg-zinc-50/60 border-zinc-200 opacity-60"
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${staff.isOnDuty ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
+                      <span className="font-bold text-sm text-zinc-900">{staff.userTag}</span>
+                      <span className="px-2 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[10px] font-semibold">
+                        {staff.role}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-600 italic">
+                      "{staff.note}"
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs font-medium">
+                    {staff.isOnDuty && (
+                      <div className="text-right">
+                        <span className="text-zinc-500 block text-[10px]">Active Shift</span>
+                        <span className="text-indigo-600 font-bold">{staff.shiftMinutes}m</span>
+                      </div>
+                    )}
+                    <div className="text-right">
+                      <span className="text-zinc-500 block text-[10px]">Total Logged</span>
+                      <span className="text-zinc-700">{staff.totalHours}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-zinc-100 pt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
+              <span>Discord slash commands: <code>/duty on</code>, <code>/duty off</code>, <code>/duty list</code></span>
+              <span>Auto-logs shift durations to <code>data/staff_duty.json</code></span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-VIEW 12: ANONYMOUS STAFF MOD-MAIL (/modmail) */}
+      {selectedSubTab === "modmail" && (
+        <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                <Inbox className="w-5 h-5 text-indigo-600" />
+                Anonymous Staff Mod-Mail Desk (`/modmail`)
+              </h3>
+              <p className="text-xs text-zinc-600 mt-1">
+                Enables teens to report bullying, stalkers, or sensitive issues privately. Staff can reply anonymously as <strong>AegisMod Staff</strong> to protect individual moderators from retaliation.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const newId = `MM-${1000 + modmailTickets.length + 1}`;
+                const newTicket = {
+                  id: newId,
+                  userTag: `TeenStudent#${Math.floor(1000 + Math.random() * 9000)}`,
+                  subject: "Distressing message in study room",
+                  category: "SAFETY_CONCERN" as const,
+                  status: "WAITING_STAFF" as const,
+                  updatedAt: "Just now",
+                  messages: [
+                    {
+                      id: `m-new`,
+                      sender: "USER" as const,
+                      author: "TeenStudent",
+                      content: "Can someone help me? A member in #study-hall is saying weird things to my friend.",
+                      time: "Just now",
+                    },
+                  ],
+                };
+                setModmailTickets([newTicket, ...modmailTickets]);
+                setSelectedTicketId(newId);
+              }}
+              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs rounded-lg transition-colors border border-indigo-200 flex items-center gap-1.5 self-start md:self-auto"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Simulate Inbound Ticket
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Ticket List Sidebar */}
+            <div className="lg:col-span-1 border border-zinc-200 rounded-xl overflow-hidden divide-y divide-zinc-100 bg-zinc-50/50">
+              <div className="p-3 bg-zinc-100/70 text-xs font-bold text-zinc-700 flex items-center justify-between">
+                <span>Active Tickets ({modmailTickets.length})</span>
+                <span className="text-[10px] text-zinc-500 font-normal">Auto-Synced</span>
+              </div>
+              <div className="max-h-[460px] overflow-y-auto divide-y divide-zinc-100">
+                {modmailTickets.map((t) => {
+                  const isSel = t.id === selectedTicketId;
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => setSelectedTicketId(t.id)}
+                      className={`p-3.5 cursor-pointer transition-all ${
+                        isSel ? "bg-white border-l-4 border-l-indigo-600 shadow-sm" : "hover:bg-zinc-100/60"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-mono font-bold text-xs text-indigo-600">{t.id}</span>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                          t.status === "WAITING_STAFF"
+                            ? "bg-amber-100 text-amber-800"
+                            : t.status === "WAITING_USER"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-emerald-100 text-emerald-800"
+                        }`}>
+                          {t.status.replace("_", " ")}
+                        </span>
+                      </div>
+                      <div className="font-semibold text-xs text-zinc-800 truncate">{t.subject}</div>
+                      <div className="text-[11px] text-zinc-500 flex items-center justify-between mt-1">
+                        <span>{t.userTag}</span>
+                        <span>{t.updatedAt}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Conversation Window */}
+            {(() => {
+              const activeTicket = modmailTickets.find((t) => t.id === selectedTicketId) || modmailTickets[0];
+              if (!activeTicket) return null;
+
+              return (
+                <div className="lg:col-span-2 border border-zinc-200 rounded-xl overflow-hidden flex flex-col bg-white">
+                  {/* Ticket Header */}
+                  <div className="p-4 border-b border-zinc-200 bg-zinc-50/70 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-indigo-600 text-sm">{activeTicket.id}</span>
+                        <span className="font-bold text-sm text-zinc-900">{activeTicket.subject}</span>
+                      </div>
+                      <span className="text-xs text-zinc-500">
+                        From: <strong>{activeTicket.userTag}</strong> • Category: <span className="text-zinc-700">{activeTicket.category}</span>
+                      </span>
+                    </div>
+
+                    {activeTicket.status !== "CLOSED" && (
+                      <button
+                        onClick={() => {
+                          setModmailTickets(
+                            modmailTickets.map((t) =>
+                              t.id === activeTicket.id ? { ...t, status: "CLOSED" as const } : t
+                            )
+                          );
+                        }}
+                        className="px-3 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-medium rounded-lg transition-colors border border-zinc-300"
+                      >
+                        Resolve & Close
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Messages Bubble Area */}
+                  <div className="p-4 flex-1 overflow-y-auto space-y-3 min-h-[260px] max-h-[340px] bg-zinc-50/30">
+                    {activeTicket.messages.map((m) => {
+                      const isStaff = m.sender === "STAFF";
+                      return (
+                        <div key={m.id} className={`flex flex-col ${isStaff ? "items-end" : "items-start"}`}>
+                          <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 mb-0.5">
+                            <span className="font-bold">{m.author}</span>
+                            <span>•</span>
+                            <span>{m.time}</span>
+                          </div>
+                          <div
+                            className={`p-3 rounded-xl max-w-md text-xs leading-relaxed ${
+                              isStaff
+                                ? "bg-indigo-600 text-white rounded-br-none shadow-sm"
+                                : "bg-white border border-zinc-200 text-zinc-800 rounded-bl-none shadow-sm"
+                            }`}
+                          >
+                            {m.content}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Reply Input Bar */}
+                  {activeTicket.status !== "CLOSED" ? (
+                    <div className="p-3 border-t border-zinc-200 bg-white space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer text-zinc-700 font-medium">
+                          <input
+                            type="checkbox"
+                            checked={sendAnonymous}
+                            onChange={(e) => setSendAnonymous(e.target.checked)}
+                            className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span>🔒 Send Anonymously as "AegisMod Staff"</span>
+                        </label>
+                        <span className="text-[11px] text-zinc-400">Delivered via Discord DM</span>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && replyText.trim()) {
+                              const newMsg = {
+                                id: `msg-${Date.now()}`,
+                                sender: "STAFF" as const,
+                                author: sendAnonymous ? "AegisMod Staff (Anonymous)" : "Sarah_Mod#4012",
+                                content: replyText.trim(),
+                                time: "Just now",
+                              };
+                              setModmailTickets(
+                                modmailTickets.map((t) =>
+                                  t.id === activeTicket.id
+                                    ? {
+                                        ...t,
+                                        status: "WAITING_USER" as const,
+                                        messages: [...t.messages, newMsg],
+                                        updatedAt: "Just now",
+                                      }
+                                    : t
+                                )
+                              );
+                              setReplyText("");
+                            }
+                          }}
+                          placeholder="Type staff response (Press Enter or click Send)..."
+                          className="flex-1 text-xs px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        />
+                        <button
+                          onClick={() => {
+                            if (!replyText.trim()) return;
+                            const newMsg = {
+                              id: `msg-${Date.now()}`,
+                              sender: "STAFF" as const,
+                              author: sendAnonymous ? "AegisMod Staff (Anonymous)" : "Sarah_Mod#4012",
+                              content: replyText.trim(),
+                              time: "Just now",
+                            };
+                            setModmailTickets(
+                              modmailTickets.map((t) =>
+                                t.id === activeTicket.id
+                                  ? {
+                                      ...t,
+                                      status: "WAITING_USER" as const,
+                                      messages: [...t.messages, newMsg],
+                                      updatedAt: "Just now",
+                                    }
+                                  : t
+                              )
+                            );
+                            setReplyText("");
+                          }}
+                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Send
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 border-t border-zinc-200 bg-zinc-50 text-center text-xs text-zinc-500">
+                      🔒 This ticket was marked as resolved and closed.
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* SUB-VIEW 13: AUDIT LOG & TRANSPARENCY EXPORTER (/exportlogs) */}
+      {selectedSubTab === "exportlogs" && (
+        <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-indigo-600" />
+                Moderation Audit Log & Transparency Exporter (`/exportlogs`)
+              </h3>
+              <p className="text-xs text-zinc-600 mt-1">
+                Generates RFC-4180 CSV spreadsheets, structured JSON files, and executive summaries for server owners, school sponsors, and teen safety compliance audits.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const csvText = [
+                    "Case ID,Timestamp (UTC),Target User,Moderator,Action,Reason",
+                    ...sampleAuditRecords.map(
+                      (r) => `"${r.caseId}","${r.timestamp}","${r.user}","${r.mod}","${r.action}","${r.reason}"`
+                    ),
+                  ].join("\n");
+                  navigator.clipboard.writeText(csvText);
+                  setCopiedNotification(true);
+                  setTimeout(() => setCopiedNotification(false), 2000);
+                }}
+                className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold text-xs rounded-lg transition-colors border border-zinc-300 flex items-center gap-1.5"
+              >
+                {copiedNotification ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedNotification ? "Copied CSV!" : "Copy CSV"}
+              </button>
+
+              <button
+                onClick={() => {
+                  const blob = new Blob(
+                    [
+                      JSON.stringify(
+                        {
+                          exportDate: new Date().toISOString(),
+                          guildName: "Teen Gaming & Study Lounge",
+                          records: sampleAuditRecords,
+                        },
+                        null,
+                        2
+                      ),
+                    ],
+                    { type: "application/json" }
+                  );
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `aegismod_audit_${Date.now()}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download .JSON
+              </button>
+            </div>
+          </div>
+
+          {/* Controls: Timeframe, Filter, Format */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-zinc-700">Timeframe:</span>
+                <select
+                  value={exportTimeframe}
+                  onChange={(e) => setExportTimeframe(e.target.value)}
+                  className="px-2.5 py-1.5 border border-zinc-200 rounded-lg bg-white text-xs text-zinc-800 focus:outline-none"
+                >
+                  <option value="7">Past 7 Days</option>
+                  <option value="30">Past 30 Days</option>
+                  <option value="0">All-Time</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-zinc-700">Action Filter:</span>
+                <select
+                  value={exportActionFilter}
+                  onChange={(e) => setExportActionFilter(e.target.value)}
+                  className="px-2.5 py-1.5 border border-zinc-200 rounded-lg bg-white text-xs text-zinc-800 focus:outline-none"
+                >
+                  <option value="ALL">All Actions</option>
+                  <option value="BAN">Bans Only</option>
+                  <option value="TIMEOUT_24H">24h Timeouts</option>
+                  <option value="TIMEOUT_1H">1h Timeouts</option>
+                  <option value="WARN">Warnings</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 bg-zinc-200/70 p-1 rounded-lg text-xs font-semibold">
+              <button
+                onClick={() => setExportFormatTab("summary")}
+                className={`px-3 py-1 rounded-md transition-colors ${
+                  exportFormatTab === "summary" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-600 hover:text-zinc-900"
+                }`}
+              >
+                Executive Summary
+              </button>
+              <button
+                onClick={() => setExportFormatTab("csv")}
+                className={`px-3 py-1 rounded-md transition-colors ${
+                  exportFormatTab === "csv" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-600 hover:text-zinc-900"
+                }`}
+              >
+                CSV View
+              </button>
+              <button
+                onClick={() => setExportFormatTab("json")}
+                className={`px-3 py-1 rounded-md transition-colors ${
+                  exportFormatTab === "json" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-600 hover:text-zinc-900"
+                }`}
+              >
+                JSON Raw
+              </button>
+            </div>
+          </div>
+
+          {/* Display Output */}
+          {exportFormatTab === "summary" && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
+                  <span className="text-[11px] text-zinc-500 font-semibold block">Total Incidents</span>
+                  <span className="text-2xl font-black text-zinc-900 mt-1 block">6</span>
+                </div>
+                <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl">
+                  <span className="text-[11px] text-rose-600 font-semibold block">Total Bans</span>
+                  <span className="text-2xl font-black text-rose-950 mt-1 block">2</span>
+                </div>
+                <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl">
+                  <span className="text-[11px] text-orange-600 font-semibold block">Timeouts Applied</span>
+                  <span className="text-2xl font-black text-orange-950 mt-1 block">2</span>
+                </div>
+                <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                  <span className="text-[11px] text-amber-600 font-semibold block">Warnings</span>
+                  <span className="text-2xl font-black text-amber-950 mt-1 block">1</span>
+                </div>
+                <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+                  <span className="text-[11px] text-emerald-600 font-semibold block">Appeals Granted</span>
+                  <span className="text-2xl font-black text-emerald-950 mt-1 block">1</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 border border-zinc-200 rounded-xl bg-white space-y-3">
+                  <h4 className="font-bold text-xs text-zinc-800">Violation Breakdown by Category</h4>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-zinc-600">Predatory Grooming (Zero-Tolerance)</span>
+                      <span className="font-bold text-rose-600">1 (16.6%)</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-zinc-600">Phishing & Discord Nitro Scams</span>
+                      <span className="font-bold text-orange-600">1 (16.6%)</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-zinc-600">Cyberbullying & Harassment</span>
+                      <span className="font-bold text-amber-600">1 (16.6%)</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-zinc-600">Raid Flood Quota Exceeded</span>
+                      <span className="font-bold text-indigo-600">1 (16.6%)</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-zinc-600">Caps & Zalgo Spam Flooding</span>
+                      <span className="font-bold text-zinc-600">1 (16.6%)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border border-zinc-200 rounded-xl bg-white space-y-3">
+                  <h4 className="font-bold text-xs text-zinc-800">Staff & System Enforcement Distribution</h4>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-zinc-700">1. Sarah_Mod#4012</span>
+                      <span className="font-semibold text-zinc-900">2 actions (1 timeout, 1 appeal)</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-zinc-700">2. JakeSenior#9901</span>
+                      <span className="font-semibold text-zinc-900">1 action (1 warning)</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-zinc-700">3. System AutoMod (Zero-token)</span>
+                      <span className="font-semibold text-zinc-900">2 actions (1 raid ban, 1 spam ban)</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-zinc-700">4. Gemini 3.8 Flash AI</span>
+                      <span className="font-semibold text-zinc-900">1 action (1 phishing timeout)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {exportFormatTab === "csv" && (
+            <div className="border border-zinc-200 rounded-xl overflow-x-auto bg-zinc-50/50">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-zinc-100/80 text-zinc-700 border-b border-zinc-200">
+                  <tr>
+                    <th className="p-3 font-semibold">Case ID</th>
+                    <th className="p-3 font-semibold">Timestamp</th>
+                    <th className="p-3 font-semibold">Target User</th>
+                    <th className="p-3 font-semibold">Moderator</th>
+                    <th className="p-3 font-semibold">Action</th>
+                    <th className="p-3 font-semibold">Reason</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-200 bg-white">
+                  {sampleAuditRecords.map((r) => (
+                    <tr key={r.caseId} className="hover:bg-zinc-50">
+                      <td className="p-3 font-bold text-indigo-600">{r.caseId}</td>
+                      <td className="p-3 text-zinc-500">{r.timestamp}</td>
+                      <td className="p-3 text-zinc-800">{r.user}</td>
+                      <td className="p-3 text-zinc-600">{r.mod}</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          r.action === "BAN"
+                            ? "bg-rose-100 text-rose-800"
+                            : r.action.startsWith("TIMEOUT")
+                            ? "bg-amber-100 text-amber-800"
+                            : r.action === "UNMUTE"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}>
+                          {r.action}
+                        </span>
+                      </td>
+                      <td className="p-3 text-zinc-700 max-w-xs truncate">{r.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {exportFormatTab === "json" && (
+            <div className="border border-zinc-200 rounded-xl p-4 bg-zinc-950 text-emerald-400 font-mono text-xs overflow-x-auto max-h-[380px]">
+              <pre>
+                {JSON.stringify(
+                  {
+                    metadata: {
+                      exportVersion: "2.0.0",
+                      guild: "Teen Gaming & Study Lounge",
+                      generatedAt: new Date().toISOString(),
+                      timeframeDays: exportTimeframe,
+                      totalRecords: sampleAuditRecords.length,
+                    },
+                    records: sampleAuditRecords,
+                  },
+                  null,
+                  2
+                )}
+              </pre>
+            </div>
+          )}
         </div>
       )}
     </div>

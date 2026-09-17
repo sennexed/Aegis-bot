@@ -292,6 +292,16 @@ export class TraditionalModService {
     return this.infractions.get(`${guildId}:${userId}`) || [];
   }
 
+  public getAllGuildCases(guildId: string): InfractionRecord[] {
+    const results: InfractionRecord[] = [];
+    for (const [key, list] of this.infractions.entries()) {
+      if (key.startsWith(`${guildId}:`)) {
+        results.push(...list);
+      }
+    }
+    return results.sort((a, b) => b.timestamp - a.timestamp);
+  }
+
   public parseDurationString(input: string): number | null {
     const match = input.trim().match(/^(\d+)\s*(s|m|h|d|w)$/i);
     if (!match) return null;
