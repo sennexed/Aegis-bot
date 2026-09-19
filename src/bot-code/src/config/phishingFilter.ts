@@ -56,6 +56,12 @@ export class PhishingFilter {
   public checkContent(content: string, currentGuildId?: string): PhishingCheckResult {
     const lower = content.toLowerCase();
 
+    // 0. Whitelist recognized safe GIF platforms (Tenor, Giphy, Discord media/cdn)
+    const isPureSafeGif = /^(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com)\/[^\s]+$/i.test(content.trim());
+    if (isPureSafeGif) {
+      return { isMalicious: false, type: "NONE" };
+    }
+
     // 1. Check token grabbers & IP loggers
     for (const domain of this.tokenGrabberDomains) {
       if (lower.includes(domain)) {

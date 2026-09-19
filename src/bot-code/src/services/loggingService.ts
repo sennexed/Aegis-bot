@@ -6,6 +6,7 @@
 
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
@@ -20,6 +21,63 @@ import { AIAnalysisOutput } from "./geminiModerationService.js";
 
 export class LoggingService {
   private logChannelCache = new Map<string, string>(); // guildId -> channelId
+
+  /**
+   * Helper to safely fetch attachment buffers for permanent audit log archiving in #mod-logs
+   */
+  private async fetchAttachmentBuffers(message: Message): Promise<{
+    files: AttachmentBuilder[];
+    imageAttachmentName?: string;
+    mediaList: string[];
+  }> {
+    const files: AttachmentBuilder[] = [];
+    const mediaList: string[] = [];
+    let imageAttachmentName: string | undefined = undefined;
+
+    if (!message.attachments || message.attachments.size === 0) {
+      return { files, mediaList };
+    }
+
+    let imgIndex = 1;
+    for (const [, attachment] of message.attachments) {
+      const isImg =
+        attachment.contentType?.startsWith("image/") ||
+        /\.(png|jpe?g|webp|gif)$/i.test(attachment.name || "");
+      const safeName = attachment.name || `attachment_${imgIndex}.${isImg ? "png" : "dat"}`;
+      imgIndex++;
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s timeout
+        const res = await fetch(attachment.url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const arrayBuf = await res.arrayBuffer();
+          const buffer = Buffer.from(arrayBuf);
+          files.push(new AttachmentBuilder(buffer, { name: safeName }));
+          if (isImg && !imageAttachmentName) {
+            imageAttachmentName = safeName;
+          }
+          mediaList.push(`📷 **${safeName}** (${(attachment.size / 1024).toFixed(1)} KB)`);
+        } else {
+          files.push(new AttachmentBuilder(attachment.url, { name: safeName }));
+          mediaList.push(`📎 **[${safeName}](${attachment.url})** (${(attachment.size / 1024).toFixed(1)} KB)`);
+          if (isImg && !imageAttachmentName) {
+            imageAttachmentName = safeName;
+          }
+        }
+      } catch {
+        files.push(new AttachmentBuilder(attachment.url, { name: safeName }));
+        mediaList.push(`📎 **[${safeName}](${attachment.url})**`);
+        if (isImg && !imageAttachmentName) {
+          imageAttachmentName = safeName;
+        }
+      }
+    }
+
+    return { files, imageAttachmentName, mediaList };
+  }
 
   /**
    * Ensures a dedicated, secure #mod-logs channel exists with strict permissions.
@@ -113,10 +171,26 @@ export class LoggingService {
     message: Message,
     aiResult: AIAnalysisOutput,
     actionTaken: string,
-    options?: { requiresStaffNotification?: boolean; staffRoleIds?: string[] }
+    options?: { requiresStaffNotification?: boolean; staffRoleIds?: string[] },
+    imageAttachment?: { buffer?: Buffer; url?: string; filename?: string; contentType?: string }
   ) {
     if (!message.guild) return;
     const logChannel = await this.ensureLogChannel(message.guild);
+
+    const files: AttachmentBuilder[] = [];
+    let imageFilename: string | undefined = undefined;
+
+    if (imageAttachment?.buffer) {
+      imageFilename = imageAttachment.filename || `flagged_${Date.now()}.png`;
+      files.push(new AttachmentBuilder(imageAttachment.buffer, { name: imageFilename }));
+    } else if (imageAttachment?.url) {
+      imageFilename = imageAttachment.filename || "flagged_image.png";
+      files.push(new AttachmentBuilder(imageAttachment.url, { name: imageFilename }));
+    } else if (message.attachments && message.attachments.size > 0) {
+      const { files: fetchedFiles, imageAttachmentName } = await this.fetchAttachmentBuffers(message);
+      files.push(...fetchedFiles);
+      imageFilename = imageAttachmentName;
+    }
 
     const embed = new EmbedBuilder()
       .setTitle(`🤖 AI Moderation Action: ${actionTaken}`)
@@ -132,7 +206,10 @@ export class LoggingService {
         iconURL: message.author.displayAvatarURL(),
       })
       .addFields(
-        { name: "Offending Content", value: `\`\`\`${message.content.slice(0, 1000)}\`\`\`` },
+        {
+          name: "Offending Content",
+          value: message.content ? `\`\`\`${message.content.slice(0, 1000)}\`\`\`` : (imageFilename ? "*[Flagged Image Upload without text]*" : "*[No text content]*"),
+        },
         { name: "Category", value: `\`${aiResult.category}\``, inline: true },
         { name: "Severity", value: `\`${aiResult.severity}\``, inline: true },
         { name: "Confidence", value: `${Math.round(aiResult.confidence * 100)}%`, inline: true },
@@ -142,6 +219,14 @@ export class LoggingService {
       )
       .setFooter({ text: "AegisMod AI Engine • Powered by Gemini 3.8 Flash" })
       .setTimestamp();
+
+    if (imageFilename) {
+      embed.setImage(`attachment://${imageFilename}`);
+      embed.addFields({
+        name: "Flagged Image Evidence",
+        value: `📷 Image preserved & logged: \`${imageFilename}\``,
+      });
+    }
 
     if (aiResult.highlightedPhrases.length > 0) {
       embed.addFields({
@@ -158,7 +243,7 @@ export class LoggingService {
       contentAlert = `🚨 **CRITICAL YOUTH SAFETY ALERT:** Immediate staff review required! ${pingText}`;
     }
 
-    // Interactive Discord Mod-Log Quick Action Buttons
+    // Interactive Discord Mod-Log Quick Action Buttons (Non-Strict, No Bans)
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId(`quickmod:pardon:${message.author.id}:${message.id}`)
@@ -166,31 +251,32 @@ export class LoggingService {
         .setStyle(ButtonStyle.Secondary)
         .setEmoji("🕊️"),
       new ButtonBuilder()
+        .setCustomId(`quickmod:warn:${message.author.id}`)
+        .setLabel("Warn DM")
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji("⚠️"),
+      new ButtonBuilder()
+        .setCustomId(`quickmod:mute15m:${message.author.id}`)
+        .setLabel("Mute 15m")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("⏱️"),
+      new ButtonBuilder()
         .setCustomId(`quickmod:mute1h:${message.author.id}`)
         .setLabel("Mute 1h")
         .setStyle(ButtonStyle.Primary)
         .setEmoji("⏳"),
       new ButtonBuilder()
-        .setCustomId(`quickmod:mute24h:${message.author.id}`)
-        .setLabel("Mute 24h")
-        .setStyle(ButtonStyle.Primary)
-        .setEmoji("🔇"),
-      new ButtonBuilder()
         .setCustomId(`quickmod:kick:${message.author.id}`)
         .setLabel("Kick")
         .setStyle(ButtonStyle.Danger)
-        .setEmoji("👢"),
-      new ButtonBuilder()
-        .setCustomId(`quickmod:ban:${message.author.id}`)
-        .setLabel("Ban")
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji("🔨")
+        .setEmoji("👢")
     );
 
     await logChannel.send({
       content: contentAlert,
       embeds: [embed],
       components: [actionRow],
+      files: files.slice(0, 5),
     });
   }
 
@@ -205,6 +291,7 @@ export class LoggingService {
     pingContent?: string
   ) {
     const logChannel = await this.ensureLogChannel(guild);
+    const { files, imageAttachmentName, mediaList } = await this.fetchAttachmentBuffers(reportedMessage);
 
     const embed = new EmbedBuilder()
       .setTitle("🚩 User Report Submitted")
@@ -216,12 +303,20 @@ export class LoggingService {
         { name: "User's Reason", value: reason || "No specific reason provided" },
         {
           name: "Message Content",
-          value: reportedMessage.content ? `\`\`\`${reportedMessage.content.slice(0, 1000)}\`\`\`` : "*[Embed or Attachment]*",
+          value: reportedMessage.content ? `\`\`\`${reportedMessage.content.slice(0, 1000)}\`\`\`` : (mediaList.length > 0 ? "*[Image/Attachment Evidence]*" : "*[No text content]*"),
         },
         { name: "Jump to Message", value: `[Click Here to View](${reportedMessage.url})` }
       )
       .setFooter({ text: `Message ID: ${reportedMessage.id}` })
       .setTimestamp();
+
+    if (mediaList.length > 0) {
+      embed.addFields({ name: "Reported Media / Files", value: mediaList.slice(0, 5).join("\n") });
+    }
+
+    if (imageAttachmentName) {
+      embed.setImage(`attachment://${imageAttachmentName}`);
+    }
 
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
@@ -242,6 +337,7 @@ export class LoggingService {
       content: pingContent || "⚠️ **NEW USER REPORT:** Please review flagged behavior.",
       embeds: [embed],
       components: [actionRow],
+      files: files.slice(0, 5),
     });
   }
 
@@ -296,6 +392,8 @@ export class LoggingService {
     if (!message.guild || message.author.bot) return;
     const logChannel = await this.ensureLogChannel(message.guild);
 
+    const { files, imageAttachmentName, mediaList } = await this.fetchAttachmentBuffers(message);
+
     const embed = new EmbedBuilder()
       .setTitle("🗑️ Message Deleted")
       .setColor(0xe74c3c)
@@ -305,16 +403,33 @@ export class LoggingService {
       })
       .addFields(
         { name: "Author", value: `<@${message.author.id}>`, inline: true },
-        { name: "Channel", value: `<#${message.channel.id}>`, inline: true },
-        {
-          name: "Original Content",
-          value: message.content ? `\`\`\`${message.content.slice(0, 1000)}\`\`\`` : "*[No text content or embed/attachment]*",
-        }
-      )
+        { name: "Channel", value: `<#${message.channel.id}>`, inline: true }
+      );
+
+    const contentText = message.content
+      ? `\`\`\`${message.content.slice(0, 1000)}\`\`\``
+      : mediaList.length > 0
+      ? "*[Image / Media Upload without text]*"
+      : "*[No text content or embed/attachment]*";
+
+    embed.addFields({ name: "Original Content", value: contentText });
+
+    if (mediaList.length > 0) {
+      embed.addFields({
+        name: "Attached Media / Files",
+        value: mediaList.slice(0, 10).join("\n"),
+      });
+    }
+
+    if (imageAttachmentName) {
+      embed.setImage(`attachment://${imageAttachmentName}`);
+    }
+
+    embed
       .setFooter({ text: `Message ID: ${message.id}` })
       .setTimestamp();
 
-    await logChannel.send({ embeds: [embed] });
+    await logChannel.send({ embeds: [embed], files: files.slice(0, 10) });
   }
 
   /**

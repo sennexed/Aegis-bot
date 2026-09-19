@@ -74,6 +74,15 @@ export const TraditionalModSandbox: React.FC = () => {
   const handleExecute = () => {
     if (!targetMember) return;
 
+    // Restrict permanent bans in accordance with user safety guidelines
+    if (action === "BAN") {
+      setFeedback({
+        text: "Policy Enforced: Permanent bans are currently paused under server safety rules (Non-Strict Moderation Mode). Use /mute for a restorative cooldown or /warn.",
+        error: true,
+      });
+      return;
+    }
+
     // Discord Role Hierarchy Verification Check
     if (targetMember.role === "OWNER") {
       setFeedback({ text: "Error: Hierarchy Violation. You cannot moderate the Server Owner.", error: true });
@@ -189,10 +198,10 @@ export const TraditionalModSandbox: React.FC = () => {
               <label className="block text-xs font-semibold text-zinc-700 mb-1.5">Command Action</label>
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { id: "WARN", label: "/warn", icon: AlertTriangle, color: "text-amber-600" },
-                  { id: "MUTE", label: "/mute", icon: VolumeX, color: "text-purple-600" },
-                  { id: "KICK", label: "/kick", icon: UserX, color: "text-orange-600" },
-                  { id: "BAN", label: "/ban", icon: Gavel, color: "text-red-600" },
+                  { id: "WARN", label: "/warn", sub: "Reminder", icon: AlertTriangle, color: "text-amber-600" },
+                  { id: "MUTE", label: "/mute", sub: "Cooldown", icon: VolumeX, color: "text-purple-600" },
+                  { id: "KICK", label: "/kick", sub: "Leave", icon: UserX, color: "text-orange-600" },
+                  { id: "BAN", label: "/ban", sub: "Disabled", icon: Gavel, color: "text-zinc-400" },
                 ].map((act) => (
                   <button
                     key={act.id}
@@ -200,14 +209,15 @@ export const TraditionalModSandbox: React.FC = () => {
                       setAction(act.id as any);
                       setFeedback(null);
                     }}
-                    className={`py-2 px-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                    className={`py-2 px-2 rounded-xl border text-xs font-bold flex flex-col items-center gap-0.5 transition-all cursor-pointer ${
                       action === act.id
                         ? "border-indigo-600 bg-indigo-50 text-indigo-900 shadow-sm"
                         : "border-zinc-200 bg-zinc-50 text-zinc-600 hover:bg-zinc-100"
-                    }`}
+                    } ${act.id === "BAN" ? "opacity-60" : ""}`}
                   >
                     <act.icon className={`w-4 h-4 ${act.color}`} />
                     <span>{act.label}</span>
+                    <span className="text-[9px] font-normal text-zinc-500">{act.sub}</span>
                   </button>
                 ))}
               </div>
@@ -217,10 +227,10 @@ export const TraditionalModSandbox: React.FC = () => {
             {action === "MUTE" && (
               <div>
                 <label className="block text-xs font-semibold text-zinc-700 mb-1">
-                  Timeout Duration (<code className="text-zinc-600">10m</code>, <code className="text-zinc-600">1h</code>, <code className="text-zinc-600">24h</code>, <code className="text-zinc-600">7d</code>)
+                  Timeout Duration (<code className="text-zinc-600">5m</code>, <code className="text-zinc-600">15m</code>, <code className="text-zinc-600">1h</code>, <code className="text-zinc-600">2h</code>)
                 </label>
                 <div className="flex gap-2">
-                  {["10m", "1h", "24h", "7d"].map((dur) => (
+                  {["5m", "15m", "1h", "2h"].map((dur) => (
                     <button
                       key={dur}
                       onClick={() => setDuration(dur)}

@@ -63,6 +63,16 @@ function runLocalTriage(text: string): {
 } {
   const normalized = text.trim().toLowerCase();
   
+  // 0. Whitelist verified safe GIF platforms (Tenor, Giphy, Discord media/CDN)
+  const isPureSafeGif =
+    /^(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com)\/[^\s]+$/i.test(text.trim()) ||
+    /^(?:https?:\/\/)?(?:cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\/[^\s]+\.gif(?=[?#\s]|$)/i.test(text.trim()) ||
+    /^(?:https?:\/\/)[^\s]+\.gif(?=[?#\s]|$)/i.test(text.trim());
+
+  if (isPureSafeGif) {
+    return { status: "CLEAN_PASS" };
+  }
+
   // 1. Anti-Invite Link: Unauthorized discord.gg or discord.com/invite links
   const inviteRegex = /(?:https?:\/\/)?(?:www\.)?(?:discord\.(?:gg|io|me|li)|discord(?:app)?\.com\/invite)\/([a-zA-Z0-9_-]+)/i;
   const inviteMatch = text.match(inviteRegex);
@@ -137,11 +147,11 @@ function runLocalTriage(text: string): {
     const isPredatory = /send nudes|trade pics|drop snap|secretly/i.test(matched);
 
     const category = isSelfHarm ? "SELF_HARM" : isHate ? "HATE_SPEECH" : "SEXUAL_GROOMING_OR_PREDATORY";
-    const recommendedAction = isPredatory ? "BAN" : (isSelfHarm || isHate) ? "TIMEOUT_24H" : "TIMEOUT_1H";
+    const recommendedAction = isPredatory ? "TIMEOUT_1H" : (isSelfHarm || isHate) ? "DELETE" : "WARN";
 
     return { 
       status: "LOCAL_FLAG", 
-      ruleName: "Zero-Tolerance Safety Filter",
+      ruleName: "Zero-Tolerance Safety Filter (Non-Strict, No Ban)",
       reason: `Immediate high-risk keyword pattern detected by Tier-1 local filter: "${matched}"`, 
       category,
       severity: "CRITICAL",
@@ -634,12 +644,16 @@ Categories:
 - "SEVERE_PROFANITY_OR_ABUSE": Repeated aggressive profanity, bypass attempts (leetspeak/spaced out vulgarities).
 - "DOXXING_OR_PII": Leaking real names, addresses, phone numbers, school locations, private photos.
 
-Severities:
-- "NONE": No action required.
+POLICY DIRECTIVE:
+- PERMANENT BANS ARE DISABLED: Never recommend "BAN" under any circumstances.
+- NON-STRICT PUNISHMENT: Moderation philosophy is restorative and non-strict. The maximum action is a temporary 1-hour cooldown ("TIMEOUT_1H") or message deletion ("DELETE") with staff notification. Never recommend "BAN". For self-harm, recommend "DELETE" with compassionate guidance.
+
+Severities & Actions:
+- "NONE": No action required. Recommended action: "ALLOW".
 - "LOW": Mild infraction. Recommended action: "WARN".
-- "MEDIUM": Notable violation (toxic harassment, vulgar evasion). Recommended action: "DELETE".
-- "HIGH": Severe violation (hate speech, vicious cyberbullying, doxxing). Recommended action: "TIMEOUT_1H" or "TIMEOUT_24H".
-- "CRITICAL": Predatory grooming, explicit threats, suicide encouragement. Recommended action: "BAN" (with immediate moderator ping).
+- "MEDIUM": Moderate violation (toxic harassment, vulgar evasion). Recommended action: "DELETE".
+- "HIGH": Severe violation (hate speech, vicious cyberbullying, doxxing). Recommended action: "DELETE".
+- "CRITICAL": High safety risk (predatory grooming, malicious threats). Recommended action: "TIMEOUT_1H" (immediate moderator ping). DO NOT recommend "BAN".
 
 Output structured JSON strictly matching the provided schema.`;
 

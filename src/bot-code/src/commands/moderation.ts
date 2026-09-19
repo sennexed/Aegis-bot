@@ -31,29 +31,9 @@ export const moderationCommands = [
       .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
     async execute(interaction: ChatInputCommandInteraction, modService: TraditionalModService) {
-      const targetUser = interaction.options.getUser("target", true);
-      const reason = interaction.options.getString("reason", true);
-      const pruneDays = interaction.options.getInteger("prune_days") ?? 1;
-
-      const targetMember = interaction.guild?.members.cache.get(targetUser.id);
-      if (!targetMember) {
-        return interaction.reply({ content: "That user is not currently in this server.", flags: MessageFlags.Ephemeral });
-      }
-
-      await interaction.deferReply();
-      const result = await modService.ban(
-        interaction.member as GuildMember,
-        targetMember,
-        reason,
-        pruneDays
-      );
-
-      if (!result.success) {
-        return interaction.editReply({ content: `❌ Ban failed: ${result.error}` });
-      }
-
-      return interaction.editReply({
-        content: `🔨 **${targetUser.tag}** has been banned.\n**Reason:** ${reason}`,
+      return interaction.reply({
+        content: "⚠️ **Permanent bans are currently disabled** under server safety guidelines (Non-Strict Moderation Mode). Please use `/mute` for a temporary cooldown timeout or `/warn` to issue an official recorded reminder.",
+        flags: MessageFlags.Ephemeral,
       });
     },
   },

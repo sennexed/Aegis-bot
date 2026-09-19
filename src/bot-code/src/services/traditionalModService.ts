@@ -340,11 +340,11 @@ export class TraditionalModService {
   }
 
   /**
-   * Computes automatic progressive penalty based on strike count:
-   * 1st: Warning
-   * 2nd: 1-hour timeout
-   * 3rd: 24-hour timeout
-   * 4th+: Ban
+   * Computes progressive penalty based on strike count (Non-strict, NO permanent bans):
+   * 1st: Friendly Warning
+   * 2nd: Advisory Reminder
+   * 3rd: Mild 15-min cooldown timeout
+   * 4th+: 1-hour cooldown timeout maximum (NO BAN)
    */
   public calculateEscalation(guildId: string, userId: string): {
     strikeCount: number;
@@ -359,27 +359,27 @@ export class TraditionalModService {
       return {
         strikeCount: count,
         recommendedPenalty: "WARN",
-        reason: "1st Strike: Official DM Warning issued.",
+        reason: "1st Strike: Gentle DM reminder issued.",
       };
     } else if (count === 2) {
       return {
         strikeCount: count,
-        recommendedPenalty: "TIMEOUT_1H",
-        durationMs: 60 * 60 * 1000,
-        reason: "2nd Strike within 30 days: Automatic 1-Hour Timeout applied.",
+        recommendedPenalty: "WARN",
+        reason: "2nd Strike within 30 days: Advisory warning issued.",
       };
     } else if (count === 3) {
       return {
         strikeCount: count,
-        recommendedPenalty: "TIMEOUT_24H",
-        durationMs: 24 * 60 * 60 * 1000,
-        reason: "3rd Strike within 30 days: Automatic 24-Hour Timeout applied.",
+        recommendedPenalty: "TIMEOUT_1H",
+        durationMs: 15 * 60 * 1000,
+        reason: "3rd Strike within 30 days: Mild 15-Minute Cooldown timeout applied.",
       };
     } else {
       return {
         strikeCount: count,
-        recommendedPenalty: "BAN",
-        reason: `${count}th Strike: Exceeded 3 strikes. Automatic Ban triggered.`,
+        recommendedPenalty: "TIMEOUT_1H",
+        durationMs: 60 * 60 * 1000,
+        reason: `${count}th Strike: Soft strike threshold reached. 1-Hour Cooldown applied (Permanent bans disabled).`,
       };
     }
   }

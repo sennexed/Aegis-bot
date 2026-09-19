@@ -133,87 +133,69 @@ export class PolicyEngine {
       };
     }
 
-    // 1. Zero-Tolerance Predatory Grooming -> IMMEDIATE BAN + STAFF PING
+    // 1. Zero-Tolerance Predatory Grooming -> 1H Cooldown Quarantine + Immediate Staff Alert (No Permanent Bans)
     if (classification.category === "SEXUAL_GROOMING_OR_PREDATORY") {
       return {
-        action: "BAN",
-        executedActionDescription: "BANNED_PREDATORY_GROOMING",
+        action: "TIMEOUT_1H",
+        executedActionDescription: "TIMEOUT_1H_PREDATORY_REVIEW",
         category: classification.category,
         severity: "CRITICAL",
         confidence: classification.confidence,
         reason: classification.reason,
+        durationMs: 60 * 60 * 1000,
         requiresStaffNotification: true,
         notifyUser: true,
-        userMessage: `🔨 You have been banned from **${guildName}** for severe violation of youth safety standards: ${classification.reason}`,
+        userMessage: `⚠️ Your message was removed in **${guildName}** and staff have been alerted for safety review. A temporary 1-hour cooldown timeout has been applied.`,
       };
     }
 
-    // 2. Self-Harm & Suicide Encouragement -> Immediate 24h Timeout + Staff Ping
+    // 2. Self-Harm & Suicide Encouragement -> Message Deletion + Compassionate Helpline Support (Supportive, Non-Strict)
     if (classification.category === "SELF_HARM") {
       return {
-        action: "TIMEOUT_24H",
-        executedActionDescription: "DELETED_AND_TIMEOUT_24H_SELF_HARM",
+        action: "DELETE",
+        executedActionDescription: "DELETED_SUPPORT_SELF_HARM",
         category: classification.category,
         severity: "CRITICAL",
         confidence: classification.confidence,
         reason: classification.reason,
-        durationMs: 24 * 60 * 60 * 1000,
         requiresStaffNotification: true,
         notifyUser: true,
-        userMessage: `⚠️ Your message was removed and you have been timed out for 24 hours in **${guildName}**. If you or someone you know is in crisis, please reach out to local support resources or dial 988 (Suicide & Crisis Lifeline).`,
+        userMessage: `💜 Your message was removed in **${guildName}** out of care for your wellbeing. If you or someone you know is going through a tough time, please know that you are not alone. Reach out to someone you trust or contact the Suicide & Crisis Lifeline by calling or texting 988 (free, confidential, 24/7).`,
       };
     }
 
-    // 3. Doxxing & Minor PII Exposure -> Immediate 24h Timeout + Delete + Staff Ping
+    // 3. Doxxing & Minor PII Exposure -> Immediate Deletion + Privacy Reminder (Non-Strict)
     if (classification.category === "DOXXING_OR_PII") {
       return {
-        action: "TIMEOUT_24H",
-        executedActionDescription: "DELETED_AND_TIMEOUT_24H_DOXXING",
+        action: "DELETE",
+        executedActionDescription: "MESSAGE_DELETED_DOXXING",
         category: classification.category,
         severity: "HIGH",
         confidence: classification.confidence,
         reason: classification.reason,
-        durationMs: 24 * 60 * 60 * 1000,
         requiresStaffNotification: true,
         notifyUser: true,
-        userMessage: `⚠️ Your message was removed and you have been timed out in **${guildName}** for distributing private personal identifiable information (PII/Doxxing).`,
+        userMessage: `⚠️ Your message was removed in **${guildName}** because it contained private personally identifiable information (PII). Please respect everyone's privacy and safety.`,
       };
     }
 
-    // 4. Hate Speech
+    // 4. Hate Speech -> Deletion + Warning (Non-Strict)
     if (classification.category === "HATE_SPEECH") {
-      const isCritical = classification.severity === "CRITICAL" || classification.severity === "HIGH";
-      const action = isCritical ? "TIMEOUT_1H" : "DELETE";
       return {
-        action,
-        executedActionDescription: isCritical ? "DELETED_AND_TIMEOUT_1H_HATE_SPEECH" : "MESSAGE_DELETED_HATE_SPEECH",
+        action: "DELETE",
+        executedActionDescription: "MESSAGE_DELETED_HATE_SPEECH",
         category: classification.category,
         severity: classification.severity,
         confidence: classification.confidence,
         reason: classification.reason,
-        durationMs: isCritical ? 60 * 60 * 1000 : undefined,
-        requiresStaffNotification: isCritical,
+        requiresStaffNotification: classification.severity === "CRITICAL" || classification.severity === "HIGH",
         notifyUser: true,
-        userMessage: `⚠️ Your message was removed in **${guildName}** for violating anti-hate and community safety rules.`,
+        userMessage: `⚠️ Your message was removed in **${guildName}** for violating our community respect and anti-hate guidelines.`,
       };
     }
 
-    // 5. Cyberbullying & Targeted Harassment
+    // 5. Cyberbullying & Targeted Harassment -> Deletion + Reminder (Non-Strict)
     if (classification.category === "CYBERBULLYING" || classification.category === "HARASSMENT") {
-      if (classification.severity === "CRITICAL" || classification.severity === "HIGH") {
-        return {
-          action: "TIMEOUT_1H",
-          executedActionDescription: "DELETED_AND_TIMEOUT_1H_HARASSMENT",
-          category: classification.category,
-          severity: classification.severity,
-          confidence: classification.confidence,
-          reason: classification.reason,
-          durationMs: 60 * 60 * 1000,
-          requiresStaffNotification: false,
-          notifyUser: true,
-          userMessage: `⚠️ You have been placed on a 1-hour timeout in **${guildName}** for targeted harassment or cyberbullying.`,
-        };
-      }
       return {
         action: "DELETE",
         executedActionDescription: "MESSAGE_DELETED_HARASSMENT",
@@ -223,30 +205,17 @@ export class PolicyEngine {
         reason: classification.reason,
         requiresStaffNotification: false,
         notifyUser: true,
-        userMessage: `⚠️ Your message was removed in **${guildName}** for violating teen harassment policies: ${classification.reason}`,
+        userMessage: `⚠️ Your message was removed in **${guildName}** for unkind or harassing behavior. Please keep interactions positive!`,
       };
     }
 
-    // 6. Severe Profanity or Abuse
+    // 6. Severe Profanity or Abuse -> Deletion or Warning (Non-Strict)
     if (classification.category === "SEVERE_PROFANITY_OR_ABUSE") {
-      if (classification.severity === "HIGH") {
-        return {
-          action: "DELETE",
-          executedActionDescription: "MESSAGE_DELETED_PROFANITY",
-          category: classification.category,
-          severity: classification.severity,
-          confidence: classification.confidence,
-          reason: classification.reason,
-          requiresStaffNotification: false,
-          notifyUser: true,
-          userMessage: `⚠️ Your message was removed in **${guildName}** for excessive vulgarity or evasion.`,
-        };
-      }
       return {
-        action: "WARN",
-        executedActionDescription: "USER_WARNED_PROFANITY",
+        action: classification.severity === "HIGH" ? "DELETE" : "WARN",
+        executedActionDescription: classification.severity === "HIGH" ? "MESSAGE_DELETED_PROFANITY" : "USER_WARNED_PROFANITY",
         category: classification.category,
-        severity: "LOW",
+        severity: classification.severity,
         confidence: classification.confidence,
         reason: classification.reason,
         requiresStaffNotification: false,
@@ -270,35 +239,34 @@ export class PolicyEngine {
       };
     }
 
-    // 8. AutoMod: Phishing & Malicious Scams -> 24h Timeout + Delete + Staff Ping
+    // 8. AutoMod: Phishing & Malicious Scams -> 1h Cooldown + Delete + Staff Ping (Non-Strict, No 24h Timeout)
     if (classification.category === "PHISHING_OR_SCAM") {
       return {
-        action: "TIMEOUT_24H",
-        executedActionDescription: "DELETED_AND_TIMEOUT_24H_PHISHING",
+        action: "TIMEOUT_1H",
+        executedActionDescription: "DELETED_AND_TIMEOUT_1H_PHISHING",
         category: classification.category,
         severity: "CRITICAL",
-        confidence: classification.confidence,
-        reason: classification.reason,
-        durationMs: 24 * 60 * 60 * 1000,
-        requiresStaffNotification: true,
-        notifyUser: true,
-        userMessage: `⚠️ You have been placed on a 24-hour timeout in **${guildName}** for distributing suspected phishing or malicious links.`,
-      };
-    }
-
-    // 9. AutoMod: Mass Mention Spam -> 1h Timeout + Delete + Staff Ping
-    if (classification.category === "MASS_MENTION_SPAM") {
-      return {
-        action: "TIMEOUT_1H",
-        executedActionDescription: "DELETED_AND_TIMEOUT_1H_MASS_MENTION",
-        category: classification.category,
-        severity: "HIGH",
         confidence: classification.confidence,
         reason: classification.reason,
         durationMs: 60 * 60 * 1000,
         requiresStaffNotification: true,
         notifyUser: true,
-        userMessage: `⚠️ Your message was removed and you have been timed out for 1 hour in **${guildName}** for mass mention spam.`,
+        userMessage: `⚠️ A suspicious link was removed in **${guildName}** and a temporary 1-hour cooldown timeout was applied for community security.`,
+      };
+    }
+
+    // 9. AutoMod: Mass Mention Spam -> Delete + Warning (Non-Strict, No Timeout)
+    if (classification.category === "MASS_MENTION_SPAM") {
+      return {
+        action: "DELETE",
+        executedActionDescription: "MESSAGE_DELETED_MASS_MENTION",
+        category: classification.category,
+        severity: "HIGH",
+        confidence: classification.confidence,
+        reason: classification.reason,
+        requiresStaffNotification: false,
+        notifyUser: true,
+        userMessage: `⚠️ Your message was removed in **${guildName}** for excessive user mentions.`,
       };
     }
 

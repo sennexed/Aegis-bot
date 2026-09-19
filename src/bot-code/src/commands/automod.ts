@@ -39,7 +39,8 @@ export const autoModCommand = {
               { name: "Anti-Spam & Flood Control", value: "antiSpam" },
               { name: "Anti-Excessive Caps", value: "antiCaps" },
               { name: "Anti-Zalgo & Glitch Text", value: "antiZalgo" },
-              { name: "Anti-Banned Words & Slurs", value: "antiBannedWords" }
+              { name: "Anti-Banned Words & Slurs", value: "antiBannedWords" },
+              { name: "Allow Tenor / Giphy GIFs", value: "allowGifs" }
             )
         )
         .addBooleanOption((opt) =>
@@ -104,6 +105,11 @@ export const autoModCommand = {
           {
             name: "🚫 Zero-Tolerance Slurs",
             value: config.antiBannedWords ? "✅ **Enabled** (Instant local leetspeak interception)" : "❌ **Disabled**",
+            inline: true,
+          },
+          {
+            name: "🎭 Allow Tenor/Giphy GIFs",
+            value: config.allowGifs ? "✅ **Allowed** (Safe GIF culture enabled, slugs exempted from profanity checks)" : "❌ **Blocked**",
             inline: true,
           }
         )

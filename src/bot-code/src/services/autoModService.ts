@@ -35,6 +35,7 @@ export interface AutoModConfig {
   capsPercentage: number; // default: 70%
   antiZalgo: boolean;
   antiBannedWords: boolean;
+  allowGifs: boolean;
 }
 
 export const DEFAULT_AUTOMOD_CONFIG: AutoModConfig = {
@@ -50,6 +51,7 @@ export const DEFAULT_AUTOMOD_CONFIG: AutoModConfig = {
   capsPercentage: 70,
   antiZalgo: true,
   antiBannedWords: true,
+  allowGifs: true,
 };
 
 export interface AutoModCheckResult {
@@ -173,6 +175,21 @@ export class AutoModService {
   }
 
   /**
+   * Identifies whether a URL belongs to a verified, benign GIF platform
+   * (Tenor, Giphy, Discord media/CDN, etc.)
+   */
+  public static isSafeGifUrl(url: string): boolean {
+    if (!url) return false;
+    const lower = url.trim().toLowerCase();
+    return (
+      /^(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com)\/[^\s]+$/i.test(lower) ||
+      /^(?:https?:\/\/)?(?:cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\/[^\s]+\.gif(?:\?[^\s]*)?$/i.test(lower) ||
+      /^(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?imgur\.com\/[^\s]+\.gif$/i.test(lower) ||
+      /^(?:https?:\/\/)[^\s]+\.gif(?:\?[^\s]*)?$/i.test(lower)
+    );
+  }
+
+  /**
    * Normalizes leetspeak, spaces, and punctuation for robust evasion detection
    */
   public normalizeEvasion(text: string): string {
@@ -199,10 +216,26 @@ export class AutoModService {
     mentionCount: number = 0
   ): AutoModCheckResult {
     const config = this.getConfig(guildId);
-    const trimmed = content.trim();
+    let trimmed = content.trim();
+
+    // Support safe GIF culture: Tenor, Giphy, Discord GIF embeds
+    const gifUrlRegex = /(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com)\/[^\s]+|(?:https?:\/\/)?(?:cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\/[^\s]+\.gif(?=[?#\s]|$)|(?:https?:\/\/)[^\s]+\.gif(?=[?#\s]|$)/gi;
+    const containsGif = gifUrlRegex.test(trimmed);
+
+    if (config.allowGifs && containsGif) {
+      const textWithoutGifs = trimmed.replace(gifUrlRegex, "").trim();
+      // If the message only consists of verified GIF links (with optional spaces/emojis)
+      if (!textWithoutGifs || /^[\s\p{Emoji}]+$/u.test(textWithoutGifs)) {
+        return { triggered: false };
+      }
+      // If user typed actual text alongside the GIF, check only their typed text,
+      // NOT the automated slug/filename in the GIF URL (which might have words like "clown", "dumb", etc.)
+      trimmed = textWithoutGifs;
+    }
+
     const normalized = this.normalizeEvasion(trimmed);
 
-    // 1. Anti-Phishing & Malicious Scam Links (CRITICAL)
+    // 1. Anti-Phishing & Malicious Scam Links (CRITICAL - Non-strict 1h cooldown, no 24h)
     if (config.antiPhishing) {
       if (this.phishingRegex.test(trimmed)) {
         const match = trimmed.match(this.phishingRegex)?.[0] || "phishing link";
@@ -211,7 +244,7 @@ export class AutoModService {
           ruleName: "Anti-Phishing & Malicious Scams",
           category: "PHISHING_OR_SCAM",
           severity: "CRITICAL",
-          recommendedAction: "TIMEOUT_24H",
+          recommendedAction: "TIMEOUT_1H",
           reason: `Detected suspected phishing/credential theft link matching pattern: ${match}`,
           matchedContent: match,
         };
@@ -222,14 +255,14 @@ export class AutoModService {
           ruleName: "Anti-Phishing & Malicious Scams",
           category: "PHISHING_OR_SCAM",
           severity: "CRITICAL",
-          recommendedAction: "TIMEOUT_24H",
+          recommendedAction: "TIMEOUT_1H",
           reason: "Detected suspicious high-risk TLD link combined with giveaway/nitro lure.",
           matchedContent: trimmed,
         };
       }
     }
 
-    // 2. Zero-Tolerance Keywords & Slurs (CRITICAL)
+    // 2. Zero-Tolerance Keywords & Slurs (CRITICAL - Non-strict, NO BAN)
     if (config.antiBannedWords) {
       for (const kw of this.zeroToleranceKeywords) {
         if (normalized.includes(kw) || new RegExp(`\\b${kw.replace(/\s+/g, "\\s*")}\\b`, "i").test(normalized)) {
@@ -238,7 +271,7 @@ export class AutoModService {
           const isPredatory = /send nudes|trade pics|drop snap|secretly/i.test(kw);
 
           const category = isSelfHarm ? "SELF_HARM" : isHate ? "HATE_SPEECH" : "SEXUAL_GROOMING_OR_PREDATORY";
-          const recommendedAction = isPredatory ? "BAN" : (isSelfHarm || isHate) ? "TIMEOUT_24H" : "TIMEOUT_1H";
+          const recommendedAction = isPredatory ? "TIMEOUT_1H" : (isSelfHarm || isHate) ? "DELETE" : "WARN";
 
           return {
             triggered: true,
@@ -262,7 +295,7 @@ export class AutoModService {
             ruleName: "Severe Safety & Exploitation Filter",
             category: isSelfHarm ? "SELF_HARM" : "SEXUAL_GROOMING_OR_PREDATORY",
             severity: "CRITICAL",
-            recommendedAction: "TIMEOUT_24H",
+            recommendedAction: isSelfHarm ? "DELETE" : "TIMEOUT_1H",
             reason: `Zero-tolerance severe term intercepted: "${profanity.word}"`,
             matchedContent: profanity.word,
           };
@@ -272,7 +305,7 @@ export class AutoModService {
             ruleName: "Profanity & Targeted Abuse Filter",
             category: "SEVERE_PROFANITY_OR_ABUSE",
             severity: "HIGH",
-            recommendedAction: "TIMEOUT_1H",
+            recommendedAction: "DELETE",
             reason: `Heavy profanity or abusive language detected: "${profanity.word}"`,
             matchedContent: profanity.word,
           };
@@ -294,14 +327,14 @@ export class AutoModService {
       };
     }
 
-    // 4. Anti-Mass Mention
+    // 4. Anti-Mass Mention (Non-strict: delete message + warn instead of timeout)
     if (config.antiMassMention && mentionCount >= config.mentionThreshold) {
       return {
         triggered: true,
         ruleName: "Anti-Mass Mentions",
         category: "MASS_MENTION_SPAM",
         severity: "HIGH",
-        recommendedAction: "TIMEOUT_1H",
+        recommendedAction: "DELETE",
         reason: `Exceeded mass mention threshold (${mentionCount} mentions >= limit of ${config.mentionThreshold}).`,
         matchedContent: `${mentionCount} mentions`,
       };

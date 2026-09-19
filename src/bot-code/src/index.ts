@@ -241,18 +241,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: "⚠️ Target member is no longer in this server.", flags: MessageFlags.Ephemeral });
       }
 
-      if (action === "mute1h") {
-        await targetMember.timeout(3600000, `Quick Action by ${interaction.user.tag}`);
+      if (action === "warn") {
+        try {
+          await targetMember.send(`⚠️ **Friendly Server Reminder**: A message you posted in **${interaction.guild?.name}** violated community guidelines. Please remember to keep things respectful!`);
+        } catch {
+          // DMs might be closed
+        }
+        await interaction.reply({ content: `⚠️ Official gentle DM warning sent to <@${targetUserId}> by <@${interaction.user.id}>.` });
+      } else if (action === "mute15m") {
+        await targetMember.timeout(15 * 60 * 1000, `Quick Action by ${interaction.user.tag}`);
+        await interaction.reply({ content: `⏱️ <@${targetUserId}> timed out for 15 minutes by <@${interaction.user.id}>.` });
+      } else if (action === "mute1h") {
+        await targetMember.timeout(60 * 60 * 1000, `Quick Action by ${interaction.user.tag}`);
         await interaction.reply({ content: `⏳ <@${targetUserId}> timed out for 1 hour by <@${interaction.user.id}>.` });
-      } else if (action === "mute24h") {
-        await targetMember.timeout(86400000, `Quick Action by ${interaction.user.tag}`);
-        await interaction.reply({ content: `🔇 <@${targetUserId}> timed out for 24 hours by <@${interaction.user.id}>.` });
       } else if (action === "kick") {
         await targetMember.kick(`Quick Action by ${interaction.user.tag}`);
         await interaction.reply({ content: `👢 <@${targetUserId}> kicked from the server by <@${interaction.user.id}>.` });
-      } else if (action === "ban") {
-        await targetMember.ban({ reason: `Quick Action by ${interaction.user.tag}` });
-        await interaction.reply({ content: `🔨 <@${targetUserId}> banned from the server by <@${interaction.user.id}>.` });
+      } else if (action === "ban" || action === "mute24h") {
+        await interaction.reply({ content: "⚠️ Permanent bans and long 24-hour timeouts are currently disabled in this server. Please use **Mute 15m** or **Mute 1h** for non-strict moderation.", flags: MessageFlags.Ephemeral });
       }
       return;
     }

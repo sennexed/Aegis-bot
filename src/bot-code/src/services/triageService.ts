@@ -48,6 +48,26 @@ export class TriageService {
       };
     }
 
+    // 0. Check for recognized safe GIF URLs (Tenor, Giphy, Discord media/CDN, etc.)
+    const isPureSafeGif =
+      /^(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com)\/[^\s]+$/i.test(trimmed) ||
+      /^(?:https?:\/\/)?(?:cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\/[^\s]+\.gif(?=[?#\s]|$)/i.test(trimmed) ||
+      /^(?:https?:\/\/)[^\s]+\.gif(?=[?#\s]|$)/i.test(trimmed);
+
+    if (isPureSafeGif) {
+      return {
+        shouldCallGemini: false,
+        localVerdict: {
+          flagged: false,
+          category: "NONE",
+          severity: "NONE",
+          recommendedAction: "ALLOW",
+          reason: "Triage Tier-1: Verified safe animated GIF (Tenor/Giphy). Clean pass (0 tokens)."
+        },
+        reason: "Fast filter: Safe GIF media allowed (0 tokens consumed)"
+      };
+    }
+
     // 1. Check for single harmless words / short reactions or simple punctuation
     if (this.benignSlang.has(normalized) || /^[\p{Emoji}\s!?.~]{1,4}$/u.test(normalized)) {
       return {
@@ -79,17 +99,17 @@ export class TriageService {
       };
     }
 
-    // 3. Instant local regex for zero-tolerance severe hate/predatory patterns
+    // 3. Instant local regex for zero-tolerance severe hate/predatory patterns (Non-strict, NO BAN)
     if (this.zeroToleranceRegex.test(trimmed)) {
       const isSelfHarm = /kys|k\.y\.s|kill yourself|kill ur self|suicide/i.test(trimmed);
       const category = isSelfHarm ? "SELF_HARM" : "SEXUAL_GROOMING_OR_PREDATORY";
-      const action = isSelfHarm ? "TIMEOUT_24H" : "BAN";
+      const action = isSelfHarm ? "DELETE" : "TIMEOUT_1H";
       
       const verdict = {
         flagged: true,
         category,
         severity: "CRITICAL" as const,
-        recommendedAction: action as "TIMEOUT_24H" | "BAN",
+        recommendedAction: action as "DELETE" | "TIMEOUT_1H",
         reason: `Immediate local regex trigger for zero-tolerance keyword pattern in ${category}`
       };
 

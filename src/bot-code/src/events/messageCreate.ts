@@ -49,7 +49,8 @@ export async function handleMessageCreate(
             // Fetch image buffer and convert to base64
             const imgRes = await fetch(attachment.url);
             const arrayBuffer = await imgRes.arrayBuffer();
-            const base64 = Buffer.from(arrayBuffer).toString("base64");
+            const imageBuffer = Buffer.from(arrayBuffer);
+            const base64 = imageBuffer.toString("base64");
             const imageVerdict = await geminiService.analyzeImageAttachment(
               base64,
               attachment.contentType || "image/png",
@@ -57,8 +58,15 @@ export async function handleMessageCreate(
             );
 
             if (imageVerdict.flagged) {
+              const filename = attachment.name || "flagged_image.png";
               await message.delete().catch(() => null);
-              await loggingService.logAIAction(message, imageVerdict, `Deleted Image: ${imageVerdict.category}`);
+              await loggingService.logAIAction(
+                message,
+                imageVerdict,
+                `Deleted Image: ${imageVerdict.category}`,
+                undefined,
+                { buffer: imageBuffer, filename, contentType: attachment.contentType || "image/png" }
+              );
               ANALYTICS_SERVICE.recordViolation(imageVerdict.category, "DELETE");
               await message.author.send({
                 content: `⚠️ Your uploaded image in **${message.guild.name}** was deleted by AegisMod.\n**Reason:** ${imageVerdict.reason}`,

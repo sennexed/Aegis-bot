@@ -238,33 +238,33 @@ export class GeminiModerationService {
   private heuristicFallback(content: string, baseReason: string): AIAnalysisOutput {
     const lower = content.toLowerCase();
 
-    // Check high-risk self-harm keywords
+    // Check high-risk self-harm keywords (Non-strict supportive care)
     if (/kys|kill yourself|kill ur self|suicide|die in a fire/i.test(lower)) {
       return {
         flagged: true,
         category: "SELF_HARM",
         severity: "CRITICAL",
-        recommendedAction: "TIMEOUT_24H",
+        recommendedAction: "DELETE",
         confidence: 0.95,
         reason: `${baseReason} Triggered by self-harm patterns.`,
         highlightedPhrases: ["self-harm keywords"],
-        ageAppropriateNotes: "Immediate youth safety intervention.",
+        ageAppropriateNotes: "Immediate supportive youth crisis intervention.",
         tokensUsed: 0,
         isApiErrorFallback: true,
       };
     }
 
-    // Check predatory keywords
+    // Check predatory keywords (Non-strict 1h cooldown, NO permanent bans)
     if (/send nudes|trade pics|drop snap 16|meet up in person secretly/i.test(lower)) {
       return {
         flagged: true,
         category: "SEXUAL_GROOMING_OR_PREDATORY",
         severity: "CRITICAL",
-        recommendedAction: "BAN",
+        recommendedAction: "TIMEOUT_1H",
         confidence: 0.95,
         reason: `${baseReason} Triggered by predatory solicitation patterns.`,
         highlightedPhrases: ["predatory keywords"],
-        ageAppropriateNotes: "Zero tolerance for underage sexual exploitation.",
+        ageAppropriateNotes: "Quarantined for staff review; permanent bans disabled.",
         tokensUsed: 0,
         isApiErrorFallback: true,
       };
@@ -276,7 +276,7 @@ export class GeminiModerationService {
         flagged: true,
         category: "HATE_SPEECH",
         severity: "HIGH",
-        recommendedAction: "TIMEOUT_1H",
+        recommendedAction: "DELETE",
         confidence: 0.95,
         reason: `${baseReason} Intercepted by zero-tolerance hate speech filter.`,
         highlightedPhrases: ["prohibited slurs"],
@@ -293,7 +293,7 @@ export class GeminiModerationService {
         flagged: true,
         category: "SEVERE_PROFANITY_OR_ABUSE",
         severity: profanity.severity === "HIGH" ? "CRITICAL" : "HIGH",
-        recommendedAction: profanity.severity === "HIGH" ? "TIMEOUT_24H" : "TIMEOUT_1H",
+        recommendedAction: "DELETE",
         confidence: 0.9,
         reason: `${baseReason} Prohibited abusive content: "${profanity.word}".`,
         highlightedPhrases: [profanity.word],

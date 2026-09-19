@@ -12,6 +12,7 @@ import { TriageService } from "../src/services/triageService.js";
 import { PolicyEngine, ModerationClassification } from "../src/services/policyEngine.js";
 import { AutoModService } from "../src/services/autoModService.js";
 import { GeminiModerationService } from "../src/services/geminiModerationService.js";
+import { PHISHING_FILTER } from "../src/config/phishingFilter.js";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -106,7 +107,7 @@ async function runTests() {
     "AutoMod must instantly catch leetspeak obfuscated hate slurs"
   );
 
-  // 11. Policy Engine - AutoMod Phishing Escalation
+  // 11. Policy Engine - AutoMod Phishing Escalation (Non-Strict: 1h Cooldown, No 24h)
   const phishingPolicy = PolicyEngine.evaluatePolicy({
     flagged: true,
     category: "PHISHING_OR_SCAM",
@@ -116,11 +117,11 @@ async function runTests() {
     highlightedPhrases: ["discrod-app.gift"],
   }, "Test Server");
   assert(
-    phishingPolicy.action === "TIMEOUT_24H" && phishingPolicy.requiresStaffNotification === true,
-    "PolicyEngine must map PHISHING_OR_SCAM to 24h timeout and notify staff"
+    phishingPolicy.action === "TIMEOUT_1H" && phishingPolicy.requiresStaffNotification === true,
+    "PolicyEngine must map PHISHING_OR_SCAM to 1h cooldown timeout and notify staff"
   );
 
-  // 12. Policy Engine - Predatory Grooming Escalation
+  // 12. Policy Engine - Predatory Grooming Escalation (Non-Strict: 1H Cooldown Review, No Permanent Ban)
   const groomingClass: ModerationClassification = PolicyEngine.validateClassification({
     flagged: true,
     category: "SEXUAL_GROOMING_OR_PREDATORY",
@@ -130,11 +131,11 @@ async function runTests() {
   });
   const groomingDecision = PolicyEngine.evaluatePolicy(groomingClass, "Test Server");
   assert(
-    groomingDecision.action === "BAN" && groomingDecision.requiresStaffNotification === true,
-    "PolicyEngine must immediately map SEXUAL_GROOMING_OR_PREDATORY to BAN with staff alert"
+    groomingDecision.action === "TIMEOUT_1H" && groomingDecision.requiresStaffNotification === true,
+    "PolicyEngine must immediately map SEXUAL_GROOMING_OR_PREDATORY to TIMEOUT_1H with staff alert (no permanent bans)"
   );
 
-  // 13. Policy Engine - Self-Harm Escalation
+  // 13. Policy Engine - Self-Harm Escalation (Supportive non-strict: Message Deletion + Compassionate Helpline)
   const selfHarmClass: ModerationClassification = PolicyEngine.validateClassification({
     flagged: true,
     category: "SELF_HARM",
@@ -144,11 +145,11 @@ async function runTests() {
   });
   const selfHarmDecision = PolicyEngine.evaluatePolicy(selfHarmClass, "Test Server");
   assert(
-    selfHarmDecision.action === "TIMEOUT_24H" && selfHarmDecision.requiresStaffNotification === true,
-    "PolicyEngine must map SELF_HARM to TIMEOUT_24H and alert staff"
+    selfHarmDecision.action === "DELETE" && selfHarmDecision.requiresStaffNotification === true,
+    "PolicyEngine must map SELF_HARM to DELETE with crisis guidance and alert staff"
   );
 
-  // 14. Policy Engine - Hate Speech Escalation
+  // 14. Policy Engine - Hate Speech Escalation (Non-Strict: Delete message, no harsh timeout)
   const hateClass: ModerationClassification = PolicyEngine.validateClassification({
     flagged: true,
     category: "HATE_SPEECH",
@@ -158,8 +159,8 @@ async function runTests() {
   });
   const hateDecision = PolicyEngine.evaluatePolicy(hateClass, "Test Server");
   assert(
-    hateDecision.action === "TIMEOUT_1H" && hateDecision.requiresStaffNotification === true,
-    "PolicyEngine must map HIGH hate speech to TIMEOUT_1H with staff notification"
+    hateDecision.action === "DELETE" && hateDecision.requiresStaffNotification === true,
+    "PolicyEngine must map HIGH hate speech to DELETE with staff notification"
   );
 
   // 15. Policy Engine - Prompt Injection Defense
@@ -204,7 +205,34 @@ async function runTests() {
     "AutoMod must catch severe abusive profanity using PROFANITY_FILTER"
   );
 
-  console.log("\n🎉 All 18 AegisMod Automated Tests Passed Successfully!\n");
+  // 19. Safe GIF Exemption - Tenor, Giphy & Discord Media URLs
+  const tenorGifCheck = autoMod.checkContent("https://tenor.com/view/spongebob-dancing-happy-gif-20512833", "gif_user1", "guild1");
+  assert(
+    tenorGifCheck.triggered === false,
+    "AutoMod must allow Tenor GIF links without triggering profanity or phishing false positives"
+  );
+
+  const giphyGifCheck = autoMod.checkContent("https://giphy.com/gifs/cat-cute-funny-3o7TKMGpxxcaenA42A", "gif_user2", "guild1");
+  assert(
+    giphyGifCheck.triggered === false,
+    "AutoMod must allow Giphy GIF links without triggering profanity or phishing false positives"
+  );
+
+  // 20. GIF URL with slug containing potentially matching substring (e.g. 'anal' in analysis/banana)
+  const safeGifWithSlug = autoMod.checkContent("https://tenor.com/view/data-analysis-chart-gif-12345", "gif_user3", "guild1");
+  assert(
+    safeGifWithSlug.triggered === false,
+    "AutoMod must exempt GIF URL slugs from triggering profanity substrings"
+  );
+
+  // 21. Phishing Filter Safe GIF Whitelist
+  const phishingGifCheck = PHISHING_FILTER.checkContent("https://media.tenor.com/m/abcdef/reaction.gif", "guild1");
+  assert(
+    phishingGifCheck.isMalicious === false,
+    "Phishing filter must whitelist Tenor media domains"
+  );
+
+  console.log("\n🎉 All 21 AegisMod Automated Tests Passed Successfully!\n");
 }
 
 runTests().catch((err) => {
