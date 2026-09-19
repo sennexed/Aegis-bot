@@ -659,10 +659,9 @@ Output structured JSON strictly matching the provided schema.`;
 
     const now = Date.now();
     const allCandidateModels = [
-      process.env.GEMINI_MODEL || "gemini-3.8-flash",
-      "gemini-3.1-flash-lite",
-      "gemini-2.5-flash",
+      process.env.GEMINI_MODEL || "gemini-3.1-flash-lite",
       "gemini-flash-latest",
+      "gemini-2.5-flash",
     ];
     const uniqueModels = Array.from(new Set(allCandidateModels));
     const readyModels = uniqueModels.filter((m) => {

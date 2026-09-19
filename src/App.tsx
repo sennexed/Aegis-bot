@@ -44,7 +44,7 @@ export default function App() {
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-1.5 text-zinc-600">
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              Gemini 3.8 Flash
+              Gemini 3.1 Flash-Lite
             </span>
             <span className="flex items-center gap-1.5 text-zinc-600">
               <Server className="w-3.5 h-3.5 text-emerald-600" />

@@ -124,7 +124,7 @@ export class TriageService {
     // 4. Default: Require contextual AI analysis from Gemini
     return {
       shouldCallGemini: true,
-      reason: "Tier-3 Passed: Message requires nuanced contextual evaluation by Gemini 3.8 Flash."
+      reason: "Tier-3 Passed: Message requires nuanced contextual evaluation by Gemini AI."
     };
   }
 

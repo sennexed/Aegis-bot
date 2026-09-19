@@ -158,7 +158,7 @@ export const LiveModerationTester: React.FC = () => {
               Live AI Moderation Sandbox
             </h2>
             <p className="text-xs text-zinc-500 mt-1">
-              Test real Discord messages against the live Gemini 3.8 Flash backend and see real-time Triage tier decisions, token efficiency stats, and the generated Discord Embed log.
+              Test real Discord messages against the live Gemini 3.1 Flash-Lite backend and see real-time Triage tier decisions, token efficiency stats, and the generated Discord Embed log.
             </p>
           </div>
           <div className="flex items-center gap-2">
