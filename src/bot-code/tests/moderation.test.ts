@@ -15,6 +15,7 @@ import { GeminiModerationService } from "../src/services/geminiModerationService
 import { PHISHING_FILTER } from "../src/config/phishingFilter.js";
 import { newsService } from "../../services/newsService.js";
 import { FAMOUS_NEWS_SOURCES } from "../../data/newsSources.js";
+import { autoNewsBotService } from "../src/services/autoNewsBotService.js";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -271,7 +272,46 @@ async function runTests() {
     `Each article must originate from a distinct newspaper (found ${sourceIds.size} distinct sources)`
   );
 
-  console.log("\n🎉 All 23 AegisMod & AutoNews Automated Tests Passed Successfully!\n");
+  // 24. AutoNews: Pagination with 5 news per page
+  const pageSize = 5;
+  const totalPages = Math.ceil(articles.length / pageSize); // 13 / 5 = 3 pages
+  assert(
+    totalPages === 3,
+    `13 articles at 5 per page must yield 3 pages (found ${totalPages})`
+  );
+
+  // Page 1: 5 articles
+  const embedPage1 = autoNewsBotService.create13NewspapersDigestEmbed(articles, 1, 5);
+  const embedData1 = embedPage1.toJSON();
+  assert(
+    embedData1.fields?.length === 5,
+    `Page 1 embed must contain exactly 5 news fields (found ${embedData1.fields?.length})`
+  );
+
+  // Page 2: 5 articles
+  const embedPage2 = autoNewsBotService.create13NewspapersDigestEmbed(articles, 2, 5);
+  const embedData2 = embedPage2.toJSON();
+  assert(
+    embedData2.fields?.length === 5,
+    `Page 2 embed must contain exactly 5 news fields (found ${embedData2.fields?.length})`
+  );
+
+  // Page 3: remaining 3 articles
+  const embedPage3 = autoNewsBotService.create13NewspapersDigestEmbed(articles, 3, 5);
+  const embedData3 = embedPage3.toJSON();
+  assert(
+    embedData3.fields?.length === 3,
+    `Page 3 embed must contain remaining 3 news fields (found ${embedData3.fields?.length})`
+  );
+
+  // Pagination buttons row
+  const paginationRow = autoNewsBotService.createPaginationRow(1, 3);
+  assert(
+    paginationRow.components.length === 4,
+    "Pagination row must contain 4 interactive components (Prev, Indicator, Next, Refresh)"
+  );
+
+  console.log("\n🎉 All 24 AegisMod & AutoNews Automated Tests Passed Successfully!\n");
 }
 
 runTests().catch((err) => {

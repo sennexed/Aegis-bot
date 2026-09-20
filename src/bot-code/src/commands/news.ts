@@ -63,23 +63,13 @@ export const newsCommand = {
     if (subcommand === "digest") {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const articles = await newsService.fetchAll13Newspapers();
-      const embed = autoNewsBotService.create13NewspapersDigestEmbed(articles);
-
-      const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setLabel("Refresh Headlines")
-          .setStyle(ButtonStyle.Primary)
-          .setCustomId("news:refresh")
-          .setEmoji("🔄"),
-        new ButtonBuilder()
-          .setLabel("Open Web Dashboard")
-          .setStyle(ButtonStyle.Link)
-          .setURL("https://aegismod.wispbyte.net")
-      );
+      const totalPages = Math.ceil(articles.length / 5);
+      const embed = autoNewsBotService.create13NewspapersDigestEmbed(articles, 1, 5);
+      const paginationRow = autoNewsBotService.createPaginationRow(1, totalPages);
 
       return interaction.editReply({
         embeds: [embed],
-        components: [actionRow],
+        components: [paginationRow],
       });
     }
 
@@ -128,11 +118,14 @@ export const newsCommand = {
 
       await interaction.deferReply();
       const articles = await newsService.fetchAll13Newspapers(true);
-      const embed = autoNewsBotService.create13NewspapersDigestEmbed(articles);
+      const totalPages = Math.ceil(articles.length / 5);
+      const embed = autoNewsBotService.create13NewspapersDigestEmbed(articles, 1, 5);
+      const paginationRow = autoNewsBotService.createPaginationRow(1, totalPages);
 
       await interaction.editReply({
-        content: "📰 **Automated Global News Digest Broadcast**",
+        content: "📰 **Automated Global News Digest Broadcast (Page 1 of 3 — 5 News Per Page)**",
         embeds: [embed],
+        components: [paginationRow],
       });
     }
   },

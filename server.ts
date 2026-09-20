@@ -499,16 +499,29 @@ let autoNewsConfig: AutoNewsConfig = {
   featuredSources: FAMOUS_NEWS_SOURCES.map((s) => s.id),
 };
 
-// GET /api/news - Returns 1 article from each of the 13 famous newspapers
+// GET /api/news - Returns 1 article from each of the 13 famous newspapers (supports 5 per page)
 app.get("/api/news", async (req: Request, res: Response) => {
   try {
     const forceRefresh = req.query.refresh === "true";
-    const articles = await newsService.fetchAll13Newspapers(forceRefresh);
+    const pageParam = parseInt(req.query.page as string, 10);
+    const pageSizeParam = parseInt(req.query.pageSize as string, 10) || 5;
+
+    const allArticles = await newsService.fetchAll13Newspapers(forceRefresh);
+
+    const totalPages = Math.ceil(allArticles.length / pageSizeParam) || 1;
+    const page = isNaN(pageParam) ? 1 : Math.min(Math.max(1, pageParam), totalPages);
+    const startIndex = (page - 1) * pageSizeParam;
+    const paginatedArticles = allArticles.slice(startIndex, startIndex + pageSizeParam);
+
     res.json({
       success: true,
       sourcesCount: FAMOUS_NEWS_SOURCES.length,
-      articlesCount: articles.length,
-      articles,
+      articlesCount: allArticles.length,
+      page,
+      pageSize: pageSizeParam,
+      totalPages,
+      articles: allArticles,
+      paginatedArticles,
       sources: FAMOUS_NEWS_SOURCES,
       timestamp: new Date().toISOString(),
       config: autoNewsConfig,

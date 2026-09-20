@@ -15,6 +15,7 @@ import {
   Sparkles,
   Layers,
   ChevronRight,
+  ChevronLeft,
   ShieldCheck,
   Volume2,
 } from "lucide-react";
@@ -45,6 +46,14 @@ export const AutoNewsFeature: React.FC = () => {
   const [filterRegion, setFilterRegion] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [previewMode, setPreviewMode] = useState<"FEED" | "DISCORD_EMBED" | "CONFIG">("FEED");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [embedPage, setEmbedPage] = useState<number>(1);
+  const pageSize = 5;
+
+  // Reset to page 1 whenever region filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterRegion, searchQuery]);
 
   // Fetch 13 articles on mount
   useEffect(() => {
@@ -129,6 +138,12 @@ export const AutoNewsFeature: React.FC = () => {
     }
     return true;
   });
+
+  // Pagination math (strictly 5 news per page)
+  const totalPages = Math.max(1, Math.ceil(filteredArticles.length / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const paginatedArticles = filteredArticles.slice(startIndex, startIndex + pageSize);
 
   return (
     <div className="space-y-6">
@@ -320,7 +335,7 @@ export const AutoNewsFeature: React.FC = () => {
                 <p className="text-xs text-zinc-400 mt-1">Try resetting the region filter or search keyword.</p>
               </div>
             ) : (
-              filteredArticles.map((article) => {
+              paginatedArticles.map((article) => {
                 const isSelected = selectedArticle?.sourceId === article.sourceId;
                 return (
                   <div
@@ -384,6 +399,63 @@ export const AutoNewsFeature: React.FC = () => {
               })
             )}
           </div>
+
+          {/* Pagination Controls Bar (Strictly 5 news per page) */}
+          {filteredArticles.length > 0 && (
+            <div className="bg-white rounded-2xl p-4 border border-zinc-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-xs text-zinc-500">
+                <span>
+                  Showing <strong className="text-zinc-900">{startIndex + 1}</strong> to{" "}
+                  <strong className="text-zinc-900">
+                    {Math.min(startIndex + pageSize, filteredArticles.length)}
+                  </strong>{" "}
+                  of <strong className="text-zinc-900">{filteredArticles.length}</strong> news headlines
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-semibold text-[11px] border border-indigo-200">
+                  5 news per page
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  id="pagination-prev-btn"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safeCurrentPage <= 1}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-semibold text-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Previous</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      id={`pagination-page-${pageNum}-btn`}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
+                        safeCurrentPage === pageNum
+                          ? "bg-indigo-600 text-white shadow-xs shadow-indigo-200"
+                          : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  id="pagination-next-btn"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safeCurrentPage >= totalPages}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-semibold text-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Interactive Modal / Detail Reader for Selected Article */}
           {selectedArticle && (
@@ -464,45 +536,103 @@ export const AutoNewsFeature: React.FC = () => {
 
           {/* Discord Embed Container */}
           <div className="border-l-4 border-indigo-500 bg-zinc-800/80 rounded-r-xl p-5 max-w-4xl shadow-md">
-            <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-1">
-              <span>🌐 WORLD PRESS DIGEST</span>
-              <span>•</span>
-              <span>13 INTERNATIONAL NEWSPAPERS</span>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
+                <span>🌐 WORLD PRESS DIGEST</span>
+                <span>•</span>
+                <span>13 INTERNATIONAL NEWSPAPERS</span>
+              </div>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-700/80 text-zinc-300">
+                Page {embedPage} of {Math.max(1, Math.ceil(articles.length / 5))} (5 news per page)
+              </span>
             </div>
             <h3 className="text-base font-bold text-white mb-2">
               Automated Global Editorial Briefing (1 Article Per Major Paper)
             </h3>
             <p className="text-xs text-zinc-300 mb-5 leading-relaxed">
               Curated daily intelligence report gathering exactly one headline from each of the world's most
-              influential editorial newsrooms for unbiased, multi-perspective community reading.
+              influential editorial newsrooms. Showing <strong>5 news per page</strong> for clean server readability.
             </p>
 
-            {/* List of 13 articles in Discord embed format */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {articles.map((art) => (
-                <div
-                  key={art.sourceId}
-                  className="bg-zinc-900/90 rounded-lg p-3 border border-zinc-700/60 hover:border-indigo-500/50 transition-colors"
-                >
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300 mb-1">
-                    <span>{art.sourceFlag}</span>
-                    <span>{art.sourceName}</span>
-                    <span className="text-[10px] text-zinc-400 font-normal">({art.sourceCountry})</span>
-                  </div>
-                  <a
-                    href={art.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-semibold text-white hover:text-indigo-400 hover:underline line-clamp-2"
-                  >
-                    {art.title}
-                  </a>
-                  <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2">{art.description}</p>
-                </div>
-              ))}
-            </div>
+            {/* List of articles on current embed page (5 items) */}
+            {(() => {
+              const embedTotalPages = Math.max(1, Math.ceil(articles.length / 5));
+              const safeEmbedPage = Math.min(Math.max(1, embedPage), embedTotalPages);
+              const embedStart = (safeEmbedPage - 1) * 5;
+              const currentEmbedArticles = articles.slice(embedStart, embedStart + 5);
 
-            <div className="mt-5 pt-3 border-t border-zinc-700/60 flex items-center justify-between text-[11px] text-zinc-500">
+              return (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-3">
+                    {currentEmbedArticles.map((art, idx) => (
+                      <div
+                        key={art.sourceId}
+                        className="bg-zinc-900/90 rounded-lg p-3.5 border border-zinc-700/60 hover:border-indigo-500/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300">
+                            <span className="font-mono text-zinc-400">#{embedStart + idx + 1}</span>
+                            <span>{art.sourceFlag}</span>
+                            <span>{art.sourceName}</span>
+                            <span className="text-[10px] text-zinc-400 font-normal">({art.sourceCountry})</span>
+                          </div>
+                          <span className="text-[10px] text-zinc-400">{art.publishedAt}</span>
+                        </div>
+                        <a
+                          href={art.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-semibold text-white hover:text-indigo-400 hover:underline line-clamp-2 block"
+                        >
+                          {art.title}
+                        </a>
+                        <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed">{art.description}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Discord Interactive ActionRow (Next, Previous, Refresh) */}
+                  <div className="pt-4 border-t border-zinc-700/60 flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        id="embed-page-prev-btn"
+                        onClick={() => setEmbedPage((p) => Math.max(1, p - 1))}
+                        disabled={safeEmbedPage <= 1}
+                        className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-xs font-semibold text-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        ◀ Previous (5)
+                      </button>
+                      <span className="px-3 py-1.5 rounded-md bg-indigo-600/40 border border-indigo-500/40 text-xs font-bold text-indigo-200">
+                        Page {safeEmbedPage} / {embedTotalPages}
+                      </span>
+                      <button
+                        id="embed-page-next-btn"
+                        onClick={() => setEmbedPage((p) => Math.min(embedTotalPages, p + 1))}
+                        disabled={safeEmbedPage >= embedTotalPages}
+                        className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-xs font-semibold text-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Next (5) ▶
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        id="embed-page-refresh-btn"
+                        onClick={() => fetchNewsArticles(true)}
+                        disabled={isRefreshing}
+                        className="px-3 py-1.5 rounded-md bg-emerald-600/30 border border-emerald-500/50 hover:bg-emerald-600/50 text-emerald-300 text-xs font-semibold inline-flex items-center gap-1 transition-colors"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isRefreshing ? "animate-spin" : ""}`} />
+                        <span>Refresh Feeds</span>
+                      </button>
+                      <span className="text-[11px] text-zinc-500">5 news per page</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="mt-4 pt-3 border-t border-zinc-700/60 flex items-center justify-between text-[11px] text-zinc-500">
               <span>AegisMod Global News • Verified Editorial Feeds • 13 Publications</span>
               <span>Updated: Just now</span>
             </div>

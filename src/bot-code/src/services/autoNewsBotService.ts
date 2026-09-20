@@ -3,7 +3,14 @@
  * Manages automated dispatching of world news from the 13 famous newspapers into Discord channels
  */
 
-import { Client, EmbedBuilder, TextChannel } from "discord.js";
+import {
+  Client,
+  EmbedBuilder,
+  TextChannel,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} from "discord.js";
 import { NewsArticle } from "../../../types/news.js";
 import { newsService } from "../../../services/newsService.js";
 
@@ -39,29 +46,77 @@ export class AutoNewsBotService {
     this.config = { ...this.config, ...newConfig };
   }
 
-  public create13NewspapersDigestEmbed(articles: NewsArticle[]): EmbedBuilder {
+  public create13NewspapersDigestEmbed(
+    articles: NewsArticle[],
+    page: number = 1,
+    pageSize: number = 5
+  ): EmbedBuilder {
+    const totalPages = Math.ceil(articles.length / pageSize) || 1;
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    const startIndex = (safePage - 1) * pageSize;
+    const pageArticles = articles.slice(startIndex, startIndex + pageSize);
+
     const embed = new EmbedBuilder()
       .setTitle("🌐 World Press Digest — Top 13 International Newspapers")
       .setDescription(
-        "Automated multi-perspective press briefing. Exactly **one top article** selected directly from each of the world's most renowned editorial newspapers."
+        `Automated multi-perspective press briefing. Showing **${pageArticles.length} of ${articles.length} news articles** (Page **${safePage}** of **${totalPages}**, 5 news per page).\nExactly **one top article** selected directly from each world-famous newspaper.`
       )
       .setColor(0x1e3a8a)
       .setTimestamp()
       .setFooter({
-        text: "AegisMod Global News • Verified Editorial Feeds • 13 Publications",
+        text: `Page ${safePage} of ${totalPages} • AegisMod Global News • 13 Publications (5 news per page)`,
       });
 
-    // Add field for each newspaper
-    for (const article of articles) {
+    // Add field for each newspaper in this page (5 items)
+    pageArticles.forEach((article, idx) => {
       const displayTitle = article.title.length > 90 ? article.title.slice(0, 87) + "..." : article.title;
+      const rankNum = startIndex + idx + 1;
       embed.addFields({
-        name: `${article.sourceFlag} ${article.sourceName} (${article.sourceCountry})`,
-        value: `[**${displayTitle}**](${article.link})\n*${article.description.slice(0, 110)}...*`,
+        name: `#${rankNum} ${article.sourceFlag} ${article.sourceName} (${article.sourceCountry})`,
+        value: `[**${displayTitle}**](${article.link})\n*${article.description.slice(0, 120)}...*`,
         inline: false,
       });
-    }
+    });
 
     return embed;
+  }
+
+  public createPaginationRow(
+    currentPage: number = 1,
+    totalPages: number = 3
+  ): ActionRowBuilder<ButtonBuilder> {
+    const safePage = Math.min(Math.max(1, currentPage), totalPages);
+
+    const prevBtn = new ButtonBuilder()
+      .setCustomId(`news:page:${safePage - 1}`)
+      .setLabel("◀ Previous (5)")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(safePage <= 1);
+
+    const pageIndicatorBtn = new ButtonBuilder()
+      .setCustomId("news:noop")
+      .setLabel(`Page ${safePage}/${totalPages}`)
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(true);
+
+    const nextBtn = new ButtonBuilder()
+      .setCustomId(`news:page:${safePage + 1}`)
+      .setLabel("Next (5) ▶")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(safePage >= totalPages);
+
+    const refreshBtn = new ButtonBuilder()
+      .setCustomId("news:refresh")
+      .setLabel("Refresh")
+      .setStyle(ButtonStyle.Success)
+      .setEmoji("🔄");
+
+    return new ActionRowBuilder<ButtonBuilder>().addComponents(
+      prevBtn,
+      pageIndicatorBtn,
+      nextBtn,
+      refreshBtn
+    );
   }
 
   public async broadcastToChannel(channelId: string): Promise<{ success: boolean; error?: string; articlesCount: number }> {
@@ -71,8 +126,13 @@ export class AutoNewsBotService {
       if (this.client) {
         const channel = await this.client.channels.fetch(channelId).catch(() => null);
         if (channel && channel.isTextBased()) {
-          const embed = this.create13NewspapersDigestEmbed(articles);
-          await (channel as TextChannel).send({ embeds: [embed] });
+          const totalPages = Math.ceil(articles.length / 5);
+          const embed = this.create13NewspapersDigestEmbed(articles, 1, 5);
+          const paginationRow = this.createPaginationRow(1, totalPages);
+          await (channel as TextChannel).send({
+            embeds: [embed],
+            components: [paginationRow],
+          });
         }
       }
 

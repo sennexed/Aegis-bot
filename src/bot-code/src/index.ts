@@ -49,6 +49,7 @@ import { reportCommand } from "./commands/report.js";
 import { loaCommand } from "./commands/loa.js";
 import { newsCommand } from "./commands/news.js";
 import { autoNewsBotService } from "./services/autoNewsBotService.js";
+import { newsService } from "../../services/newsService.js";
 
 import { handleMessageCreate } from "./events/messageCreate.js";
 import { handleMessageUpdate } from "./events/messageUpdate.js";
@@ -220,6 +221,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   // C. Interactive Button Clicks (Quick Actions & Appeals)
   if (interaction.isButton()) {
+    // News digest pagination and refresh (accessible to all members)
+    if (interaction.customId.startsWith("news:")) {
+      const parts = interaction.customId.split(":");
+      const newsAction = parts[1];
+      const pageParam = parts[2] ? parseInt(parts[2], 10) : 1;
+
+      if (newsAction === "noop") {
+        return interaction.deferUpdate();
+      }
+
+      await interaction.deferUpdate();
+      const articles = await newsService.fetchAll13Newspapers(newsAction === "refresh");
+      const totalPages = Math.ceil(articles.length / 5);
+      const targetPage = isNaN(pageParam) ? 1 : Math.min(Math.max(1, pageParam), totalPages);
+
+      const embed = autoNewsBotService.create13NewspapersDigestEmbed(articles, targetPage, 5);
+      const paginationRow = autoNewsBotService.createPaginationRow(targetPage, totalPages);
+
+      return interaction.editReply({
+        embeds: [embed],
+        components: [paginationRow],
+      });
+    }
+
     if (!interaction.guild || !interaction.member) return;
     const staffMember = interaction.member as GuildMember;
 
