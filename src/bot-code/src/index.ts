@@ -47,6 +47,8 @@ import { modMailCommand } from "./commands/modmail.js";
 import { exportLogsCommand } from "./commands/exportlogs.js";
 import { reportCommand } from "./commands/report.js";
 import { loaCommand } from "./commands/loa.js";
+import { newsCommand } from "./commands/news.js";
+import { autoNewsBotService } from "./services/autoNewsBotService.js";
 
 import { handleMessageCreate } from "./events/messageCreate.js";
 import { handleMessageUpdate } from "./events/messageUpdate.js";
@@ -106,6 +108,7 @@ export async function syncGuildCommands(guildId: string, isSetupComplete: boolea
     exportLogsCommand.data.toJSON(),
     reportCommand.data.toJSON(),
     loaCommand.data.toJSON(),
+    newsCommand.data.toJSON(),
     ...moderationCommands.map((c) => c.data.toJSON()),
   ];
 
@@ -164,6 +167,9 @@ client.once(Events.ClientReady, async (readyClient) => {
 
   // Periodic cache cleanup every 15 minutes
   setInterval(() => triageService.clearExpired(), 15 * 60 * 1000);
+
+  // Initialize AutoNews bot client
+  autoNewsBotService.setClient(readyClient);
 });
 
 // Guild Join Event (New Server Added)
@@ -386,6 +392,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (commandName === "exportlogs") {
       return exportLogsCommand.execute(interaction, auditExportService, modService, roleService);
+    }
+
+    if (commandName === "news") {
+      return newsCommand.execute(interaction);
     }
 
     const modCmd = moderationCommands.find((c) => c.data.name === commandName);

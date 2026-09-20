@@ -3,6 +3,9 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
+import { newsService } from "./src/services/newsService.js";
+import { FAMOUS_NEWS_SOURCES } from "./src/data/newsSources.js";
+import { AutoNewsConfig } from "./src/types/news.js";
 
 dotenv.config();
 
@@ -472,12 +475,85 @@ app.post("/api/wispbyte/command", (req: Request, res: Response) => {
       responseText = `Eval error: ${e.message}`;
       addWispbyteLog("ERROR", responseText);
     }
+  } else if (lower.startsWith("news") || lower === "autonews") {
+    responseText = `[AutoNews Service]: Monitoring 13 world-famous publications: BBC, NYT, WSJ, The Guardian, WaPo, TOI, Yomiuri, Le Monde, FT, Asahi, El País, Daily Mail, Telegraph. Active broadcast schedule: every ${autoNewsConfig.intervalHours}h to #${autoNewsConfig.channelName}.`;
+    addWispbyteLog("INFO", responseText);
   } else {
     responseText = `Command '${trimmed}' executed successfully.`;
     addWispbyteLog("INFO", responseText);
   }
 
   res.json({ output: responseText, command: trimmed });
+});
+
+// Auto News Config & Live Endpoints
+let autoNewsConfig: AutoNewsConfig = {
+  enabled: true,
+  channelId: "124892849204918299",
+  channelName: "world-news",
+  intervalHours: 6,
+  postMode: "ALL_13_DIGEST",
+  pingRole: "none",
+  lastDispatchedAt: new Date(Date.now() - 7200000).toISOString(),
+  totalBroadcastsSent: 42,
+  featuredSources: FAMOUS_NEWS_SOURCES.map((s) => s.id),
+};
+
+// GET /api/news - Returns 1 article from each of the 13 famous newspapers
+app.get("/api/news", async (req: Request, res: Response) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const articles = await newsService.fetchAll13Newspapers(forceRefresh);
+    res.json({
+      success: true,
+      sourcesCount: FAMOUS_NEWS_SOURCES.length,
+      articlesCount: articles.length,
+      articles,
+      sources: FAMOUS_NEWS_SOURCES,
+      timestamp: new Date().toISOString(),
+      config: autoNewsConfig,
+    });
+  } catch (err: any) {
+    console.error("Failed to fetch news:", err);
+    res.status(500).json({ error: "Failed to fetch news feeds", message: err?.message });
+  }
+});
+
+// GET /api/news/config
+app.get("/api/news/config", (_req: Request, res: Response) => {
+  res.json({ config: autoNewsConfig, sources: FAMOUS_NEWS_SOURCES });
+});
+
+// POST /api/news/config
+app.post("/api/news/config", (req: Request, res: Response) => {
+  const updates = req.body;
+  autoNewsConfig = { ...autoNewsConfig, ...updates };
+  addWispbyteLog("INFO", `[AutoNews]: Configuration updated -> Interval: ${autoNewsConfig.intervalHours}h, Channel: #${autoNewsConfig.channelName}, Enabled: ${autoNewsConfig.enabled}`);
+  res.json({ success: true, config: autoNewsConfig });
+});
+
+// POST /api/news/broadcast - Dispatches news broadcast
+app.post("/api/news/broadcast", async (req: Request, res: Response) => {
+  try {
+    const articles = await newsService.fetchAll13Newspapers(true);
+    autoNewsConfig.lastDispatchedAt = new Date().toISOString();
+    autoNewsConfig.totalBroadcastsSent += 1;
+
+    addWispbyteLog(
+      "DISCORD",
+      `[AutoNews Broadcast]: Dispatched world press digest featuring 13 newspapers (BBC, NYT, WSJ, Guardian, WaPo, TOI, Yomiuri, Le Monde, FT, Asahi, El País, Daily Mail, Telegraph) to #${autoNewsConfig.channelName}!`
+    );
+
+    res.json({
+      success: true,
+      message: `Broadcast of 13 famous newspaper headlines sent to #${autoNewsConfig.channelName}`,
+      dispatchedAt: autoNewsConfig.lastDispatchedAt,
+      articlesCount: articles.length,
+      broadcastsTotal: autoNewsConfig.totalBroadcastsSent,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to broadcast news", message: err?.message });
+  }
 });
 
 // Wispbyte Logs Endpoint

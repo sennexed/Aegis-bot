@@ -130,3 +130,5 @@ export interface TelemetryEvent {
   highlightedPhrases?: string[];
 }
 
+export * from "./news";
+

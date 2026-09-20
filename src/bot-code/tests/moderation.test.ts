@@ -13,6 +13,8 @@ import { PolicyEngine, ModerationClassification } from "../src/services/policyEn
 import { AutoModService } from "../src/services/autoModService.js";
 import { GeminiModerationService } from "../src/services/geminiModerationService.js";
 import { PHISHING_FILTER } from "../src/config/phishingFilter.js";
+import { newsService } from "../../services/newsService.js";
+import { FAMOUS_NEWS_SOURCES } from "../../data/newsSources.js";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -232,7 +234,44 @@ async function runTests() {
     "Phishing filter must whitelist Tenor media domains"
   );
 
-  console.log("\n🎉 All 21 AegisMod Automated Tests Passed Successfully!\n");
+  // 22. AutoNews: Verified Exactly 13 Famous Newspaper Sources
+  const expectedSources = [
+    "BBC",
+    "The New York Times",
+    "The Wall Street Journal",
+    "The Guardian",
+    "The Washington Post",
+    "The Times of India",
+    "The Yomiuri Shimbun",
+    "Le Monde",
+    "Financial Times",
+    "The Asahi Shimbun",
+    "El País",
+    "Daily Mail",
+    "The Daily Telegraph",
+  ];
+  assert(
+    FAMOUS_NEWS_SOURCES.length === 13,
+    `FAMOUS_NEWS_SOURCES must contain exactly 13 newspapers (found ${FAMOUS_NEWS_SOURCES.length})`
+  );
+  for (const expected of expectedSources) {
+    const found = FAMOUS_NEWS_SOURCES.some((s) => s.name === expected);
+    assert(found, `FAMOUS_NEWS_SOURCES must include '${expected}'`);
+  }
+
+  // 23. AutoNews: Fetch exactly 1 article per newspaper
+  const articles = await newsService.fetchAll13Newspapers(false);
+  assert(
+    articles.length === 13,
+    `newsService.fetchAll13Newspapers must return exactly 13 articles (found ${articles.length})`
+  );
+  const sourceIds = new Set(articles.map((a) => a.sourceId));
+  assert(
+    sourceIds.size === 13,
+    `Each article must originate from a distinct newspaper (found ${sourceIds.size} distinct sources)`
+  );
+
+  console.log("\n🎉 All 23 AegisMod & AutoNews Automated Tests Passed Successfully!\n");
 }
 
 runTests().catch((err) => {
