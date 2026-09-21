@@ -513,6 +513,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (modCmd) {
       return modCmd.execute(interaction, modService);
     }
+  }
   } catch (err: any) {
     console.error(`[Interaction Error] Command execution failure:`, err);
     if (interaction.isRepliable()) {
