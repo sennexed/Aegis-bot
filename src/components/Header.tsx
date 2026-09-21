@@ -9,7 +9,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
   const navItems = [
     { id: "dashboard", label: "⚡ Wispbyte Dashboard", badge: "LIVE" },
-    { id: "autonews", label: "📰 Auto News (13 Papers)", badge: "NEW" },
+    { id: "namestyles", label: "✨ Name Styles & Fonts", badge: "NEW" },
+    { id: "autonews", label: "📰 Auto News (13 Papers)" },
     { id: "safety-suite", label: "🛡️ Safety Suite 2.0 (10 Updates)" },
     { id: "live-tester", label: "Live AI Moderation" },
     { id: "setup-sim", label: "Discord Setup Wizard" },

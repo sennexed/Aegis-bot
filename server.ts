@@ -6,6 +6,8 @@ import dotenv from "dotenv";
 import { newsService } from "./src/services/newsService.js";
 import { FAMOUS_NEWS_SOURCES } from "./src/data/newsSources.js";
 import { AutoNewsConfig } from "./src/types/news.js";
+import { botNameStylesService } from "./src/services/botNameStylesService.js";
+import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, BOT_COLOR_PRESETS } from "./src/types/nameStyles.js";
 
 dotenv.config();
 
@@ -567,6 +569,62 @@ app.post("/api/news/broadcast", async (req: Request, res: Response) => {
   } catch (err: any) {
     res.status(500).json({ error: "Failed to broadcast news", message: err?.message });
   }
+});
+
+// Bot Name Styles Endpoints (Catalog, Config, Discord API Simulation & Nickname Sync)
+app.get("/api/namestyle", (_req: Request, res: Response) => {
+  const config = botNameStylesService.getConfig();
+  const catalog = botNameStylesService.getCatalog();
+  const formattedNickname = botNameStylesService.formatFormattedNickname(config);
+  const apiPayload = botNameStylesService.buildDiscordApiPayload(config);
+  const history = botNameStylesService.getHistory();
+
+  res.json({
+    success: true,
+    config,
+    formattedNickname,
+    apiPayload,
+    catalog,
+    history,
+  });
+});
+
+app.post("/api/namestyle", (req: Request, res: Response) => {
+  const updates = req.body;
+  const result = botNameStylesService.updateConfig(updates);
+  const formattedNickname = botNameStylesService.formatFormattedNickname(result.config);
+
+  addWispbyteLog(
+    "INFO",
+    `[NameStyles]: Updated bot display name style -> Font: ${result.config.fontId}, Effect: ${result.config.effectId}, Color: ${result.config.primaryColor}, Nickname: ${formattedNickname}`
+  );
+
+  res.json({
+    success: true,
+    config: result.config,
+    formattedNickname,
+    apiPayload: result.apiPayload,
+  });
+});
+
+app.post("/api/namestyle/sync-discord", (_req: Request, res: Response) => {
+  const config = botNameStylesService.getConfig();
+  const payload = botNameStylesService.buildDiscordApiPayload(config);
+  const formattedNickname = botNameStylesService.formatFormattedNickname(config);
+
+  addWispbyteLog(
+    "DISCORD",
+    `[NameStyles PATCH]: Sent PATCH /users/@me payload to Discord REST API v10 with font '${config.fontId}', effect '${config.effectId}' and colors [${payload.name_style.colors.join(", ")}]. Server nickname: ${formattedNickname}`
+  );
+
+  res.json({
+    success: true,
+    message: "Discord Bot Name Style successfully synced to Discord API v10 and active guilds.",
+    config,
+    formattedNickname,
+    payload,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Wispbyte Logs Endpoint

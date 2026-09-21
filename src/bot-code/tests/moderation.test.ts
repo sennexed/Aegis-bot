@@ -16,6 +16,8 @@ import { PHISHING_FILTER } from "../src/config/phishingFilter.js";
 import { newsService } from "../../services/newsService.js";
 import { FAMOUS_NEWS_SOURCES } from "../../data/newsSources.js";
 import { autoNewsBotService } from "../src/services/autoNewsBotService.js";
+import { botNameStylesService } from "../../services/botNameStylesService.js";
+import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, BOT_COLOR_PRESETS, hexToDiscordDecimal } from "../../types/nameStyles.js";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -311,7 +313,36 @@ async function runTests() {
     "Pagination row must contain 4 interactive components (Prev, Indicator, Next, Refresh)"
   );
 
-  console.log("\n🎉 All 24 AegisMod & AutoNews Automated Tests Passed Successfully!\n");
+  // 10. Bot Name Styles Suite
+  console.log("\n✨ Testing Discord Bot Name Styles Catalog & REST API Generator...");
+
+  assert(BOT_NAME_FONTS.length === 12, `Must include exactly 12 Discord fonts (found ${BOT_NAME_FONTS.length})`);
+  assert(BOT_NAME_EFFECTS.length === 6, `Must include exactly 6 visual effects (found ${BOT_NAME_EFFECTS.length})`);
+  assert(BOT_COLOR_PRESETS.length >= 7, "Must include curated color palettes with decimal conversions");
+
+  // Verify default config
+  const defaultCfg = botNameStylesService.getConfig();
+  assert(defaultCfg.displayName === "AegisMod", "Default bot display name must be AegisMod");
+
+  // Verify REST API payload creation
+  const payload = botNameStylesService.buildDiscordApiPayload(defaultCfg);
+  assert(
+    payload.name_style &&
+    typeof payload.name_style.font_id === "string" &&
+    typeof payload.name_style.effect_id === "string" &&
+    Array.isArray(payload.name_style.colors),
+    "Discord API payload must have name_style object with font_id, effect_id, and colors array"
+  );
+
+  // Verify decimal color conversion
+  const blurpleDecimal = hexToDiscordDecimal("#5865F2");
+  assert(blurpleDecimal === 5793266, `Discord Blurple #5865F2 should convert to decimal 5793266 (got ${blurpleDecimal})`);
+
+  // Verify formatted nickname with clan badge
+  const nick = botNameStylesService.formatFormattedNickname(defaultCfg);
+  assert(nick.includes("[") && nick.includes("AEGIS"), "Formatted nickname must include clan tag brackets");
+
+  console.log("\n🎉 All 29 AegisMod, AutoNews & Bot Name Styles Automated Tests Passed Successfully!\n");
 }
 
 runTests().catch((err) => {

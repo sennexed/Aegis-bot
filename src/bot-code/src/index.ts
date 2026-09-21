@@ -48,8 +48,11 @@ import { exportLogsCommand } from "./commands/exportlogs.js";
 import { reportCommand } from "./commands/report.js";
 import { loaCommand } from "./commands/loa.js";
 import { newsCommand } from "./commands/news.js";
+import { nameStyleCommand } from "./commands/namestyle.js";
 import { autoNewsBotService } from "./services/autoNewsBotService.js";
 import { newsService } from "../../services/newsService.js";
+import { botNameStylesService } from "../../services/botNameStylesService.js";
+import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, hexToDiscordDecimal } from "../../types/nameStyles.js";
 
 import { handleMessageCreate } from "./events/messageCreate.js";
 import { handleMessageUpdate } from "./events/messageUpdate.js";
@@ -110,6 +113,7 @@ export async function syncGuildCommands(guildId: string, isSetupComplete: boolea
     reportCommand.data.toJSON(),
     loaCommand.data.toJSON(),
     newsCommand.data.toJSON(),
+    nameStyleCommand.data.toJSON(),
     ...moderationCommands.map((c) => c.data.toJSON()),
   ];
 
@@ -242,6 +246,74 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({
         embeds: [embed],
         components: [paginationRow],
+      });
+    }
+
+    // Bot Name Styles interactive controls (Refresh, Next Font, Next Effect)
+    if (interaction.customId.startsWith("namestyle:")) {
+      const action = interaction.customId.split(":")[1];
+      const currentConfig = botNameStylesService.getConfig();
+
+      if (action === "cycle_font") {
+        const fontIdx = BOT_NAME_FONTS.findIndex((f) => f.id === currentConfig.fontId);
+        const nextFont = BOT_NAME_FONTS[(fontIdx + 1) % BOT_NAME_FONTS.length];
+        botNameStylesService.updateConfig({ fontId: nextFont.id });
+      } else if (action === "cycle_effect") {
+        const effectIdx = BOT_NAME_EFFECTS.findIndex((e) => e.id === currentConfig.effectId);
+        const nextEffect = BOT_NAME_EFFECTS[(effectIdx + 1) % BOT_NAME_EFFECTS.length];
+        botNameStylesService.updateConfig({ effectId: nextEffect.id });
+      }
+
+      const updated = botNameStylesService.getConfig();
+      const font = BOT_NAME_FONTS.find((f) => f.id === updated.fontId) || BOT_NAME_FONTS[0];
+      const effect = BOT_NAME_EFFECTS.find((e) => e.id === updated.effectId) || BOT_NAME_EFFECTS[0];
+      const primaryDec = hexToDiscordDecimal(updated.primaryColor);
+
+      // Attempt to sync server nickname if applicable
+      if (interaction.guild && interaction.guild.members.me) {
+        try {
+          const nick = botNameStylesService.formatFormattedNickname(updated);
+          await interaction.guild.members.me.setNickname(nick);
+        } catch {
+          // Ignore missing permissions gracefully
+        }
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(primaryDec)
+        .setTitle("✨ Discord Bot Name Style & Aesthetics")
+        .setDescription(
+          `**Current Display Name:** \`${updated.displayName}\`\n**Formatted Nickname:** \`${botNameStylesService.formatFormattedNickname(updated)}\``
+        )
+        .addFields(
+          {
+            name: "🔤 Active Font",
+            value: `**${font.name}**\n${font.description}\nCategory: \`${font.category}\``,
+            inline: true,
+          },
+          {
+            name: "✨ Visual Effect",
+            value: `**${effect.name}**\n${effect.description}\nBadge: \`${effect.badge}\``,
+            inline: true,
+          },
+          {
+            name: "🎨 Primary Color",
+            value: `\`${updated.primaryColor}\`\n(Decimal: \`${primaryDec}\`)`,
+            inline: true,
+          },
+          {
+            name: "🏷️ Server Tag / Clan Badge",
+            value: updated.clanTag
+              ? `${updated.clanBadge || "🛡️"} \`[${updated.clanTag}]\``
+              : "*(None configured)*",
+            inline: true,
+          }
+        )
+        .setFooter({ text: "AegisMod Bot Name Styles • Interactive Preview" })
+        .setTimestamp();
+
+      return interaction.update({
+        embeds: [embed],
       });
     }
 
@@ -421,6 +493,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (commandName === "news") {
       return newsCommand.execute(interaction);
+    }
+
+    if (commandName === "namestyle") {
+      return nameStyleCommand.execute(interaction);
     }
 
     const modCmd = moderationCommands.find((c) => c.data.name === commandName);
