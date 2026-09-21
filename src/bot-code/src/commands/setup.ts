@@ -13,6 +13,7 @@ import {
 } from "discord.js";
 import { RoleService } from "../services/roleService.js";
 import { LoggingService } from "../services/loggingService.js";
+import { guildMemoryService } from "../services/guildMemoryService.js";
 
 export const setupCommand = {
   data: new SlashCommandBuilder()
@@ -35,16 +36,25 @@ export const setupCommand = {
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
+    // Check if this guild is already remembered in permanent storage
+    const existingMemory = guildMemoryService.getServer(interaction.guild.id);
+    const isAlreadyConfigured = existingMemory?.isSetupComplete;
+
     // 1. Generate Interactive Role Select Menus
     const selectRows = roleService.createSetupRoleSelects(interaction.guild.id);
 
     const setupEmbed = new EmbedBuilder()
-      .setTitle("🛡️ AegisMod Server Setup Wizard")
-      .setDescription(
-        "Welcome to **AegisMod**! Please configure your server's role hierarchy below. " +
-        "These roles will control command permissions and access to the dedicated audit log channel."
+      .setTitle(
+        isAlreadyConfigured
+          ? "🛡️ AegisMod Server Setup (Stored in Permanent Memory)"
+          : "🛡️ AegisMod Server Setup Wizard"
       )
-      .setColor(0x5865f2)
+      .setDescription(
+        isAlreadyConfigured
+          ? `ℹ️ **Server Already Setup:** This server's configuration was previously saved on <t:${Math.floor((existingMemory.configuredAt || Date.now()) / 1000)}:d> and is **immune to bot restarts**. You can modify staff role assignments below.`
+          : "Welcome to **AegisMod**! Please configure your server's role hierarchy below. Once completed, your settings will be stored in **permanent memory** so you will never need to run `/setup` again after bot reboots."
+      )
+      .setColor(isAlreadyConfigured ? 0x57f287 : 0x5865f2)
       .addFields(
         {
           name: "1. Owner / Executive Role",
@@ -61,9 +71,13 @@ export const setupCommand = {
         {
           name: "4. Dedicated Audit Log Channel",
           value: "The bot will automatically create or bind `#mod-logs` visible only to staff.",
+        },
+        {
+          name: "💾 Permanent Memory Guarantee",
+          value: "All bindings are committed to persistent disk storage (`guild_memory.json`). Upon any bot crash or server restart, all 17 commands and configurations are restored automatically.",
         }
       )
-      .setFooter({ text: "Select options below within 5 minutes to complete setup." });
+      .setFooter({ text: "Select options below within 5 minutes to commit changes." });
 
     const message = await interaction.editReply({
       embeds: [setupEmbed],
@@ -116,10 +130,21 @@ export const setupCommand = {
         staffRoles
       );
 
+      // Commit to permanent disk memory so reboots never prompt /setup again
+      await guildMemoryService.saveServerSetup(
+        interaction.guildId!,
+        interaction.guild!.name,
+        ownerRole,
+        adminRoles,
+        modRoles,
+        logChannel.id,
+        logChannel.name
+      );
+
       const updatedEmbed = new EmbedBuilder()
-        .setTitle("✅ AegisMod Configuration Updated")
+        .setTitle("✅ AegisMod Configuration Committed to Permanent Memory")
         .setColor(0x57f287)
-        .setDescription("Your role configuration has been updated!")
+        .setDescription("Your server role hierarchy and audit log channels are now permanently saved to disk (`guild_memory.json`).")
         .addFields(
           {
             name: "👑 Owner Role",
@@ -138,11 +163,16 @@ export const setupCommand = {
           },
           {
             name: "📋 Dedicated Log Channel",
-            value: `<#${logChannel.id}> (Auto-created with strict permissions)`,
-            inline: false,
+            value: `<#${logChannel.id}> (Bound & Restricted)`,
+            inline: true,
+          },
+          {
+            name: "💾 Persistence Status",
+            value: "🟢 **Locked in Permanent Memory** — Restart immune. Will never demand setup again.",
+            inline: true,
           }
         )
-        .setFooter({ text: "AegisMod is now monitoring messages for teenage safety." });
+        .setFooter({ text: "AegisMod is active with all 17 commands registered." });
 
       await menuInteraction.update({
         embeds: [updatedEmbed],

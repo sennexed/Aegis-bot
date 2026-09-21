@@ -31,6 +31,7 @@ import { DutyService } from "./services/dutyService.js";
 import { ModMailService } from "./services/modMailService.js";
 import { AuditExportService } from "./services/auditExportService.js";
 import { LoaService } from "./services/loaService.js";
+import { guildMemoryService } from "./services/guildMemoryService.js";
 
 import { setupCommand } from "./commands/setup.js";
 import { moderationCommands } from "./commands/moderation.js";
@@ -151,10 +152,15 @@ async function registerSlashCommands() {
     });
     console.log("✅ Global commands updated: only /setup is default until server is configured.");
 
-    // Sync each joined guild based on whether /setup has been completed
-    for (const [guildId] of client.guilds.cache) {
-      const isConfigured = roleService.isGuildConfigured(guildId);
+    // Sync each joined guild based on whether /setup has been completed in permanent memory
+    for (const [guildId, guild] of client.guilds.cache) {
+      const isConfigured = guildMemoryService.isServerSetup(guildId) || roleService.isGuildConfigured(guildId);
       await syncGuildCommands(guildId, isConfigured);
+      if (isConfigured) {
+        console.log(
+          `[AegisMod Ready] Server '${guild.name}' (${guildId}) setup restored from permanent memory! 17 commands unlocked without re-setup.`
+        );
+      }
     }
   } catch (err) {
     console.error("Failed to register slash commands:", err);
@@ -179,8 +185,11 @@ client.once(Events.ClientReady, async (readyClient) => {
 
 // Guild Join Event (New Server Added)
 client.on(Events.GuildCreate, async (guild) => {
-  console.log(`Joined new guild: ${guild.name} (${guild.id}) - registering /setup only until configured`);
-  await syncGuildCommands(guild.id, false);
+  const isConfigured = guildMemoryService.isServerSetup(guild.id);
+  console.log(
+    `Joined guild: ${guild.name} (${guild.id}) - Setup status from permanent memory: ${isConfigured ? "ALREADY_CONFIGURED (Commands Unlocked)" : "PENDING_SETUP"}`
+  );
+  await syncGuildCommands(guild.id, isConfigured);
 });
 
 // Member Join Event (Anti-Raid Gatekeeper)

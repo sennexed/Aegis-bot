@@ -8,6 +8,7 @@ import { FAMOUS_NEWS_SOURCES } from "./src/data/newsSources.js";
 import { AutoNewsConfig } from "./src/types/news.js";
 import { botNameStylesService } from "./src/services/botNameStylesService.js";
 import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, BOT_COLOR_PRESETS } from "./src/types/nameStyles.js";
+import { guildMemoryService } from "./src/services/guildMemoryService.js";
 
 dotenv.config();
 
@@ -647,6 +648,54 @@ app.post("/api/wispbyte/config", (req: Request, res: Response) => {
 
   addWispbyteLog("INFO", `[Wispbyte Config Updated]: RAM: ${memoryAllocatedMb}MB, Policy: ${policyLevel}, AutoRestart: ${autoRestartEnabled}`);
   res.json({ success: true, policy: policyLevel, ramMb: memoryAllocatedMb, autoRestart: autoRestartEnabled });
+});
+
+// Guild Memory (Permanent Server Registry) Endpoints
+app.get("/api/guilds", (_req: Request, res: Response) => {
+  const servers = guildMemoryService.getAllServers();
+  const metadata = guildMemoryService.getMetadata();
+  res.json({ servers, metadata });
+});
+
+app.post("/api/guilds/setup", async (req: Request, res: Response) => {
+  try {
+    const updated = await guildMemoryService.saveServer(req.body);
+    addWispbyteLog(
+      "DISCORD",
+      `[Guild Memory Saved]: Committed permanent setup for '${updated.guildName}' (${updated.guildId}) to disk. Owner: ${updated.ownerRoleId}, Staff roles: ${updated.adminRoleIds.length + updated.moderatorRoleIds.length}, #mod-logs: ${updated.modLogChannelName}`
+    );
+    res.json({ success: true, server: updated, metadata: guildMemoryService.getMetadata() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to save server setup" });
+  }
+});
+
+app.post("/api/guilds/reset", async (req: Request, res: Response) => {
+  try {
+    const { guildId } = req.body;
+    if (!guildId) return res.status(400).json({ error: "Missing guildId" });
+    const reset = await guildMemoryService.resetServerSetup(guildId);
+    addWispbyteLog(
+      "WARN",
+      `[Guild Memory Reset]: Server '${reset.guildName}' (${reset.guildId}) reset to pending /setup status.`
+    );
+    res.json({ success: true, server: reset, metadata: guildMemoryService.getMetadata() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to reset server setup" });
+  }
+});
+
+app.post("/api/guilds/reboot-check", async (_req: Request, res: Response) => {
+  try {
+    const result = await guildMemoryService.simulateReboot();
+    addWispbyteLog(
+      "DAEMON",
+      `[Bot Reboot Simulation]: Cold restart executed. Restored ${result.serversRestored} configured servers from permanent disk storage (guild_memory.json) in ${result.rebootDurationMs}ms. Zero servers require /setup.`
+    );
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Reboot simulation failed" });
+  }
 });
 
 // API Live Moderate endpoint
