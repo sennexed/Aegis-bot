@@ -11,8 +11,8 @@ import {
   ButtonBuilder,
   ButtonStyle,
 } from "discord.js";
-import { NewsArticle } from "../../../types/news.js";
-import { newsService } from "../../../services/newsService.js";
+import { NewsArticle } from "../types/news.js";
+import { newsService } from "./newsService.js";
 
 export class AutoNewsBotService {
   private static instance: AutoNewsBotService;

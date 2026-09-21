@@ -134,6 +134,21 @@ export class ModMailService {
   }
 
   /**
+   * Universal message appender supporting DM listener or staff calls
+   */
+  public addMessage(
+    guildId: string,
+    ticketId: string,
+    data: { senderId: string; senderTag: string; content: string; isStaff: boolean }
+  ): { success: boolean; message?: ModMailMessage; ticket?: ModMailTicket; error?: string } {
+    if (data.isStaff) {
+      return this.addStaffReply(ticketId, data.senderId, data.senderTag, data.content, false);
+    } else {
+      return this.addUserReply(ticketId, data.senderId, data.content);
+    }
+  }
+
+  /**
    * Appends a message from staff to the ticket
    */
   public addStaffReply(

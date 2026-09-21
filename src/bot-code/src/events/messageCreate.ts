@@ -194,7 +194,13 @@ export async function handleMessageCreate(
       if (traditionalModService) {
         const esc = traditionalModService.calculateEscalation(message.guild.id, message.author.id);
         escalationInfo = `\n**Warning Strike Status:** Strike ${esc.strikeCount}/3.`;
-        if (esc.recommendedPenalty === "TIMEOUT_24H" && policyDecision.action !== "BAN") {
+        if (
+          esc.recommendedPenalty === "TIMEOUT_1H" &&
+          (policyDecision.action === "WARN" || policyDecision.action === "DELETE")
+        ) {
+          policyDecision.action = "TIMEOUT_1H";
+          policyDecision.durationMs = esc.durationMs || 15 * 60 * 1000;
+        } else if (esc.recommendedPenalty === "TIMEOUT_24H" && policyDecision.action !== "BAN") {
           policyDecision.action = "TIMEOUT_24H";
           policyDecision.durationMs = 24 * 60 * 60 * 1000;
         } else if (esc.recommendedPenalty === "BAN") {

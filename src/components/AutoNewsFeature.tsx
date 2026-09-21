@@ -22,6 +22,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { NewsArticle, AutoNewsConfig, NewsSourceConfig } from "../types/news";
 import { FAMOUS_NEWS_SOURCES } from "../data/newsSources";
+import { playClickSound, playSuccessChime } from "../utils/soundEffects";
 
 export const AutoNewsFeature: React.FC = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
@@ -83,12 +84,14 @@ export const AutoNewsFeature: React.FC = () => {
   };
 
   const handleBroadcastNow = async () => {
+    playClickSound();
     setIsBroadcasting(true);
     setBroadcastSuccess(null);
     try {
       const res = await fetch("/api/news/broadcast", { method: "POST" });
       const data = await res.json();
       if (data.success) {
+        playSuccessChime();
         setBroadcastSuccess(
           `Successfully dispatched the 13-newspaper digest to #${config.channelName}!`
         );

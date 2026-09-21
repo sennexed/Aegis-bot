@@ -10,6 +10,8 @@ import { TriageService } from "../services/triageService.js";
 import { GeminiModerationService } from "../services/geminiModerationService.js";
 import { RoleService } from "../services/roleService.js";
 import { AutoModService } from "../services/autoModService.js";
+import { ChannelPolicyService } from "../services/channelPolicyService.js";
+import { TraditionalModService } from "../services/traditionalModService.js";
 
 export async function handleMessageUpdate(
   oldMessage: Message | PartialMessage,
@@ -18,7 +20,9 @@ export async function handleMessageUpdate(
   triageService: TriageService,
   geminiService: GeminiModerationService,
   roleService: RoleService,
-  autoModService?: AutoModService
+  autoModService?: AutoModService,
+  channelPolicyService?: ChannelPolicyService,
+  traditionalModService?: TraditionalModService
 ) {
   // If partial, try to fetch full message
   if (newMessage.partial) {
@@ -47,6 +51,8 @@ export async function handleMessageUpdate(
     geminiService,
     loggingService,
     roleService,
-    autoModService
+    autoModService,
+    channelPolicyService,
+    traditionalModService
   );
 }

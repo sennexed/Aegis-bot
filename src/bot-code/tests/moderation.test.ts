@@ -13,11 +13,11 @@ import { PolicyEngine, ModerationClassification } from "../src/services/policyEn
 import { AutoModService } from "../src/services/autoModService.js";
 import { GeminiModerationService } from "../src/services/geminiModerationService.js";
 import { PHISHING_FILTER } from "../src/config/phishingFilter.js";
-import { newsService } from "../../services/newsService.js";
-import { FAMOUS_NEWS_SOURCES } from "../../data/newsSources.js";
+import { newsService } from "../src/services/newsService.js";
+import { FAMOUS_NEWS_SOURCES } from "../src/data/newsSources.js";
 import { autoNewsBotService } from "../src/services/autoNewsBotService.js";
-import { botNameStylesService } from "../../services/botNameStylesService.js";
-import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, BOT_COLOR_PRESETS, hexToDiscordDecimal } from "../../types/nameStyles.js";
+import { botNameStylesService } from "../src/services/botNameStylesService.js";
+import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, BOT_COLOR_PRESETS, hexToDiscordDecimal } from "../src/types/nameStyles.js";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {

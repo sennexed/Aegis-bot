@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Sparkles,
   Send,
@@ -11,8 +12,19 @@ import {
   Zap,
   Info,
   Layers,
+  Trash2,
+  Lock,
+  UserX,
+  Bell,
+  RotateCcw,
 } from "lucide-react";
 import { AIModerationResult } from "../types";
+import {
+  playClickSound,
+  playAlertSound,
+  playMessagePop,
+  playSuccessChime,
+} from "../utils/soundEffects";
 
 const PRESET_MESSAGES = [
   {
@@ -81,14 +93,20 @@ export const LiveModerationTester: React.FC = () => {
   const [result, setResult] = useState<AIModerationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [simulatedAction, setSimulatedAction] = useState<string | null>(null);
+  const [isDeleted, setIsDeleted] = useState(false);
+
   const handleTest = async (testContent?: string, testAuthor?: string) => {
     const textToTest = testContent ?? content;
     const authorToTest = testAuthor ?? author;
 
     if (!textToTest.trim()) return;
 
+    playClickSound();
     setLoading(true);
     setError(null);
+    setSimulatedAction(null);
+    setIsDeleted(false);
 
     try {
       const res = await fetch("/api/moderate", {
@@ -107,12 +125,34 @@ export const LiveModerationTester: React.FC = () => {
 
       const data = await res.json();
       setResult(data);
+      if (data.flagged) {
+        playAlertSound();
+      } else {
+        playSuccessChime();
+      }
     } catch (err: any) {
       console.error("Moderation test error:", err);
       setError(err.message || "Failed to analyze message");
+      playAlertSound();
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSimulateDelete = () => {
+    playAlertSound();
+    setIsDeleted(true);
+    setSimulatedAction("Message successfully purged from Discord channel with audit trail.");
+  };
+
+  const handleSimulateTimeout = () => {
+    playAlertSound();
+    setSimulatedAction(`Applied 1-Hour Timeout to @${author}. Restorative cooldown active.`);
+  };
+
+  const handleSimulateDM = () => {
+    playMessagePop();
+    setSimulatedAction(`Dispatched private DM warning explaining Teen-Safety guidelines to @${author}.`);
   };
 
   const getSeverityBadge = (severity: string) => {
@@ -197,6 +237,75 @@ export const LiveModerationTester: React.FC = () => {
           </div>
         </div>
 
+        {/* Interactive Multi-Tier Triage Visualizer */}
+        <div className="mt-5 p-4 rounded-xl bg-zinc-50 border border-zinc-200">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-zinc-700 flex items-center gap-1.5">
+              <Layers className="w-4 h-4 text-indigo-600" />
+              Real-Time Moderation Pipeline Flow
+            </span>
+            <span className="text-[10px] text-zinc-400 uppercase font-mono tracking-wider">
+              {loading ? "Processing..." : result ? `Stage: ${result.source}` : "Idle Ready"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Stage 1 */}
+            <div
+              className={`p-3 rounded-xl border transition-all ${
+                loading
+                  ? "bg-indigo-50/50 border-indigo-300 animate-pulse"
+                  : result?.source === "TIER_1_LOCAL_TRIAGE"
+                  ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200"
+                  : "bg-white border-zinc-200"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-zinc-400 uppercase">Stage 1</span>
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
+              </div>
+              <span className="text-xs font-bold text-zinc-900 block mt-1">Local Regex & Keywords</span>
+              <span className="text-[10px] text-zinc-500 block mt-0.5">&lt; 1ms latency • 0 tokens</span>
+            </div>
+
+            {/* Stage 2 */}
+            <div
+              className={`p-3 rounded-xl border transition-all ${
+                loading
+                  ? "bg-indigo-50/50 border-indigo-300 animate-pulse [animation-delay:0.15s]"
+                  : result?.category === "PHISHING_OR_SCAM" || result?.category === "INVITE_LINK_SPAM"
+                  ? "bg-orange-50 border-orange-300 ring-2 ring-orange-200"
+                  : "bg-white border-zinc-200"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-zinc-400 uppercase">Stage 2</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
+              </div>
+              <span className="text-xs font-bold text-zinc-900 block mt-1">Anti-Phishing & Invites</span>
+              <span className="text-[10px] text-zinc-500 block mt-0.5">Automated Link Quarantine</span>
+            </div>
+
+            {/* Stage 3 */}
+            <div
+              className={`p-3 rounded-xl border transition-all ${
+                loading
+                  ? "bg-indigo-50/50 border-indigo-300 animate-pulse [animation-delay:0.3s]"
+                  : result?.source === "TIER_3_GEMINI_AI"
+                  ? "bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200"
+                  : "bg-white border-zinc-200"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-zinc-400 uppercase">Stage 3</span>
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+              </div>
+              <span className="text-xs font-bold text-zinc-900 block mt-1">Gemini 3.8 Flash AI</span>
+              <span className="text-[10px] text-zinc-500 block mt-0.5">Deep Semantic Context & Slang</span>
+            </div>
+          </div>
+        </div>
+
         {/* Message Input Form */}
         <div className="mt-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -234,7 +343,7 @@ export const LiveModerationTester: React.FC = () => {
               id="run-moderation-test-btn"
               onClick={() => handleTest()}
               disabled={loading || !content.trim()}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer disabled:opacity-50 active:scale-95"
             >
               {loading ? (
                 <>
@@ -261,7 +370,12 @@ export const LiveModerationTester: React.FC = () => {
 
       {/* Results View */}
       {result && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+        >
           {/* Left Column: Metrics & Evaluation Analysis */}
           <div className="lg:col-span-6 space-y-4">
             <div className="bg-white rounded-2xl p-6 border border-zinc-200 shadow-sm space-y-5">
@@ -326,6 +440,49 @@ export const LiveModerationTester: React.FC = () => {
                   Recommended Automated Action:
                 </span>
                 <div className="flex items-center gap-2">{getActionBadge(result.recommendedAction)}</div>
+              </div>
+
+              {/* Interactive Simulation Controls */}
+              <div className="pt-3 border-t border-zinc-100">
+                <span className="text-xs font-semibold text-zinc-500 block mb-2">
+                  Interactive Moderator Action Simulator:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleSimulateDelete}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Purge Message</span>
+                  </button>
+
+                  <button
+                    onClick={handleSimulateTimeout}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Apply 1h Timeout</span>
+                  </button>
+
+                  <button
+                    onClick={handleSimulateDM}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Bell className="w-3.5 h-3.5" />
+                    <span>Send Guideline DM</span>
+                  </button>
+                </div>
+
+                {simulatedAction && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-3 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2"
+                  >
+                    <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+                    <span>{simulatedAction}</span>
+                  </motion.div>
+                )}
               </div>
 
               {/* Teenage Community Notes */}
@@ -413,9 +570,17 @@ export const LiveModerationTester: React.FC = () => {
                       <span className="text-zinc-500 ml-2">(ID: 839219482103810)</span>
                     </div>
 
-                    <div className="bg-[#1e1f22] p-2.5 rounded font-mono text-[11px] text-zinc-200 border border-zinc-800">
-                      {content}
-                    </div>
+                    {/* Message Box with optional delete disintegration animation */}
+                    {isDeleted ? (
+                      <div className="bg-[#1e1f22] p-2.5 rounded font-mono text-[11px] text-red-400 border border-red-900/60 italic flex items-center gap-2">
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>[Content removed by Moderator: Purged from Discord channel]</span>
+                      </div>
+                    ) : (
+                      <div className="bg-[#1e1f22] p-2.5 rounded font-mono text-[11px] text-zinc-200 border border-zinc-800">
+                        {content}
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <div>
@@ -452,7 +617,7 @@ export const LiveModerationTester: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );

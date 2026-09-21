@@ -8,6 +8,7 @@ import {
   EmbedBuilder,
   SlashCommandBuilder,
   PermissionFlagsBits,
+  MessageFlags,
 } from "discord.js";
 import { DutyService } from "../services/dutyService.js";
 import { RoleService } from "../services/roleService.js";
@@ -52,7 +53,7 @@ export const dutyCommand = {
     if (interaction.member && !roleService.isStaffOrExempt(interaction.member as any)) {
       return interaction.reply({
         content: "⛔ Only authorized moderators or staff can use the `/duty` command.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -66,7 +67,7 @@ export const dutyCommand = {
         const endT = activeLoa ? Math.floor(activeLoa.endDate / 1000) : 0;
         return interaction.reply({
           content: `🌴 **You are currently on an approved Leave of Absence (${activeLoa?.id || "LOA"})** until <t:${endT}:D> (<t:${endT}:R>).\n\nIf you have returned early and wish to resume moderation duties, please end your LOA first with \`/loa end\`.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -104,7 +105,7 @@ export const dutyCommand = {
       if (!result.wasOnDuty) {
         return interaction.reply({
           content: "ℹ️ You are not currently marked as on-duty.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 

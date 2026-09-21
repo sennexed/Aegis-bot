@@ -462,6 +462,22 @@ export class LoggingService {
   }
 
   /**
+   * Generic logger to #mod-logs for embeds, staff pings, and modmail notifications
+   */
+  public async logToModLogs(
+    guild: Guild,
+    payload: { content?: string; embeds?: EmbedBuilder[]; components?: any[] }
+  ): Promise<Message | null> {
+    try {
+      const logChannel = await this.ensureLogChannel(guild);
+      return await logChannel.send(payload as any);
+    } catch (err) {
+      console.error("[LoggingService] Failed to send message to #mod-logs:", err);
+      return null;
+    }
+  }
+
+  /**
    * Dispatches log for traditional moderation commands (ban, kick, mute, warn)
    */
   public async logTraditionalModAction(

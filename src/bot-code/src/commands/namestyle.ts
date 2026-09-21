@@ -17,13 +17,13 @@ import {
   ButtonStyle,
   MessageFlags,
 } from "discord.js";
-import { botNameStylesService } from "../../../services/botNameStylesService.js";
+import { botNameStylesService } from "../services/botNameStylesService.js";
 import {
   BOT_NAME_FONTS,
   BOT_NAME_EFFECTS,
   BOT_COLOR_PRESETS,
   hexToDiscordDecimal,
-} from "../../../types/nameStyles.js";
+} from "../types/nameStyles.js";
 
 export const nameStyleCommand = {
   data: new SlashCommandBuilder()

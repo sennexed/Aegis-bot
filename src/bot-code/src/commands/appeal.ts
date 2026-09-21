@@ -7,6 +7,7 @@ import {
   ChatInputCommandInteraction,
   EmbedBuilder,
   SlashCommandBuilder,
+  MessageFlags,
 } from "discord.js";
 import { TraditionalModService } from "../services/traditionalModService.js";
 import { LoggingService } from "../services/loggingService.js";
@@ -46,7 +47,7 @@ export const appealCommand = {
     if (!matchedCase && !caseId.startsWith("CASE-")) {
       return interaction.reply({
         content: `⚠️ Could not locate \`${caseId}\` on record for your account. Please check your DM notification for the exact Case ID.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -75,6 +76,6 @@ export const appealCommand = {
       )
       .setTimestamp();
 
-    await interaction.reply({ embeds: [confirmationEmbed], ephemeral: true });
+    await interaction.reply({ embeds: [confirmationEmbed], flags: MessageFlags.Ephemeral });
   },
 };

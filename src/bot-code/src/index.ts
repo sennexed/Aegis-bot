@@ -50,9 +50,9 @@ import { loaCommand } from "./commands/loa.js";
 import { newsCommand } from "./commands/news.js";
 import { nameStyleCommand } from "./commands/namestyle.js";
 import { autoNewsBotService } from "./services/autoNewsBotService.js";
-import { newsService } from "../../services/newsService.js";
-import { botNameStylesService } from "../../services/botNameStylesService.js";
-import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, hexToDiscordDecimal } from "../../types/nameStyles.js";
+import { newsService } from "./services/newsService.js";
+import { botNameStylesService } from "./services/botNameStylesService.js";
+import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, hexToDiscordDecimal } from "./types/nameStyles.js";
 
 import { handleMessageCreate } from "./events/messageCreate.js";
 import { handleMessageUpdate } from "./events/messageUpdate.js";
@@ -551,7 +551,17 @@ client.on(Events.MessageCreate, async (message) => {
 });
 
 client.on(Events.MessageUpdate, (oldMsg, newMsg) => {
-  handleMessageUpdate(oldMsg, newMsg, loggingService, triageService, geminiService, roleService, autoModService);
+  handleMessageUpdate(
+    oldMsg,
+    newMsg,
+    loggingService,
+    triageService,
+    geminiService,
+    roleService,
+    autoModService,
+    channelPolicyService,
+    modService
+  );
 });
 
 client.on(Events.MessageDelete, (message) => {

@@ -1,0 +1,242 @@
+/**
+ * News Sources Configuration for the 13 World-Famous Newspapers:
+ * 1. BBC (United Kingdom)
+ * 2. The New York Times (United States)
+ * 3. The Wall Street Journal (United States)
+ * 4. The Guardian (United Kingdom)
+ * 5. The Washington Post (United States)
+ * 6. The Times of India (India)
+ * 7. The Yomiuri Shimbun (Japan)
+ * 8. Le Monde (France)
+ * 9. Financial Times (United Kingdom / Global)
+ * 10. The Asahi Shimbun (Japan)
+ * 11. El País (Spain)
+ * 12. Daily Mail (United Kingdom)
+ * 13. The Daily Telegraph (United Kingdom)
+ */
+
+import { NewsSourceConfig } from "../types/news.js";
+
+export const FAMOUS_NEWS_SOURCES: NewsSourceConfig[] = [
+  {
+    id: "bbc",
+    name: "BBC",
+    country: "United Kingdom",
+    flag: "🇬🇧",
+    primaryLanguage: "English",
+    website: "https://www.bbc.com/news",
+    brandColor: "#bb1919",
+    directRssUrl: "https://feeds.bbci.co.uk/news/rss.xml",
+    googleNewsQuery: "site:bbc.com/news",
+    defaultCategory: "World",
+    fallbackHeadline: {
+      title: "Global Diplomatic Summits Address Climate and Energy Infrastructure",
+      description: "International leaders convene to coordinate sustainable infrastructure development and cross-border clean energy financing.",
+      link: "https://www.bbc.com/news",
+    },
+  },
+  {
+    id: "nyt",
+    name: "The New York Times",
+    country: "United States",
+    flag: "🇺🇸",
+    primaryLanguage: "English",
+    website: "https://www.nytimes.com",
+    brandColor: "#121212",
+    directRssUrl: "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+    googleNewsQuery: "site:nytimes.com",
+    defaultCategory: "International",
+    fallbackHeadline: {
+      title: "Global Economic Shifts Prompt Central Banks to Reassess Fiscal Projections",
+      description: "Economists evaluate labor market resilience and technological adoption trends across major global trade corridors.",
+      link: "https://www.nytimes.com",
+    },
+  },
+  {
+    id: "wsj",
+    name: "The Wall Street Journal",
+    country: "United States",
+    flag: "🇺🇸",
+    primaryLanguage: "English",
+    website: "https://www.wsj.com",
+    brandColor: "#003865",
+    directRssUrl: "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+    googleNewsQuery: "site:wsj.com",
+    defaultCategory: "Markets & World",
+    fallbackHeadline: {
+      title: "Venture Capital and AI Enterprise Infrastructure Spending Expands",
+      description: "Institutional investors reallocate capital into next-generation datacenters, sovereign compute clusters, and power supply grids.",
+      link: "https://www.wsj.com",
+    },
+  },
+  {
+    id: "guardian",
+    name: "The Guardian",
+    country: "United Kingdom",
+    flag: "🇬🇧",
+    primaryLanguage: "English",
+    website: "https://www.theguardian.com",
+    brandColor: "#052962",
+    directRssUrl: "https://www.theguardian.com/world/rss",
+    googleNewsQuery: "site:theguardian.com/world",
+    defaultCategory: "World News",
+    fallbackHeadline: {
+      title: "Renewable Energy Initiatives Gain Ground Across European Cities",
+      description: "Urban planning reforms prioritize high-speed transit networks, municipal solar expansion, and green canopy restorations.",
+      link: "https://www.theguardian.com",
+    },
+  },
+  {
+    id: "wapo",
+    name: "The Washington Post",
+    country: "United States",
+    flag: "🇺🇸",
+    primaryLanguage: "English",
+    website: "https://www.washingtonpost.com",
+    brandColor: "#2c2c2c",
+    directRssUrl: "https://feeds.washingtonpost.com/rss/world",
+    googleNewsQuery: "site:washingtonpost.com/world",
+    defaultCategory: "National & World",
+    fallbackHeadline: {
+      title: "Scientific Research Teams Unveil Breakthroughs in Deep-Space Observatories",
+      description: "Astronomers analyze spectroscopic data uncovering chemical precursors of planetary formation in distant star clusters.",
+      link: "https://www.washingtonpost.com",
+    },
+  },
+  {
+    id: "toi",
+    name: "The Times of India",
+    country: "India",
+    flag: "🇮🇳",
+    primaryLanguage: "English",
+    website: "https://timesofindia.indiatimes.com",
+    brandColor: "#d32f2f",
+    directRssUrl: "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",
+    googleNewsQuery: "site:timesofindia.indiatimes.com",
+    defaultCategory: "India & World",
+    fallbackHeadline: {
+      title: "India Expands Digital Infrastructure and Space Exploration Initiatives",
+      description: "ISRO outlines timelines for next-generation satellite constellations while semiconductor manufacturing plants near completion.",
+      link: "https://timesofindia.indiatimes.com",
+    },
+  },
+  {
+    id: "yomiuri",
+    name: "The Yomiuri Shimbun",
+    country: "Japan",
+    flag: "🇯🇵",
+    primaryLanguage: "Japanese / English",
+    website: "https://japannews.yomiuri.co.jp",
+    brandColor: "#e65100",
+    directRssUrl: "https://japannews.yomiuri.co.jp/feed/",
+    googleNewsQuery: "site:japannews.yomiuri.co.jp",
+    defaultCategory: "Asia & Tech",
+    fallbackHeadline: {
+      title: "Japan Accelerates High-Speed Maglev Rail and Next-Gen Robotics Research",
+      description: "Transportation ministries report milestone benchmarks in superconducting transit corridors and automated industrial systems.",
+      link: "https://japannews.yomiuri.co.jp",
+    },
+  },
+  {
+    id: "lemonde",
+    name: "Le Monde",
+    country: "France",
+    flag: "🇫🇷",
+    primaryLanguage: "French / English",
+    website: "https://www.lemonde.fr/en/",
+    brandColor: "#1a237e",
+    directRssUrl: "https://www.lemonde.fr/en/rss/une.xml",
+    googleNewsQuery: "site:lemonde.fr/en",
+    defaultCategory: "Europe & Culture",
+    fallbackHeadline: {
+      title: "European Union Deepens Cultural Heritage and Digital Sovereignty Pacts",
+      description: "Member states commit to joint cultural preservation grants alongside unified consumer data protection guidelines.",
+      link: "https://www.lemonde.fr/en/",
+    },
+  },
+  {
+    id: "ft",
+    name: "Financial Times",
+    country: "United Kingdom",
+    flag: "🇬🇧",
+    primaryLanguage: "English",
+    website: "https://www.ft.com",
+    brandColor: "#fcd0a1",
+    directRssUrl: "https://www.ft.com/rss/home/uk",
+    googleNewsQuery: "site:ft.com",
+    defaultCategory: "Global Economy",
+    fallbackHeadline: {
+      title: "Multinational Corporations Restructure Supply Chains for Resilience",
+      description: "Trade flow analysis indicates strategic nearshoring and diversification across advanced microchip and battery manufacturing.",
+      link: "https://www.ft.com",
+    },
+  },
+  {
+    id: "asahi",
+    name: "The Asahi Shimbun",
+    country: "Japan",
+    flag: "🇯🇵",
+    primaryLanguage: "Japanese / English",
+    website: "https://www.asahi.com/ajw/",
+    brandColor: "#b71c1c",
+    directRssUrl: "https://www.asahi.com/ajw/rss/",
+    googleNewsQuery: "site:asahi.com/ajw",
+    defaultCategory: "Pacific & Society",
+    fallbackHeadline: {
+      title: "Researchers Pioneer Quantum Computing Sensors for Early Seismic Warning Systems",
+      description: "University geophysicists demonstrate optical lattice clocks detecting sub-millimeter crustal movements along subduction zones.",
+      link: "https://www.asahi.com/ajw/",
+    },
+  },
+  {
+    id: "elpais",
+    name: "El País",
+    country: "Spain",
+    flag: "🇪🇸",
+    primaryLanguage: "Spanish / English",
+    website: "https://english.elpais.com",
+    brandColor: "#0277bd",
+    directRssUrl: "https://feeds.elpais.com/mrss-s/pages/ep/site/english.elpais.com/portada",
+    googleNewsQuery: "site:english.elpais.com",
+    defaultCategory: "Ibero-America & World",
+    fallbackHeadline: {
+      title: "Solar and Wind Power Surplus Drive Historic Decarbonization Milestones",
+      description: "Iberian grid operators report consecutive months of zero-emission majority generation powering industrial manufacturing.",
+      link: "https://english.elpais.com",
+    },
+  },
+  {
+    id: "dailymail",
+    name: "Daily Mail",
+    country: "United Kingdom",
+    flag: "🇬🇧",
+    primaryLanguage: "English",
+    website: "https://www.dailymail.co.uk",
+    brandColor: "#004db3",
+    directRssUrl: "https://www.dailymail.co.uk/articles.rss",
+    googleNewsQuery: "site:dailymail.co.uk/news",
+    defaultCategory: "Breaking News",
+    fallbackHeadline: {
+      title: "Global Aviation Hubs Modernize Terminals with Frictionless Biometrics",
+      description: "International airports implement AI-driven baggage routing and contactless security lanes reducing connection delays.",
+      link: "https://www.dailymail.co.uk",
+    },
+  },
+  {
+    id: "telegraph",
+    name: "The Daily Telegraph",
+    country: "United Kingdom",
+    flag: "🇬🇧",
+    primaryLanguage: "English",
+    website: "https://www.telegraph.co.uk",
+    brandColor: "#111111",
+    directRssUrl: "https://www.telegraph.co.uk/news/rss.xml",
+    googleNewsQuery: "site:telegraph.co.uk/news",
+    defaultCategory: "UK & International",
+    fallbackHeadline: {
+      title: "Maritime Fleet Upgrades Embrace Autonomous Navigation and Hybrid Hydrofoil Designs",
+      description: "Commercial shipping operators test electric cargo tenders and AI collision avoidance on busy international straits.",
+      link: "https://www.telegraph.co.uk",
+    },
+  },
+];

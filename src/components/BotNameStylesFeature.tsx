@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Palette,
   Sparkles,
@@ -25,6 +26,7 @@ import {
   DEFAULT_BOT_NAME_STYLE,
   hexToDiscordDecimal,
 } from "../types/nameStyles";
+import { playClickSound, playSuccessChime } from "../utils/soundEffects";
 
 export const BotNameStylesFeature: React.FC = () => {
   const [config, setConfig] = useState<BotNameStyleConfig>(DEFAULT_BOT_NAME_STYLE);
@@ -61,6 +63,7 @@ export const BotNameStylesFeature: React.FC = () => {
 
   // Update config on backend
   const updateStyle = async (updates: Partial<BotNameStyleConfig>) => {
+    playClickSound();
     const updated = { ...config, ...updates };
     setConfig(updated);
 
@@ -82,11 +85,13 @@ export const BotNameStylesFeature: React.FC = () => {
 
   // Trigger simulated Discord API sync
   const syncToDiscord = async () => {
+    playClickSound();
     try {
       setIsSyncing(true);
       const res = await fetch("/api/namestyle/sync-discord", { method: "POST" });
       const data = await res.json();
       if (data.success) {
+        playSuccessChime();
         setSyncSuccess(true);
         setTimeout(() => setSyncSuccess(false), 3000);
       }
@@ -98,6 +103,7 @@ export const BotNameStylesFeature: React.FC = () => {
   };
 
   const copyJsonPayload = () => {
+    playClickSound();
     navigator.clipboard.writeText(JSON.stringify(apiPayload, null, 2));
     setCopiedPayload(true);
     setTimeout(() => setCopiedPayload(false), 2000);

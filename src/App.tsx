@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { Header } from "./components/Header";
 import { WispbyteDashboard } from "./components/WispbyteDashboard/WispbyteDashboard";
 import { PlanOverview } from "./components/PlanOverview";
@@ -10,6 +11,7 @@ import { WispbyteGuide } from "./components/WispbyteGuide";
 import { SafetyFeaturesSuite } from "./components/SafetyFeaturesSuite";
 import { AutoNewsFeature } from "./components/AutoNewsFeature";
 import { BotNameStylesFeature } from "./components/BotNameStylesFeature";
+import { InteractiveBotChatSandbox } from "./components/InteractiveBotChatSandbox";
 import { Shield, Sparkles, Server, Github, ExternalLink } from "lucide-react";
 
 export default function App() {
@@ -20,18 +22,29 @@ export default function App() {
       {/* Header */}
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* Main Content Area */}
+      {/* Main Content Area with Animated Route Transitions */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === "dashboard" && <WispbyteDashboard />}
-        {activeTab === "namestyles" && <BotNameStylesFeature />}
-        {activeTab === "autonews" && <AutoNewsFeature />}
-        {activeTab === "safety-suite" && <SafetyFeaturesSuite />}
-        {activeTab === "overview" && <PlanOverview />}
-        {activeTab === "live-tester" && <LiveModerationTester />}
-        {activeTab === "setup-sim" && <DiscordSetupSimulator />}
-        {activeTab === "traditional-mod" && <TraditionalModSandbox />}
-        {activeTab === "token-efficiency" && <TokenEfficiencyCalculator />}
-        {activeTab === "wispbyte" && <WispbyteGuide />}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 8, scale: 0.995 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.995 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {activeTab === "dashboard" && <WispbyteDashboard />}
+            {activeTab === "bot-chat" && <InteractiveBotChatSandbox />}
+            {activeTab === "namestyles" && <BotNameStylesFeature />}
+            {activeTab === "autonews" && <AutoNewsFeature />}
+            {activeTab === "safety-suite" && <SafetyFeaturesSuite />}
+            {activeTab === "overview" && <PlanOverview />}
+            {activeTab === "live-tester" && <LiveModerationTester />}
+            {activeTab === "setup-sim" && <DiscordSetupSimulator />}
+            {activeTab === "traditional-mod" && <TraditionalModSandbox />}
+            {activeTab === "token-efficiency" && <TokenEfficiencyCalculator />}
+            {activeTab === "wispbyte" && <WispbyteGuide />}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Footer */}
@@ -48,7 +61,7 @@ export default function App() {
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-1.5 text-zinc-600">
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              Gemini 3.1 Flash-Lite
+              Gemini 3.8 Flash
             </span>
             <span className="flex items-center gap-1.5 text-zinc-600">
               <Server className="w-3.5 h-3.5 text-emerald-600" />

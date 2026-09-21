@@ -13,7 +13,7 @@ import {
   ButtonStyle,
   MessageFlags,
 } from "discord.js";
-import { newsService } from "../../../services/newsService.js";
+import { newsService } from "../services/newsService.js";
 import { autoNewsBotService } from "../services/autoNewsBotService.js";
 
 export const newsCommand = {
