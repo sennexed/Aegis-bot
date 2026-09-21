@@ -344,13 +344,13 @@ export const InteractiveBotChatSandbox: React.FC = () => {
             footer: "Use /news subscribe to receive automated daily dispatches",
           },
         };
-      } else if (cmd.includes("/namestyle preview")) {
+      } else if (cmd.includes("/namestyle preview") || cmd.includes("/namestyle view")) {
         botReply = {
           id: "cmd-res-" + Date.now(),
           author: {
             name: "AegisMod",
             avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-            color: "#818cf8",
+            color: "#D95700",
             isBot: true,
             role: "BOT",
           },
@@ -358,9 +358,9 @@ export const InteractiveBotChatSandbox: React.FC = () => {
           content: "",
           embed: {
             title: "✨ Discord Bot Name Style & Font Preview",
-            description: "Currently applied Discord display style: **[🛡️ AEGIS] AegisMod**\nFont: **gg sans / Neo Castel** • Effect: **Linear Gradient** • Colors: **#5865F2 & #EC4899**",
-            color: "#EB459E",
-            footer: "Synced with Discord REST API PATCH /users/@me",
+            description: "Currently applied Discord display style: **[🛡️ AEGIS] AegisMod**\nFont: **gg sans / Dynamic** • Effect: **Linear Gradient** • Colors: **🇮🇳 Tiranga Dark (#D95700 Dark Orange, #FFFFFF White, #0D652D Dark Green)**",
+            color: "#D95700",
+            footer: "Synced with Discord REST API PATCH /users/@me • Indian Flag Tiranga Palette",
           },
         };
       } else if (cmd.includes("/antiraid on")) {

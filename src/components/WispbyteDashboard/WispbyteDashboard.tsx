@@ -30,6 +30,7 @@ import { InteractiveTerminal } from "./InteractiveTerminal";
 import { DiscordBotTelemetry, TelemetryEvent } from "./DiscordBotTelemetry";
 import { StartupConfigModal } from "./StartupConfigModal";
 import { QuickDeployModal } from "./QuickDeployModal";
+import { BotStabilityPanel } from "./BotStabilityPanel";
 
 export const WispbyteDashboard: React.FC = () => {
   // Server State
@@ -77,7 +78,7 @@ export const WispbyteDashboard: React.FC = () => {
 
   const [logs, setLogs] = useState<WispbyteLogItem[]>([]);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-  const [activeSubTab, setActiveSubTab] = useState<"console" | "guilds" | "guide">("console");
+  const [activeSubTab, setActiveSubTab] = useState<"console" | "guilds" | "stability" | "guide">("console");
 
   // Modals
   const [isConfigOpen, setIsConfigOpen] = useState(false);
@@ -355,6 +356,18 @@ export const WispbyteDashboard: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveSubTab("stability")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeSubTab === "stability"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                : "bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200"
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Bot Stability & Self-Healing</span>
+          </button>
+
+          <button
             onClick={() => setActiveSubTab("guide")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeSubTab === "guide"
@@ -408,6 +421,18 @@ export const WispbyteDashboard: React.FC = () => {
               events={telemetryEvents}
               onTestMessage={handleTestMessage}
             />
+          </motion.div>
+        )}
+
+        {activeSubTab === "stability" && (
+          <motion.div
+            key="stability"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <BotStabilityPanel />
           </motion.div>
         )}
 

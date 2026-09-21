@@ -35,12 +35,14 @@ export class TriageService {
    * Evaluates if a message needs Gemini API analysis.
    */
   public evaluate(content: string): TriageResult {
+    this.totalChecks++;
     const trimmed = content.trim();
     const normalized = trimmed.toLowerCase();
 
     // Check duplicate in cache
     const cached = this.cache.get(normalized);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL_MS) {
+      this.cacheHits++;
       return {
         shouldCallGemini: false,
         localVerdict: cached.result,
@@ -128,11 +130,39 @@ export class TriageService {
     };
   }
 
+  private readonly MAX_CACHE_SIZE = 5000;
+  private totalChecks = 0;
+  private cacheHits = 0;
+
   public cacheVerdict(content: string, verdict: any) {
+    // Prevent unbounded memory growth under spam or raid attack
+    if (this.cache.size >= this.MAX_CACHE_SIZE) {
+      this.clearExpired();
+      if (this.cache.size >= this.MAX_CACHE_SIZE) {
+        // Evict oldest 20% entries (LRU-like shedding)
+        let removed = 0;
+        const targetToRemove = Math.floor(this.MAX_CACHE_SIZE * 0.2);
+        for (const key of this.cache.keys()) {
+          this.cache.delete(key);
+          removed++;
+          if (removed >= targetToRemove) break;
+        }
+      }
+    }
+
     this.cache.set(content.toLowerCase().trim(), {
       result: verdict,
       timestamp: Date.now()
     });
+  }
+
+  public getCacheStats(): { size: number; hits: number; total: number; hitRatio: number } {
+    return {
+      size: this.cache.size,
+      hits: this.cacheHits,
+      total: this.totalChecks,
+      hitRatio: this.totalChecks > 0 ? +(this.cacheHits / this.totalChecks).toFixed(3) : 0,
+    };
   }
 
   public clearExpired() {

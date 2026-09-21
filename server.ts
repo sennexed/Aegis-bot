@@ -9,6 +9,7 @@ import { AutoNewsConfig } from "./src/types/news.js";
 import { botNameStylesService } from "./src/services/botNameStylesService.js";
 import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, BOT_COLOR_PRESETS } from "./src/types/nameStyles.js";
 import { guildMemoryService } from "./src/services/guildMemoryService.js";
+import { botStabilityService } from "./src/services/botStabilityService.js";
 
 dotenv.config();
 
@@ -636,6 +637,26 @@ app.get("/api/wispbyte/logs", (_req: Request, res: Response) => {
 // Wispbyte Telemetry Events Endpoint
 app.get("/api/wispbyte/events", (_req: Request, res: Response) => {
   res.json({ events: wispbyteEvents });
+});
+
+// Bot Stability Health & Self-Healing Endpoints
+app.get("/api/stability/health", (_req: Request, res: Response) => {
+  const health = botStabilityService.getHealth(moderationCache.size, 0.88, guildMemoryService.getAllServers().length);
+  res.json(health);
+});
+
+app.post("/api/stability/diagnostics", (_req: Request, res: Response) => {
+  const report = botStabilityService.runDiagnostics();
+  addWispbyteLog("INFO", `[Stability Audit]: Ran automated diagnostics. Score: ${report.overallScore}% (${report.passedChecks}/${report.totalChecks} checks nominal)`);
+  res.json(report);
+});
+
+app.post("/api/stability/heal", (_req: Request, res: Response) => {
+  botStabilityService.healState();
+  moderationCache.clear();
+  serverModelCooldowns.clear();
+  addWispbyteLog("INFO", "[Stability Healer]: Manual self-heal executed. Moderation cache cleared, model cooldowns reset, and heap swept.");
+  res.json({ success: true, message: "Bot state healed and temporary caches flushed." });
 });
 
 

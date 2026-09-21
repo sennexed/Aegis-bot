@@ -199,38 +199,39 @@ client.on(Events.GuildMemberAdd, (member) => {
 
 // 5. Interaction Create Event (Slash Commands, Context Menus, Modals, and Buttons)
 client.on(Events.InteractionCreate, async (interaction) => {
-  // A. Message Context Menu (Report to Staff)
-  if (interaction.isMessageContextMenuCommand()) {
-    if (interaction.commandName === "Report to Staff") {
-      return reportMessageContextMenu.execute(interaction);
-    }
-  }
-
-  // B. Modal Submit (Report to Staff Reason)
-  if (interaction.isModalSubmit()) {
-    if (interaction.customId.startsWith("report_modal:")) {
-      const parts = interaction.customId.split(":");
-      const channelId = parts[1];
-      const messageId = parts[2];
-      const reason = interaction.fields.getTextInputValue("report_reason");
-
-      if (!interaction.guild) return;
-
-      const channel = interaction.guild.channels.cache.get(channelId);
-      if (channel && channel.isTextBased()) {
-        const reportedMsg = await channel.messages.fetch(messageId).catch(() => null);
-        if (reportedMsg) {
-          const staffPing = roleService.getStaffPing(interaction.guild.id, dutyService, loaService);
-          await loggingService.logUserReport(interaction.guild, interaction.user, reportedMsg, reason, staffPing);
-        }
+  try {
+    // A. Message Context Menu (Report to Staff)
+    if (interaction.isMessageContextMenuCommand()) {
+      if (interaction.commandName === "Report to Staff") {
+        return await reportMessageContextMenu.execute(interaction);
       }
-
-      return interaction.reply({
-        content: "✅ **Report Received.** On-duty moderators and staff have been alerted in `#mod-logs`.",
-        flags: MessageFlags.Ephemeral,
-      });
     }
-  }
+
+    // B. Modal Submit (Report to Staff Reason)
+    if (interaction.isModalSubmit()) {
+      if (interaction.customId.startsWith("report_modal:")) {
+        const parts = interaction.customId.split(":");
+        const channelId = parts[1];
+        const messageId = parts[2];
+        const reason = interaction.fields.getTextInputValue("report_reason");
+
+        if (!interaction.guild) return;
+
+        const channel = interaction.guild.channels.cache.get(channelId);
+        if (channel && channel.isTextBased()) {
+          const reportedMsg = await channel.messages.fetch(messageId).catch(() => null);
+          if (reportedMsg) {
+            const staffPing = roleService.getStaffPing(interaction.guild.id, dutyService, loaService);
+            await loggingService.logUserReport(interaction.guild, interaction.user, reportedMsg, reason, staffPing);
+          }
+        }
+
+        return await interaction.reply({
+          content: "✅ **Report Received.** On-duty moderators and staff have been alerted in `#mod-logs`.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+    }
 
   // C. Interactive Button Clicks (Quick Actions & Appeals)
   if (interaction.isButton()) {
@@ -512,6 +513,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (modCmd) {
       return modCmd.execute(interaction, modService);
     }
+  } catch (err: any) {
+    console.error(`[Interaction Error] Command execution failure:`, err);
+    if (interaction.isRepliable()) {
+      const errorMessage = "⚠️ An unexpected error occurred while executing this command. The bot state was safely preserved.";
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({ content: errorMessage, flags: MessageFlags.Ephemeral }).catch(() => null);
+      } else {
+        await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral }).catch(() => null);
+      }
+    }
   }
 });
 
@@ -578,12 +589,38 @@ client.on(Events.MessageDelete, (message) => {
 });
 
 // 7. Error Handling & Graceful Process Management
+client.on(Events.Error, (err) => {
+  console.error("🛡️ [AegisMod Discord Client Error]:", err.message);
+});
+
+client.on(Events.ShardError, (err, shardId) => {
+  console.error(`🛡️ [AegisMod Shard #${shardId} Error]:`, err.message);
+});
+
+client.on(Events.ShardDisconnect, (event, shardId) => {
+  console.warn(`🛡️ [AegisMod Shard #${shardId} Disconnected]: Code ${event.code}. Will auto-reconnect.`);
+});
+
+client.on(Events.ShardReconnecting, (shardId) => {
+  console.log(`🔄 [AegisMod Shard #${shardId} Reconnecting]...`);
+});
+
 process.on("unhandledRejection", (reason) => {
-  console.error("Unhandled promise rejection in AegisMod bot:", reason);
+  console.error("🛡️ [Bot Process Guard] Handled unhandled rejection safely:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("🛡️ [Bot Process Guard] Handled uncaught exception safely:", err.message);
 });
 
 process.on("SIGINT", () => {
   console.log("Shutting down AegisMod cleanly...");
+  client.destroy();
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received. Shutting down AegisMod cleanly...");
   client.destroy();
   process.exit(0);
 });

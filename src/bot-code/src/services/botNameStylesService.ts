@@ -82,6 +82,10 @@ class BotNameStylesService {
   public buildDiscordApiPayload(config: BotNameStyleConfig = this.config) {
     const primaryDec = hexToDiscordDecimal(config.primaryColor);
     const secondaryDec = config.secondaryColor ? hexToDiscordDecimal(config.secondaryColor) : primaryDec;
+    const colors = [primaryDec, secondaryDec];
+    if (config.tertiaryColor) {
+      colors.push(hexToDiscordDecimal(config.tertiaryColor));
+    }
 
     return {
       username: config.displayName,
@@ -89,7 +93,7 @@ class BotNameStylesService {
       name_style: {
         font_id: config.fontId,
         effect_id: config.effectId,
-        colors: [primaryDec, secondaryDec],
+        colors,
       },
       clan: config.clanTag
         ? {

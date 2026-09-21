@@ -11,6 +11,9 @@ export interface FontStyleDefinition {
   fontFamily: string;
   description: string;
   cssStyle?: string;
+  letterSpacing?: string;
+  fontWeight?: string;
+  textTransform?: "uppercase" | "lowercase" | "capitalize" | "none";
   // Unicode transform mapping for standard latin characters
   transform?: (text: string) => string;
 }
@@ -30,6 +33,8 @@ export interface ColorPresetDefinition {
   hex: string;
   decimal: number; // Decimal format required by Discord API
   secondaryHex?: string;
+  tertiaryHex?: string;
+  isTricolor?: boolean;
 }
 
 export interface BotNameStyleConfig {
@@ -38,26 +43,47 @@ export interface BotNameStyleConfig {
   effectId: string;
   primaryColor: string;
   secondaryColor?: string;
+  tertiaryColor?: string;
   clanTag?: string;
   clanBadge?: string;
   autoSyncNickname: boolean;
   applyGlobally: boolean;
 }
 
-// 12 Distinct Discord Display Name Fonts
+// Math Unicode Gothic transformer for Neo Castel / Medieval
+function toGothicMath(text: string): string {
+  const gothicMap: Record<string, string> = {
+    A: "𝔄", B: "𝔅", C: "ℭ", D: "𝔇", E: "𝔈", F: "𝔉", G: "𝔊", H: "ℌ", I: "ℑ",
+    J: "𝔍", K: "𝔎", L: "𝔏", M: "𝔐", N: "𝔑", O: "𝔒", P: "𝔓", Q: "𝔔", R: "ℜ",
+    S: "𝔖", T: "𝔗", U: "𝔘", V: "𝔙", W: "𝔚", X: "𝔛", Y: "𝔜", Z: "ℨ",
+    a: "𝔞", b: "𝔟", c: "𝔠", d: "𝔡", e: "𝔢", f: "𝔣", g: "𝔤", h: "𝔥", i: "𝔦",
+    j: "𝔧", k: "𝔨", l: "𝔩", m: "𝔪", n: "𝔫", o: "𝔬", p: "𝔭", q: "𝔮", r: "𝔯",
+    s: "𝔰", t: "𝔱", u: "𝔲", v: "𝔳", w: "𝔴", x: "𝔵", y: "𝔶", z: "𝔯",
+  };
+  return text
+    .split("")
+    .map((char) => gothicMap[char] || char)
+    .join("");
+}
+
+// 12 Distinct Discord Display Name Fonts with Web Font Family bindings
 export const BOT_NAME_FONTS: FontStyleDefinition[] = [
   {
     id: "gg-sans",
     name: "gg sans (Default)",
     category: "Classic",
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontFamily: "'gg sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: "700",
+    letterSpacing: "0.01em",
     description: "Discord's official default geometric sans-serif typeface.",
   },
   {
     id: "bangers",
     name: "Bangers",
     category: "Display",
-    fontFamily: "'Impact', 'Arial Black', sans-serif",
+    fontFamily: "'Bangers', 'Impact', 'Arial Black', cursive, sans-serif",
+    fontWeight: "400",
+    letterSpacing: "0.06em",
     description: "High-energy, bold comic-book superhero headline display style.",
     transform: (t) => t.toUpperCase(),
   },
@@ -65,42 +91,54 @@ export const BOT_NAME_FONTS: FontStyleDefinition[] = [
     id: "biorhyme",
     name: "BioRhyme",
     category: "Modern",
-    fontFamily: "'Georgia', 'Times New Roman', serif",
+    fontFamily: "'BioRhyme', 'Georgia', 'Times New Roman', serif",
+    fontWeight: "800",
+    letterSpacing: "0.02em",
     description: "Elegant slab-serif typeface with generous optical widths.",
   },
   {
     id: "cherry-bomb",
     name: "Cherry Bomb (Sakura)",
     category: "Playful",
-    fontFamily: "'Trebuchet MS', cursive, sans-serif",
+    fontFamily: "'Shrikhand', 'Chicle', 'Trebuchet MS', cursive, sans-serif",
+    fontWeight: "700",
+    letterSpacing: "0.03em",
     description: "Cute, bubbly Japanese rounded aesthetic popular in teen servers.",
   },
   {
     id: "chicle",
     name: "Chicle (Jellybean)",
     category: "Playful",
-    fontFamily: "'Comic Sans MS', cursive, sans-serif",
+    fontFamily: "'Chicle', 'Comic Sans MS', cursive, sans-serif",
+    fontWeight: "400",
+    letterSpacing: "0.04em",
     description: "Playful, organic chewy bubble typography with dynamic bounce.",
   },
   {
     id: "compagnon",
     name: "Compagnon",
     category: "Modern",
-    fontFamily: "'Courier New', Courier, monospace",
+    fontFamily: "'Space Mono', 'Courier New', Courier, monospace",
+    fontWeight: "700",
+    letterSpacing: "-0.01em",
     description: "Mechanical typewriter and architectural monospace blend.",
   },
   {
     id: "museo-moderno",
     name: "MuseoModerno (Modern)",
     category: "Modern",
-    fontFamily: "system-ui, sans-serif",
+    fontFamily: "'MuseoModerno', system-ui, sans-serif",
+    fontWeight: "800",
+    letterSpacing: "0.02em",
     description: "Geometric, minimalist avant-garde typeface with smooth circular curves.",
   },
   {
     id: "neo-castel",
     name: "Neo Castel (Medieval)",
     category: "Display",
-    fontFamily: "'Cinzel', 'Palatino', serif",
+    fontFamily: "'Cinzel Decorative', 'Cinzel', 'Palatino', serif",
+    fontWeight: "900",
+    letterSpacing: "0.05em",
     description: "Gothic Blackletter Y2K hybrid aesthetics with sharp serifs.",
     transform: (text) => toGothicMath(text),
   },
@@ -108,28 +146,36 @@ export const BOT_NAME_FONTS: FontStyleDefinition[] = [
     id: "pixelify",
     name: "Pixelify Sans (8Bit)",
     category: "Retro",
-    fontFamily: "'Courier New', monospace",
+    fontFamily: "'Pixelify Sans', 'Courier New', monospace",
+    fontWeight: "700",
+    letterSpacing: "0.05em",
     description: "Retro arcade 8-bit grid pixel typography for gaming communities.",
   },
   {
     id: "ribes",
     name: "Ribes",
     category: "Display",
-    fontFamily: "'Trebuchet MS', sans-serif",
+    fontFamily: "'DM Serif Display', 'Trebuchet MS', serif",
+    fontWeight: "700",
+    letterSpacing: "0.03em",
     description: "Experimental flared display style with organic stroke weight.",
   },
   {
     id: "sinistre",
     name: "Sinistre",
     category: "Display",
-    fontFamily: "'Times New Roman', serif",
+    fontFamily: "'Cinzel', 'Times New Roman', serif",
+    fontWeight: "800",
+    letterSpacing: "0.04em",
     description: "Sharp mystical gothic display with dramatic terminal flourishes.",
   },
   {
     id: "zilla-slab",
     name: "Zilla Slab",
     category: "Classic",
-    fontFamily: "'Rockwell', 'Courier New', serif",
+    fontFamily: "'Zilla Slab', 'Rockwell', 'Courier New', serif",
+    fontWeight: "700",
+    letterSpacing: "0.01em",
     description: "Sophisticated industrial slab serif crafted with crisp geometry.",
   },
 ];
@@ -147,41 +193,50 @@ export const BOT_NAME_EFFECTS: EffectStyleDefinition[] = [
     id: "gradient",
     name: "Linear Gradient",
     description: "Smooth chromatic transition across the bot's display name characters.",
-    previewClass: "bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent font-bold",
+    previewClass: "bg-clip-text text-transparent font-bold",
     badge: "GRADIENT",
   },
   {
     id: "neon",
     name: "Neon Glow",
     description: "Vibrant fluorescent backlight bloom with vivid text radiance.",
-    previewClass: "text-emerald-400 [text-shadow:0_0_8px_rgba(52,211,153,0.8),0_0_20px_rgba(16,185,129,0.5)] font-bold",
+    previewClass: "font-bold",
     badge: "NEON",
   },
   {
     id: "toon",
     name: "Toon / Outline",
     description: "Cell-shaded cartoon pop-out with deep contrast boundary stroke.",
-    previewClass: "text-amber-300 font-extrabold [text-shadow:-1px_-1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000,1px_1px_0_#000,2px_2px_0_#000]",
+    previewClass: "font-extrabold",
     badge: "TOON",
   },
   {
     id: "pop",
     name: "Pop 3D",
     description: "Layered dimensional extrusion giving the name an elevated 3D depth.",
-    previewClass: "text-cyan-300 font-black [text-shadow:1px_1px_0_#0e7490,2px_2px_0_#155e75,3px_3px_0_#164e63]",
+    previewClass: "font-black",
     badge: "3D POP",
   },
   {
     id: "glow",
     name: "Prism Radiance",
     description: "Multi-spectrum prismatic chromatic shimmer with pulsing glow.",
-    previewClass: "text-white font-extrabold [text-shadow:0_0_10px_#818cf8,0_0_20px_#ec4899]",
+    previewClass: "font-extrabold",
     badge: "PRISM",
   },
 ];
 
 // Curated Discord Color Palettes (with Hex & Decimal values)
 export const BOT_COLOR_PRESETS: ColorPresetDefinition[] = [
+  {
+    id: "indian-tricolor-dark",
+    name: "Tiranga Dark (Indian Flag)",
+    hex: "#D95700", // Rich dark saffron / deep orange
+    decimal: 14243584,
+    secondaryHex: "#FFFFFF", // Crisp white
+    tertiaryHex: "#0D652D", // Rich dark emerald green
+    isTricolor: true,
+  },
   { id: "discord-blurple", name: "Discord Blurple", hex: "#5865F2", decimal: 5793266, secondaryHex: "#858EFA" },
   { id: "cyber-emerald", name: "Cyber Emerald", hex: "#10B981", decimal: 1096065, secondaryHex: "#34D399" },
   { id: "neon-cyan", name: "Neon Cyan", hex: "#06B6D4", decimal: 439956, secondaryHex: "#67E8F9" },
@@ -203,29 +258,14 @@ export function discordDecimalToHex(decimal: number): string {
   return "#" + decimal.toString(16).padStart(6, "0");
 }
 
-// Math Unicode Gothic transformer for Neo Castel / Medieval
-function toGothicMath(text: string): string {
-  const gothicMap: Record<string, string> = {
-    A: "𝔄", B: "𝔅", C: "ℭ", D: "𝔇", E: "𝔈", F: "𝔉", G: "𝔊", H: "ℌ", I: "ℑ",
-    J: "𝔍", K: "𝔎", L: "𝔏", M: "𝔐", N: "𝔑", O: "𝔒", P: "𝔓", Q: "𝔔", R: "ℜ",
-    S: "𝔖", T: "𝔗", U: "𝔘", V: "𝔙", W: "𝔚", X: "𝔛", Y: "𝔜", Z: "ℨ",
-    a: "𝔞", b: "𝔟", c: "𝔠", d: "𝔡", e: "𝔢", f: "𝔣", g: "𝔤", h: "𝔥", i: "𝔦",
-    j: "𝔧", k: "𝔨", l: "𝔩", m: "𝔪", n: "𝔫", o: "𝔬", p: "𝔭", q: "𝔮", r: "𝔯",
-    s: "𝔰", t: "𝔱", u: "𝔲", v: "𝔳", w: "𝔴", x: "𝔵", y: "𝔶", z: "𝔯",
-  };
-  return text
-    .split("")
-    .map((char) => gothicMap[char] || char)
-    .join("");
-}
-
-// Default Bot Name Style State
+// Default Bot Name Style State: Default gradient color set to dark Indian Flag colors (Dark Saffron Orange #D95700, White #FFFFFF, Dark Green #0D652D)
 export const DEFAULT_BOT_NAME_STYLE: BotNameStyleConfig = {
   displayName: "AegisMod",
   fontId: "gg-sans",
   effectId: "gradient",
-  primaryColor: "#5865F2",
-  secondaryColor: "#EC4899",
+  primaryColor: "#D95700", // Dark Saffron Orange
+  secondaryColor: "#FFFFFF", // White
+  tertiaryColor: "#0D652D", // Dark Green
   clanTag: "AEGIS",
   clanBadge: "🛡️",
   autoSyncNickname: true,

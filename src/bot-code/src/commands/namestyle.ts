@@ -84,6 +84,7 @@ export const nameStyleCommand = {
             .setDescription("Select a curated color palette preset")
             .setRequired(false)
             .addChoices(
+              { name: "🇮🇳 Tiranga Dark (Dark Orange, White, Dark Green)", value: "indian-tricolor-dark" },
               { name: "Discord Blurple (#5865F2)", value: "#5865F2" },
               { name: "Cyber Emerald (#10B981)", value: "#10B981" },
               { name: "Neon Cyan (#06B6D4)", value: "#06B6D4" },
@@ -218,7 +219,20 @@ export const nameStyleCommand = {
       const updates: Record<string, any> = {};
       if (newFont) updates.fontId = newFont;
       if (newEffect) updates.effectId = newEffect;
-      if (newColor) updates.primaryColor = newColor;
+      if (newColor) {
+        if (newColor === "indian-tricolor-dark") {
+          updates.primaryColor = "#D95700"; // Dark Saffron Orange
+          updates.secondaryColor = "#FFFFFF"; // White
+          updates.tertiaryColor = "#0D652D"; // Dark Green
+        } else {
+          updates.primaryColor = newColor;
+          const foundPreset = BOT_COLOR_PRESETS.find((p) => p.hex.toLowerCase() === newColor.toLowerCase());
+          if (foundPreset) {
+            updates.secondaryColor = foundPreset.secondaryHex || newColor;
+            updates.tertiaryColor = foundPreset.tertiaryHex;
+          }
+        }
+      }
       if (newName) updates.displayName = newName;
       if (newClanTag !== null) updates.clanTag = newClanTag;
 
