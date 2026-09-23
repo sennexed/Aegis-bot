@@ -94,7 +94,7 @@ export async function syncGuildCommands(guildId: string, isSetupComplete: boolea
   const clientId = process.env.DISCORD_CLIENT_ID;
   if (!token || !clientId) return;
 
-  const rest = new REST({ version: "10" }).setToken(token);
+  const rest = new REST({ version: "10", timeout: 30000 }).setToken(token);
 
   // If server is not setup yet, ONLY expose /setup command
   // Once setup is completed, expose the full suite of moderation, protection & utility tools
@@ -122,15 +122,23 @@ export async function syncGuildCommands(guildId: string, isSetupComplete: boolea
     ? fullCommands
     : [setupCommand.data.toJSON()];
 
-  try {
-    await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
-      body: commandsToRegister,
-    });
-    console.log(
-      `[Commands] Guild ${guildId}: registered ${commandsToRegister.length} commands (Setup complete: ${isSetupComplete})`
-    );
-  } catch (err) {
-    console.error(`Failed to register guild commands for ${guildId}:`, err);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+        body: commandsToRegister,
+      });
+      console.log(
+        `[Commands] Guild ${guildId}: registered ${commandsToRegister.length} commands (Setup complete: ${isSetupComplete})`
+      );
+      break;
+    } catch (err: any) {
+      if (attempt < 3) {
+        console.warn(`[Commands] Guild ${guildId} sync attempt ${attempt}/3 timed out/failed (${err?.message || err}). Retrying in 2s...`);
+        await new Promise((r) => setTimeout(r, 2000));
+      } else {
+        console.warn(`[Commands] Notice: Could not sync slash commands to guild ${guildId} due to Discord API latency. Cached commands will remain active.`);
+      }
+    }
   }
 }
 
