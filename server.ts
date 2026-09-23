@@ -1276,7 +1276,11 @@ Output structured JSON strictly matching the provided schema.`;
       latencyMs: Date.now() - startTime,
     };
 
-    // Store in cache
+    // Store in cache (Prune oldest if exceeds 150 entries to preserve low RAM)
+    if (moderationCache.size > 150) {
+      const firstKey = moderationCache.keys().next().value;
+      if (firstKey) moderationCache.delete(firstKey);
+    }
     moderationCache.set(cacheKey, { result, timestamp: Date.now() });
 
     totalProcessedMessages++;
