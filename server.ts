@@ -1364,6 +1364,8 @@ async function startServer() {
         server: {
           middlewareMode: true,
           allowedHosts: ["aegis-bot.wispbyte.app", "aegisbot.wispbyte.app", ".wispbyte.app", ".wispbyte.net", "localhost"],
+          watch: null, // Critical: Disables inotify recursive filesystem scans that cause 100%+ CPU in containers
+          hmr: false,
         },
         appType: "spa",
       });
