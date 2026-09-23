@@ -1,7 +1,6 @@
 import express, { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { newsService } from "./src/services/newsService.js";
@@ -13,6 +12,14 @@ import { guildMemoryService } from "./src/services/guildMemoryService.js";
 import { botStabilityService } from "./src/services/botStabilityService.js";
 import { gitAutoDeployService } from "./src/services/gitAutoDeployService.js";
 import { wispbyteApiService } from "./src/services/wispbyteApiService.js";
+
+// Global process error boundary to prevent exit 135 / container terminations
+process.on("uncaughtException", (err) => {
+  console.error("[AegisMod Uncaught Exception]", err?.message || err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[AegisMod Unhandled Rejection]", reason);
+});
 
 dotenv.config();
 
@@ -1311,22 +1318,34 @@ Output structured JSON strictly matching the provided schema.`;
 // Setup Vite or static serving
 async function startServer() {
   const distPath = path.join(process.cwd(), "dist");
+  const hasDist = fs.existsSync(distPath) && fs.existsSync(path.join(distPath, "index.html"));
 
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" || (hasDist && process.env.NODE_ENV !== "development")) {
     console.log("⚡ Serving pre-built static assets (Production Mode)");
     app.use(express.static(distPath));
     app.get("*", (_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   } else {
-    const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-        allowedHosts: ["aegis-bot.wispbyte.app", "aegisbot.wispbyte.app", ".wispbyte.app", ".wispbyte.net", "localhost"],
-      },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
+    try {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: {
+          middlewareMode: true,
+          allowedHosts: ["aegis-bot.wispbyte.app", "aegisbot.wispbyte.app", ".wispbyte.app", ".wispbyte.net", "localhost"],
+        },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } catch (err: any) {
+      console.warn("Notice: Vite live dev middleware skipped:", err?.message || err);
+      if (hasDist) {
+        app.use(express.static(distPath));
+        app.get("*", (_req: Request, res: Response) => {
+          res.sendFile(path.join(distPath, "index.html"));
+        });
+      }
+    }
   }
 
   app.listen(PORT, "0.0.0.0", () => {
@@ -1335,15 +1354,11 @@ async function startServer() {
     // Automatically initialize Discord Bot Gateway if token is provided
     if (process.env.DISCORD_BOT_TOKEN) {
       console.log("🤖 DISCORD_BOT_TOKEN detected. Connecting AegisMod to Discord Gateway...");
-      try {
-        import("./src/bot-code/src/index.js").catch(() => {
-          import("./src/bot-code/src/index.ts").catch((err) => {
-            console.log("ℹ️ Discord bot client worker ready (standalone entry: tsx src/bot-code/src/index.ts)");
-          });
+      import("./src/bot-code/src/index.js")
+        .catch(() => import("./src/bot-code/src/index.ts"))
+        .catch((err) => {
+          console.warn("Notice during bot client load:", err?.message || err);
         });
-      } catch (err: any) {
-        console.warn("Notice during bot client load:", err?.message);
-      }
     } else {
       console.log("ℹ️ DISCORD_BOT_TOKEN not detected in environment. Running web dashboard and API engine.");
     }
