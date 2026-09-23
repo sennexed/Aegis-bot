@@ -91,6 +91,30 @@ const fileMeta = [
     description: "Traditional moderation slash commands (/ban, /kick, /mute, /warn, /cases) with validation",
   },
   {
+    path: "src/commands/news.ts",
+    filename: "news.ts",
+    category: "command",
+    description: "Multi-publication news digest command: fetches live headlines from 13 world-famous newspapers",
+  },
+  {
+    path: "src/commands/namestyle.ts",
+    filename: "namestyle.ts",
+    category: "command",
+    description: "Discord bot display name styles: 12 typography fonts, 6 visual shader effects, colors, and clan tags",
+  },
+  {
+    path: "src/services/botNameStylesService.ts",
+    filename: "botNameStylesService.ts",
+    category: "service",
+    description: "Bot name styles service: persistent JSON storage, Discord PATCH /users/@me payload generation, font transforms",
+  },
+  {
+    path: "src/types/nameStyles.ts",
+    filename: "nameStyles.ts",
+    category: "config",
+    description: "Name styles typography definitions, font catalog, unicode transformers, and color presets",
+  },
+  {
     path: "src/events/messageCreate.ts",
     filename: "messageCreate.ts",
     category: "event",
