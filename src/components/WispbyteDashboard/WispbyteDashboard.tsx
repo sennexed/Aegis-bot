@@ -34,6 +34,7 @@ import { QuickDeployModal } from "./QuickDeployModal";
 import { BotStabilityPanel } from "./BotStabilityPanel";
 import { GitHubAutoDeployFeature } from "../GitHubAutoDeployFeature";
 import { WispbyteApiExplorer } from "./WispbyteApiExplorer";
+import { SystemHealthWidget } from "./SystemHealthWidget";
 
 export const WispbyteDashboard: React.FC = () => {
   // Server State
@@ -334,6 +335,9 @@ export const WispbyteDashboard: React.FC = () => {
         historyCpu={historyCpu}
         serverRunning={powerState === "RUNNING"}
       />
+
+      {/* 2.5 Real-Time D3 System Health & Low-Overhead Telemetry */}
+      <SystemHealthWidget />
 
       {/* 3. Sub-navigation tabs inside Wispbyte Dashboard */}
       <div className="flex items-center justify-between border-b border-zinc-200 pb-2 flex-wrap gap-3">
