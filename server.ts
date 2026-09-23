@@ -592,7 +592,7 @@ app.post("/api/news/broadcast", async (req: Request, res: Response) => {
 });
 
 // Bot Name Styles Endpoints (Catalog, Config, Discord API Simulation & Nickname Sync)
-app.get("/api/namestyle", (_req: Request, res: Response) => {
+const handleGetNamestyle = (_req: Request, res: Response) => {
   const config = botNameStylesService.getConfig();
   const catalog = botNameStylesService.getCatalog();
   const formattedNickname = botNameStylesService.formatFormattedNickname(config);
@@ -607,7 +607,11 @@ app.get("/api/namestyle", (_req: Request, res: Response) => {
     catalog,
     history,
   });
-});
+};
+
+app.get("/api/namestyle", handleGetNamestyle);
+app.get("/api/namestyles", handleGetNamestyle);
+app.get("/api/namestyles/config", handleGetNamestyle);
 
 app.post("/api/namestyle", (req: Request, res: Response) => {
   const updates = req.body;
@@ -1328,9 +1332,9 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   } else {
-    // Attempt Vite dev server if in local development mode
+    // Attempt Vite dev server ONLY if explicitly enabled for local dev
     let viteLoaded = false;
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env.VITE_DEV === "true") {
       try {
         const { createServer: createViteServer } = await import("vite");
         const vite = await createViteServer({
@@ -1343,7 +1347,7 @@ async function startServer() {
         app.use(vite.middlewares);
         viteLoaded = true;
       } catch (err: any) {
-        console.warn("Notice: Vite live dev middleware skipped on container runtime. Using high-efficiency API and status gateway.");
+        console.warn("Notice: Vite dev middleware skipped:", err?.message || err);
       }
     }
 
