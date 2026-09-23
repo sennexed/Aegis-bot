@@ -7,6 +7,8 @@
  * 3. In-memory styling state persistence and live preview formatting
  */
 
+import fs from "fs";
+import path from "path";
 import {
   BOT_NAME_FONTS,
   BOT_NAME_EFFECTS,
@@ -19,13 +21,66 @@ import {
 class BotNameStylesService {
   private config: BotNameStyleConfig = { ...DEFAULT_BOT_NAME_STYLE };
   private history: { timestamp: string; config: BotNameStyleConfig; appliedToDiscord: boolean }[] = [];
+  private dataDir = path.join(process.cwd(), "data");
+  private storageFilePath = path.join(this.dataDir, "name_styles.json");
+  private writeQueue: Promise<void> = Promise.resolve();
 
   constructor() {
-    this.history.push({
-      timestamp: new Date().toISOString(),
-      config: { ...this.config },
-      appliedToDiscord: true,
-    });
+    this.init();
+  }
+
+  private init() {
+    try {
+      if (!fs.existsSync(this.dataDir)) {
+        fs.mkdirSync(this.dataDir, { recursive: true });
+      }
+
+      if (fs.existsSync(this.storageFilePath)) {
+        const raw = fs.readFileSync(this.storageFilePath, "utf8");
+        const parsed = JSON.parse(raw);
+        if (parsed.config) {
+          this.config = { ...DEFAULT_BOT_NAME_STYLE, ...parsed.config };
+        }
+        if (Array.isArray(parsed.history)) {
+          this.history = parsed.history;
+        }
+      } else {
+        this.history.push({
+          timestamp: new Date().toISOString(),
+          config: { ...this.config },
+          appliedToDiscord: true,
+        });
+        this.persistToDisk();
+      }
+    } catch (err) {
+      console.warn("[NameStyles] Warning: could not load name_styles.json from disk, using defaults:", err);
+      this.history.push({
+        timestamp: new Date().toISOString(),
+        config: { ...this.config },
+        appliedToDiscord: true,
+      });
+    }
+  }
+
+  private async persistToDisk(): Promise<void> {
+    this.writeQueue = this.writeQueue
+      .then(async () => {
+        if (!fs.existsSync(this.dataDir)) {
+          await fs.promises.mkdir(this.dataDir, { recursive: true });
+        }
+        const dataObj = {
+          config: this.config,
+          history: this.history,
+          updatedAt: new Date().toISOString(),
+        };
+        const tempPath = `${this.storageFilePath}.tmp`;
+        await fs.promises.writeFile(tempPath, JSON.stringify(dataObj, null, 2), "utf8");
+        await fs.promises.rename(tempPath, this.storageFilePath);
+      })
+      .catch((err) => {
+        console.error("[NameStyles] Failed to persist name styles to disk:", err);
+      });
+    return this.writeQueue;
   }
 
   /**
@@ -67,6 +122,8 @@ class BotNameStylesService {
       appliedToDiscord: true,
     });
     if (this.history.length > 20) this.history.pop();
+
+    this.persistToDisk();
 
     return {
       success: true,

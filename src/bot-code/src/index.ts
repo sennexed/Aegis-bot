@@ -181,6 +181,22 @@ client.once(Events.ClientReady, async (readyClient) => {
 
   // Initialize AutoNews bot client
   autoNewsBotService.setClient(readyClient);
+
+  // Sync bot display nickname style across connected guilds on startup
+  try {
+    const styleConfig = botNameStylesService.getConfig();
+    if (styleConfig.autoSyncNickname) {
+      const styledNick = botNameStylesService.formatFormattedNickname(styleConfig);
+      for (const [, guild] of readyClient.guilds.cache) {
+        if (guild.members.me) {
+          guild.members.me.setNickname(styledNick).catch(() => null);
+        }
+      }
+      console.log(`[NameStyles] Applied styled nickname '${styledNick}' across connected guilds.`);
+    }
+  } catch (err) {
+    console.warn("[NameStyles] Could not apply nickname sync on startup:", err);
+  }
 });
 
 // Guild Join Event (New Server Added)
@@ -444,6 +460,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return setupCommand.execute(interaction, roleService, loggingService, syncGuildCommands);
     }
 
+    if (commandName === "namestyle") {
+      return nameStyleCommand.execute(interaction);
+    }
+
+    if (commandName === "news") {
+      return newsCommand.execute(interaction);
+    }
+
     // Safety guard: if guild is not configured yet, decline execution and prompt /setup
     if (guildId && !roleService.isGuildConfigured(guildId)) {
       return interaction.reply({
@@ -499,14 +523,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (commandName === "exportlogs") {
       return exportLogsCommand.execute(interaction, auditExportService, modService, roleService);
-    }
-
-    if (commandName === "news") {
-      return newsCommand.execute(interaction);
-    }
-
-    if (commandName === "namestyle") {
-      return nameStyleCommand.execute(interaction);
     }
 
     const modCmd = moderationCommands.find((c) => c.data.name === commandName);

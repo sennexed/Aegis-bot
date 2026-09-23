@@ -28,6 +28,7 @@ import {
   isSoundEnabled,
   toggleSound,
 } from "../utils/soundEffects";
+import { BotNameStyleConfig, DEFAULT_BOT_NAME_STYLE, BOT_NAME_FONTS, BOT_NAME_EFFECTS } from "../types/nameStyles";
 
 interface ChatMessage {
   id: string;
@@ -83,6 +84,33 @@ export const InteractiveBotChatSandbox: React.FC = () => {
   const [userTimeoutUntil, setUserTimeoutUntil] = useState<Date | null>(null);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
 
+  // Live bot styling state fetched from backend
+  const [botStyleConfig, setBotStyleConfig] = useState<BotNameStyleConfig>(DEFAULT_BOT_NAME_STYLE);
+  const [botDisplayName, setBotDisplayName] = useState<string>("[🛡️ AEGIS] AegisMod");
+
+  // Fetch live bot name style
+  useEffect(() => {
+    fetch("/api/namestyle")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.config) {
+          setBotStyleConfig(data.config);
+          if (data.formattedNickname) {
+            setBotDisplayName(data.formattedNickname);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const getBotAuthor = () => ({
+    name: botDisplayName,
+    avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
+    color: botStyleConfig.primaryColor || "#D95700",
+    isBot: true,
+    role: "BOT",
+  });
+
   // Channels state
   const [generalMessages, setGeneralMessages] = useState<ChatMessage[]>([
     {
@@ -99,9 +127,9 @@ export const InteractiveBotChatSandbox: React.FC = () => {
     {
       id: "m-init-2",
       author: {
-        name: "AegisMod",
+        name: "[🛡️ AEGIS] AegisMod",
         avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-        color: "#818cf8",
+        color: "#D95700",
         isBot: true,
         role: "Automated Guardian",
       },
@@ -114,9 +142,9 @@ export const InteractiveBotChatSandbox: React.FC = () => {
     {
       id: "log-init-1",
       author: {
-        name: "AegisMod",
+        name: "[🛡️ AEGIS] AegisMod",
         avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-        color: "#818cf8",
+        color: "#D95700",
         isBot: true,
         role: "BOT",
       },
@@ -139,9 +167,9 @@ export const InteractiveBotChatSandbox: React.FC = () => {
     {
       id: "cmd-init-1",
       author: {
-        name: "AegisMod",
+        name: "[🛡️ AEGIS] AegisMod",
         avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-        color: "#818cf8",
+        color: "#D95700",
         isBot: true,
         role: "BOT",
       },
@@ -149,6 +177,26 @@ export const InteractiveBotChatSandbox: React.FC = () => {
       content: "Type slash commands here or click below to simulate bot interactions.",
     },
   ]);
+
+  // Update initial bot messages when custom style config loads
+  useEffect(() => {
+    const updateAuthor = (msg: ChatMessage) => {
+      if (msg.author.isBot) {
+        return {
+          ...msg,
+          author: {
+            ...msg.author,
+            name: botDisplayName,
+            color: botStyleConfig.primaryColor || "#D95700",
+          },
+        };
+      }
+      return msg;
+    };
+    setGeneralMessages((prev) => prev.map(updateAuthor));
+    setModLogMessages((prev) => prev.map(updateAuthor));
+    setBotCommandMessages((prev) => prev.map(updateAuthor));
+  }, [botDisplayName, botStyleConfig.primaryColor]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -236,13 +284,7 @@ export const InteractiveBotChatSandbox: React.FC = () => {
         // Bot sends an automated reprimand to #general-chat
         const botReprimand: ChatMessage = {
           id: "bot-rep-" + Date.now(),
-          author: {
-            name: "AegisMod",
-            avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-            color: "#818cf8",
-            isBot: true,
-            role: "BOT",
-          },
+          author: getBotAuthor(),
           timestamp: timeStr,
           content: `⚠️ **@TeenUser16** your message violated server teen safety guidelines (**${data.category}**). Action taken: **${data.recommendedAction}**. Strikes: **${newStrikes}/3**.`,
         };
@@ -251,13 +293,7 @@ export const InteractiveBotChatSandbox: React.FC = () => {
         // Post structured Discord Embed to #mod-logs
         const modLogEmbed: ChatMessage = {
           id: "log-evt-" + Date.now(),
-          author: {
-            name: "AegisMod",
-            avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-            color: "#818cf8",
-            isBot: true,
-            role: "BOT",
-          },
+          author: getBotAuthor(),
           timestamp: timeStr,
           content: "",
           embed: {
@@ -300,13 +336,7 @@ export const InteractiveBotChatSandbox: React.FC = () => {
       if (cmd.includes("/duty on")) {
         botReply = {
           id: "cmd-res-" + Date.now(),
-          author: {
-            name: "AegisMod",
-            avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-            color: "#818cf8",
-            isBot: true,
-            role: "BOT",
-          },
+          author: getBotAuthor(),
           timestamp: timeStr,
           content: "",
           embed: {
@@ -323,13 +353,7 @@ export const InteractiveBotChatSandbox: React.FC = () => {
       } else if (cmd.includes("/news digest")) {
         botReply = {
           id: "cmd-res-" + Date.now(),
-          author: {
-            name: "AegisMod",
-            avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-            color: "#818cf8",
-            isBot: true,
-            role: "BOT",
-          },
+          author: getBotAuthor(),
           timestamp: timeStr,
           content: "",
           embed: {
@@ -344,35 +368,25 @@ export const InteractiveBotChatSandbox: React.FC = () => {
             footer: "Use /news subscribe to receive automated daily dispatches",
           },
         };
-      } else if (cmd.includes("/namestyle preview") || cmd.includes("/namestyle view")) {
+      } else if (cmd.includes("/namestyle preview") || cmd.includes("/namestyle view") || cmd.includes("/namestyle")) {
+        const activeFont = BOT_NAME_FONTS.find((f) => f.id === botStyleConfig.fontId) || BOT_NAME_FONTS[0];
+        const activeEffect = BOT_NAME_EFFECTS.find((e) => e.id === botStyleConfig.effectId) || BOT_NAME_EFFECTS[0];
         botReply = {
           id: "cmd-res-" + Date.now(),
-          author: {
-            name: "AegisMod",
-            avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-            color: "#D95700",
-            isBot: true,
-            role: "BOT",
-          },
+          author: getBotAuthor(),
           timestamp: timeStr,
           content: "",
           embed: {
             title: "✨ Discord Bot Name Style & Font Preview",
-            description: "Currently applied Discord display style: **[🛡️ AEGIS] AegisMod**\nFont: **gg sans / Dynamic** • Effect: **Linear Gradient** • Colors: **🇮🇳 Tiranga Dark (#D95700 Dark Orange, #FFFFFF White, #0D652D Dark Green)**",
-            color: "#D95700",
-            footer: "Synced with Discord REST API PATCH /users/@me • Indian Flag Tiranga Palette",
+            description: `Currently applied Discord display style: **${botDisplayName}**\nFont: **${activeFont.name}** (\`${botStyleConfig.fontId}\`) • Effect: **${activeEffect.name}** (\`${botStyleConfig.effectId}\`) • Primary Color: \`${botStyleConfig.primaryColor}\`${botStyleConfig.clanTag ? ` • Server Tag: \`[${botStyleConfig.clanBadge || "🛡️"} ${botStyleConfig.clanTag}]\`` : ""}`,
+            color: botStyleConfig.primaryColor || "#D95700",
+            footer: "Synced with Discord REST API PATCH /users/@me • Live Configuration",
           },
         };
       } else if (cmd.includes("/antiraid on")) {
         botReply = {
           id: "cmd-res-" + Date.now(),
-          author: {
-            name: "AegisMod",
-            avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-            color: "#818cf8",
-            isBot: true,
-            role: "BOT",
-          },
+          author: getBotAuthor(),
           timestamp: timeStr,
           content: "",
           embed: {
@@ -385,13 +399,7 @@ export const InteractiveBotChatSandbox: React.FC = () => {
       } else {
         botReply = {
           id: "cmd-res-" + Date.now(),
-          author: {
-            name: "AegisMod",
-            avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-            color: "#818cf8",
-            isBot: true,
-            role: "BOT",
-          },
+          author: getBotAuthor(),
           timestamp: timeStr,
           content: `✅ Executed slash command \`${cmd}\`. AegisMod processed interaction with zero latency.`,
         };
@@ -409,10 +417,7 @@ export const InteractiveBotChatSandbox: React.FC = () => {
       {
         id: "m-reset-" + Date.now(),
         author: {
-          name: "AegisMod",
-          avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-          color: "#818cf8",
-          isBot: true,
+          ...getBotAuthor(),
           role: "Automated Guardian",
         },
         timestamp: "Just now",
