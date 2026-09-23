@@ -13,6 +13,7 @@ import { AutoNewsFeature } from "./components/AutoNewsFeature";
 import { BotNameStylesFeature } from "./components/BotNameStylesFeature";
 import { InteractiveBotChatSandbox } from "./components/InteractiveBotChatSandbox";
 import { GitHubAutoDeployFeature } from "./components/GitHubAutoDeployFeature";
+import { InteractiveApiCenter } from "./components/InteractiveApiCenter";
 import { Shield, Sparkles, Server, Github, ExternalLink } from "lucide-react";
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           >
             {activeTab === "dashboard" && <WispbyteDashboard />}
+            {activeTab === "interactive-api" && <InteractiveApiCenter />}
             {activeTab === "git-autodeploy" && <GitHubAutoDeployFeature />}
             {activeTab === "bot-chat" && <InteractiveBotChatSandbox />}
             {activeTab === "namestyles" && <BotNameStylesFeature />}

@@ -1319,324 +1319,50 @@ Output structured JSON strictly matching the provided schema.`;
   }
 });
 
+app.get("/api/memory/guilds", (_req: Request, res: Response) => {
+  const memoryFile = path.join(process.cwd(), "data", "guild_memory.json");
+  let data: any = {};
+  if (fs.existsSync(memoryFile)) {
+    try {
+      data = JSON.parse(fs.readFileSync(memoryFile, "utf-8"));
+    } catch {
+      data = {};
+    }
+  }
+  res.json({
+    success: true,
+    guildCount: Object.keys(data).length,
+    guilds: data,
+    path: memoryFile,
+  });
+});
+
 // Setup Vite or static serving
 async function startServer() {
   const distPath = path.join(process.cwd(), "dist");
-  const hasDist = fs.existsSync(distPath) && fs.existsSync(path.join(distPath, "index.html"));
 
-  if (hasDist) {
-    console.log("⚡ Serving pre-built static assets (Ultra-light mode: ~45MB RAM)");
+  if (process.env.NODE_ENV === "production") {
+    console.log("⚡ Serving pre-built static assets (Production Mode)");
     app.use(express.static(distPath));
-    app.get("*", (req: Request, res: Response, next) => {
-      if (req.path.startsWith("/api/")) return next();
+    app.get("*", (_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   } else {
-    // Attempt Vite dev server ONLY if explicitly enabled for local dev
-    let viteLoaded = false;
-    if (process.env.VITE_DEV === "true") {
-      try {
-        const { createServer: createViteServer } = await import("vite");
-        const vite = await createViteServer({
-          server: {
-            middlewareMode: true,
-            allowedHosts: ["aegis-bot.wispbyte.app", "aegisbot.wispbyte.app", ".wispbyte.app", ".wispbyte.net", "localhost"],
-          },
-          appType: "spa",
-        });
-        app.use(vite.middlewares);
-        viteLoaded = true;
-      } catch (err: any) {
-        console.warn("Notice: Vite dev middleware skipped:", err?.message || err);
-      }
-    }
-
-    if (!viteLoaded) {
-      // High-efficiency, zero-RAM embedded status dashboard fallback for web visitors
-      app.get("*", (req: Request, res: Response, next) => {
-        if (req.path.startsWith("/api/")) return next();
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AegisMod - Discord Hybrid AI Control Center</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #090a0f;
-      --card-bg: #11141d;
-      --card-border: #1e2433;
-      --primary: #6366f1;
-      --primary-hover: #4f46e5;
-      --emerald: #10b981;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    header {
-      background: rgba(17, 20, 29, 0.85);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--card-border);
-      padding: 16px 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 50;
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-weight: 800;
-      font-size: 18px;
-      letter-spacing: -0.5px;
-    }
-    .logo-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #6366f1, #a855f7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-    }
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      border-radius: 9999px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #34d399;
-    }
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 10px #10b981;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.9); } }
-    main {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 32px 20px;
-      width: 100%;
-      flex: 1;
-    }
-    .hero {
-      margin-bottom: 32px;
-      text-align: center;
-    }
-    .hero h1 {
-      font-size: 32px;
-      font-weight: 800;
-      letter-spacing: -1px;
-      margin-bottom: 8px;
-      background: linear-gradient(135deg, #ffffff 40%, #a5b4fc);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .hero p {
-      color: var(--text-muted);
-      font-size: 15px;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    .grid-stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 16px;
-      margin-bottom: 32px;
-    }
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 20px;
-    }
-    .stat-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-muted);
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-    .stat-val {
-      font-size: 20px;
-      font-weight: 800;
-      color: #fff;
-      font-family: 'JetBrains Mono', monospace;
-    }
-    .terminal-card {
-      background: #0b0d13;
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      overflow: hidden;
-      margin-bottom: 32px;
-    }
-    .terminal-header {
-      background: #11141d;
-      padding: 12px 18px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--card-border);
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .terminal-body {
-      padding: 18px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      line-height: 1.7;
-      color: #cbd5e1;
-      max-height: 280px;
-      overflow-y: auto;
-    }
-    .log-row { margin-bottom: 4px; display: flex; gap: 10px; }
-    .log-time { color: #64748b; flex-shrink: 0; }
-    .log-tag { font-weight: 700; flex-shrink: 0; }
-    .tag-INFO { color: #60a5fa; }
-    .tag-MOD { color: #a855f7; }
-    .tag-PASS { color: #34d399; }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--primary);
-      color: #fff;
-      padding: 10px 20px;
-      border-radius: 10px;
-      font-weight: 700;
-      font-size: 13px;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    .btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
-    .btn-outline {
-      background: transparent;
-      border: 1px solid var(--card-border);
-      color: var(--text-muted);
-    }
-    .btn-outline:hover { background: rgba(255,255,255,0.05); color: #fff; }
-    footer {
-      border-top: 1px solid var(--card-border);
-      padding: 20px;
-      text-align: center;
-      font-size: 12px;
-      color: #64748b;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="logo">
-      <div class="logo-icon">🛡️</div>
-      <span>AegisMod Control Center</span>
-    </div>
-    <div class="status-pill">
-      <span class="dot"></span>
-      <span id="header-status">OPERATIONAL</span>
-    </div>
-  </header>
-
-  <main>
-    <div class="hero">
-      <h1>AegisMod Discord Hybrid Engine</h1>
-      <p>Continuous AI Moderation, AutoMod Defense, and Automated News Feeds for Discord.</p>
-    </div>
-
-    <div class="grid-stats">
-      <div class="card">
-        <div class="stat-label">Subdomain & Allocation</div>
-        <div class="stat-val" style="font-size: 16px; color: #a5b4fc;">aegis-bot.wispbyte.app</div>
-        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Port: ${PORT} (HTTP / WS)</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Discord Bot State</div>
-        <div class="stat-val" style="color: #34d399;" id="bot-state">ONLINE</div>
-        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Shard #0 Connected (17 cmds)</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">AI Safety Model</div>
-        <div class="stat-val" style="font-size: 16px; color: #f472b6;">Gemini 3.8 Flash</div>
-        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Multi-Tier Token Triage Active</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Memory & Footprint</div>
-        <div class="stat-val" style="color: #38bdf8;">~45 MB</div>
-        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Ultra-Light Node 22 Mode</div>
-      </div>
-    </div>
-
-    <div class="terminal-card">
-      <div class="terminal-header">
-        <span style="display: flex; align-items: center; gap: 8px;">
-          <span style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
-          <span style="width: 10px; height: 10px; border-radius: 50%; background: #eab308; display: inline-block;"></span>
-          <span style="width: 10px; height: 10px; border-radius: 50%; background: #22c55e; display: inline-block;"></span>
-          <span style="margin-left: 8px; color: #94a3b8;">Live Hybrid Moderation & System Stream</span>
-        </span>
-        <span style="color: #64748b; font-family: monospace;">Auto-refreshing (3s)</span>
-      </div>
-      <div class="terminal-body" id="console-logs">
-        <div class="log-row"><span class="log-time">[STARTUP]</span> <span class="log-tag tag-INFO">[Pterodactyl]</span> <span>Container listening on aegis-bot.wispbyte.app:${PORT}</span></div>
-        <div class="log-row"><span class="log-time">[GATEWAY]</span> <span class="log-tag tag-PASS">[Discord]</span> <span>AegisMod Shard #0 connected successfully.</span></div>
-        <div class="log-row"><span class="log-time">[MEMORY]</span> <span class="log-tag tag-INFO">[GuildMemory]</span> <span>Loaded permanent server memory from /data/guild_memory.json</span></div>
-        <div class="log-row"><span class="log-time">[MODERATION]</span> <span class="log-tag tag-MOD">[Gemini]</span> <span>Hybrid Policy Engine active (STRICT_TEEN Zero-Tolerance)</span></div>
-      </div>
-    </div>
-
-    <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-      <a href="/api/health" target="_blank" class="btn">🚀 Inspect /api/health JSON</a>
-      <a href="/api/news" target="_blank" class="btn btn-outline">📰 View 13 Newspaper Feeds</a>
-      <a href="/api/namestyles/config" target="_blank" class="btn btn-outline">✨ View NameStyles Config</a>
-    </div>
-  </main>
-
-  <footer>
-    AegisMod Discord Hybrid Engine • Hosted on Wispbyte Cloud • Continuous 24/7 Protection
-  </footer>
-
-  <script>
-    async function updateTelemetry() {
-      try {
-        const res = await fetch('/api/health');
-        if (res.ok) {
-          const data = await res.json();
-          document.getElementById('header-status').textContent = 'ONLINE (200 OK)';
-          document.getElementById('bot-state').textContent = data.hasApiKey ? 'ONLINE (AI Active)' : 'ONLINE (AutoMod Only)';
-        }
-      } catch (e) {
-        document.getElementById('header-status').textContent = 'RUNNING';
-      }
-    }
-    setInterval(updateTelemetry, 4000);
-    updateTelemetry();
-  </script>
-</body>
-</html>`);
+    try {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: {
+          middlewareMode: true,
+          allowedHosts: ["aegis-bot.wispbyte.app", "aegisbot.wispbyte.app", ".wispbyte.app", ".wispbyte.net", "localhost"],
+        },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } catch (err: any) {
+      console.warn("Notice during Vite initialization:", err?.message || err);
+      app.use(express.static(distPath));
+      app.get("*", (_req: Request, res: Response) => {
+        res.sendFile(path.join(distPath, "index.html"));
       });
     }
   }
