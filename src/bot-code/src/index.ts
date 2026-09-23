@@ -143,27 +143,37 @@ async function registerSlashCommands() {
     return;
   }
 
-  const rest = new REST({ version: "10" }).setToken(token);
+  const rest = new REST({ version: "10", timeout: 25000 }).setToken(token);
 
-  try {
-    // Clear global moderation commands and register only /setup as base
-    await rest.put(Routes.applicationCommands(clientId), {
-      body: [setupCommand.data.toJSON()],
-    });
-    console.log("✅ Global commands updated: only /setup is default until server is configured.");
+  let attempts = 0;
+  while (attempts < 3) {
+    attempts++;
+    try {
+      // Clear global moderation commands and register only /setup as base
+      await rest.put(Routes.applicationCommands(clientId), {
+        body: [setupCommand.data.toJSON()],
+      });
+      console.log("✅ Global commands synchronized successfully with Discord API.");
 
-    // Sync each joined guild based on whether /setup has been completed in permanent memory
-    for (const [guildId, guild] of client.guilds.cache) {
-      const isConfigured = guildMemoryService.isServerSetup(guildId) || roleService.isGuildConfigured(guildId);
-      await syncGuildCommands(guildId, isConfigured);
-      if (isConfigured) {
-        console.log(
-          `[AegisMod Ready] Server '${guild.name}' (${guildId}) setup restored from permanent memory! 17 commands unlocked without re-setup.`
-        );
+      // Sync each joined guild based on whether /setup has been completed in permanent memory
+      for (const [guildId, guild] of client.guilds.cache) {
+        const isConfigured = guildMemoryService.isServerSetup(guildId) || roleService.isGuildConfigured(guildId);
+        await syncGuildCommands(guildId, isConfigured);
+        if (isConfigured) {
+          console.log(
+            `[AegisMod Ready] Server '${guild.name}' (${guildId}) setup restored from permanent memory! 17 commands unlocked.`
+          );
+        }
+      }
+      break; // Succeeded, exit retry loop
+    } catch (err: any) {
+      console.warn(`[Commands] Discord API sync attempt ${attempts}/3: ${err?.message || err}. Retrying in 3s...`);
+      if (attempts >= 3) {
+        console.error("Failed to register slash commands after 3 attempts. Bot will continue running with cached commands.");
+      } else {
+        await new Promise((r) => setTimeout(r, 3000));
       }
     }
-  } catch (err) {
-    console.error("Failed to register slash commands:", err);
   }
 }
 

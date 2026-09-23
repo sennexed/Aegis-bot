@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
@@ -1309,7 +1310,16 @@ Output structured JSON strictly matching the provided schema.`;
 
 // Setup Vite or static serving
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
+  const distPath = path.join(process.cwd(), "dist");
+  const hasDist = fs.existsSync(distPath) && fs.existsSync(path.join(distPath, "index.html"));
+
+  if (process.env.NODE_ENV === "production" || (hasDist && process.env.NODE_ENV !== "development")) {
+    console.log("⚡ Serving pre-built static assets (Ultra-light mode: ~45MB RAM)");
+    app.use(express.static(distPath));
+    app.get("*", (_req: Request, res: Response) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  } else {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
@@ -1318,12 +1328,6 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (_req: Request, res: Response) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
