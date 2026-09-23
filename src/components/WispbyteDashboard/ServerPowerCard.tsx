@@ -18,6 +18,9 @@ import {
   ChevronDown,
   AlertOctagon,
   Bot,
+  Globe,
+  Copy,
+  Check,
 } from "lucide-react";
 import { ServerPowerState, WispbyteBotDetails } from "../../types";
 
@@ -47,6 +50,19 @@ export const ServerPowerCard: React.FC<ServerPowerCardProps> = ({
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [confirmKill, setConfirmKill] = useState(false);
   const [currentUptime, setCurrentUptime] = useState(uptimeSeconds);
+  const [copiedDomain, setCopiedDomain] = useState(false);
+
+  const subdomain = botDetails.subdomain || "aegisbot.wispbyte.app";
+  const port = botDetails.port || 10144;
+  const webpageUrl = botDetails.webpageUrl || `https://${subdomain}/`;
+  const allocation = botDetails.allocation || `${subdomain}:${port}`;
+
+  const handleCopyDomain = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(webpageUrl);
+    setCopiedDomain(true);
+    setTimeout(() => setCopiedDomain(false), 2000);
+  };
 
   // Live ticking uptime
   useEffect(() => {
@@ -171,7 +187,7 @@ export const ServerPowerCard: React.FC<ServerPowerCardProps> = ({
             </div>
 
             {/* Server Meta Info Bar */}
-            <div className="flex items-center gap-4 mt-2 text-xs text-zinc-500 flex-wrap">
+            <div className="flex items-center gap-3 mt-2 text-xs text-zinc-500 flex-wrap">
               <span className="flex items-center gap-1">
                 <Server className="w-3.5 h-3.5 text-zinc-400" />
                 <span className="font-mono text-zinc-700">{botDetails.wispbyteNode}</span>
@@ -187,6 +203,35 @@ export const ServerPowerCard: React.FC<ServerPowerCardProps> = ({
                 <Radio className="w-3.5 h-3.5 text-zinc-400" />
                 <span>{botDetails.nodeVersion}</span>
               </span>
+            </div>
+
+            {/* Webpage & Subdomain Allocation Pill */}
+            <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50/80 border border-indigo-200/80 text-[11px] font-mono text-indigo-900 shadow-2xs">
+                <Globe className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="font-bold text-indigo-700">Subdomain:</span>
+                <span className="font-semibold text-zinc-800">{subdomain}/</span>
+                <span className="text-zinc-300">|</span>
+                <span className="text-indigo-600 font-bold">Port: {port}</span>
+              </div>
+
+              <button
+                onClick={handleCopyDomain}
+                title="Copy Webpage URL"
+                className="px-2 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200"
+              >
+                {copiedDomain ? (
+                  <>
+                    <Check className="w-3 h-3 text-emerald-600" />
+                    <span className="text-emerald-700 font-bold">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3 text-zinc-500" />
+                    <span>Copy URL</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

@@ -39,9 +39,9 @@ export const QuickDeployModal: React.FC<QuickDeployModalProps> = ({
 
   const steps = [
     { num: 1, title: "Building Production Bundle", desc: "Packaging pre-compiled JavaScript dist/ and TypeScript sources" },
-    { num: 2, title: "SFTP Sync to Wispbyte", desc: "Connecting to wisp-sg-node01.wispbyte.net via port 2022" },
-    { num: 3, title: "Pterodactyl Egg Initialization", desc: "Booting ghcr.io/pterodactyl/yolks:nodejs_20 with 512MB RAM" },
-    { num: 4, title: "Discord Gateway Online", desc: "Shard #0 connected with Privileged Intents active" },
+    { num: 2, title: "SFTP Sync to Wispbyte", desc: "Connecting to allocation aegisbot.wispbyte.app via port 2022" },
+    { num: 3, title: "Pterodactyl Egg Initialization", desc: "Booting ghcr.io/pterodactyl/yolks:nodejs_20 on port 10144 with 512MB RAM" },
+    { num: 4, title: "Discord Gateway & Webpage Online", desc: "Webpage active at aegisbot.wispbyte.app/ (Port 10144) & Discord Shard #0 ready" },
   ];
 
   return (

@@ -16,6 +16,7 @@ import {
   Zap,
   ExternalLink,
   AlertCircle,
+  Code2,
 } from "lucide-react";
 import {
   ServerPowerState,
@@ -31,6 +32,8 @@ import { DiscordBotTelemetry, TelemetryEvent } from "./DiscordBotTelemetry";
 import { StartupConfigModal } from "./StartupConfigModal";
 import { QuickDeployModal } from "./QuickDeployModal";
 import { BotStabilityPanel } from "./BotStabilityPanel";
+import { GitHubAutoDeployFeature } from "../GitHubAutoDeployFeature";
+import { WispbyteApiExplorer } from "./WispbyteApiExplorer";
 
 export const WispbyteDashboard: React.FC = () => {
   // Server State
@@ -67,6 +70,10 @@ export const WispbyteDashboard: React.FC = () => {
     wispbyteNode: "wisp-sg-node01.wispbyte.net (SG-1)",
     containerId: "c8f2a1b9-7b3c",
     geminiModel: "Gemini 3.8 Flash",
+    port: 10144,
+    subdomain: "aegisbot.wispbyte.app",
+    webpageUrl: "https://aegisbot.wispbyte.app/",
+    allocation: "aegisbot.wispbyte.app:10144",
   });
 
   const [stats, setStats] = useState<WispbyteStats>({
@@ -78,7 +85,7 @@ export const WispbyteDashboard: React.FC = () => {
 
   const [logs, setLogs] = useState<WispbyteLogItem[]>([]);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-  const [activeSubTab, setActiveSubTab] = useState<"console" | "guilds" | "stability" | "guide">("console");
+  const [activeSubTab, setActiveSubTab] = useState<"console" | "guilds" | "stability" | "git" | "api" | "guide">("console");
 
   // Modals
   const [isConfigOpen, setIsConfigOpen] = useState(false);
@@ -368,6 +375,30 @@ export const WispbyteDashboard: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveSubTab("git")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeSubTab === "git"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                : "bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200"
+            }`}
+          >
+            <RotateCw className="w-3.5 h-3.5 text-indigo-500" />
+            <span>GitHub CI/CD & Auto-Restart</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab("api")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeSubTab === "api"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                : "bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200"
+            }`}
+          >
+            <Code2 className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Wispbyte API Explorer</span>
+          </button>
+
+          <button
             onClick={() => setActiveSubTab("guide")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeSubTab === "guide"
@@ -436,6 +467,30 @@ export const WispbyteDashboard: React.FC = () => {
           </motion.div>
         )}
 
+        {activeSubTab === "git" && (
+          <motion.div
+            key="git"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <GitHubAutoDeployFeature />
+          </motion.div>
+        )}
+
+        {activeSubTab === "api" && (
+          <motion.div
+            key="api"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <WispbyteApiExplorer />
+          </motion.div>
+        )}
+
         {activeSubTab === "guide" && (
           <motion.div
             key="guide"
@@ -479,9 +534,9 @@ export const WispbyteDashboard: React.FC = () => {
                 <span className="font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-[10px]">
                   STEP 2
                 </span>
-                <h4 className="font-bold text-zinc-900 mt-2">Container Provisioning</h4>
+                <h4 className="font-bold text-zinc-900 mt-2">Network & Web Allocation</h4>
                 <p className="text-zinc-600 mt-1">
-                  Connect files directly to the Wispbyte container and configure the service environment.
+                  Assign port <code className="bg-white px-1 rounded font-mono font-bold text-indigo-600">10144</code> and bind subdomain <code className="bg-white px-1 rounded font-mono font-bold text-indigo-600">aegisbot.wispbyte.app/</code> in the Wispbyte Network tab.
                 </p>
               </div>
 

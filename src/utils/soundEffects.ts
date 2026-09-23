@@ -151,6 +151,8 @@ export function playSuccessChime(): void {
   }
 }
 
+export const playSuccessSound = playSuccessChime;
+
 /**
  * Tab switch swoosh
  */

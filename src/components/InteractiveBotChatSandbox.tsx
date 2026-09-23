@@ -216,7 +216,19 @@ export const InteractiveBotChatSandbox: React.FC = () => {
     // Check if user is currently timed out
     if (userTimeoutUntil && new Date() < userTimeoutUntil) {
       playAlertSound();
-      alert("You are currently timed out by AegisMod. Please wait for cooldown or file an /appeal.");
+      const timeoutNotice: ChatMessage = {
+        id: "timeout-notice-" + Date.now(),
+        author: {
+          name: "System Alert",
+          avatar: "https://images.unsplash.com/photo-1614680376593-902f749f7ffc?w=64&q=80",
+          color: "#ef4444",
+          role: "Automod",
+          isBot: true,
+        },
+        timestamp: `Today at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+        content: "⛔ **Action Blocked**: You are currently timed out by AegisMod. Please wait for cooldown or run `/appeal`.",
+      };
+      setGeneralMessages((prev) => [...prev, timeoutNotice]);
       return;
     }
 

@@ -10,6 +10,8 @@ import { botNameStylesService } from "./src/services/botNameStylesService.js";
 import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, BOT_COLOR_PRESETS } from "./src/types/nameStyles.js";
 import { guildMemoryService } from "./src/services/guildMemoryService.js";
 import { botStabilityService } from "./src/services/botStabilityService.js";
+import { gitAutoDeployService } from "./src/services/gitAutoDeployService.js";
+import { wispbyteApiService } from "./src/services/wispbyteApiService.js";
 
 dotenv.config();
 
@@ -186,7 +188,7 @@ function runLocalTriage(text: string): {
 interface WispbyteLog {
   id: string;
   timestamp: string;
-  level: "DAEMON" | "INFO" | "DISCORD" | "AI_MOD" | "AUTOMOD" | "WARN" | "ERROR" | "COMMAND";
+  level: "DAEMON" | "INFO" | "DISCORD" | "AI_MOD" | "AUTOMOD" | "WARN" | "ERROR" | "COMMAND" | "GIT_HOOK" | "SERVER_RESTART";
   message: string;
 }
 
@@ -201,8 +203,8 @@ let totalTokensSaved = 349120;
 
 const wispbyteLogs: WispbyteLog[] = [
   { id: "log-1", timestamp: new Date(Date.now() - 3600000).toLocaleTimeString(), level: "DAEMON", message: "[Pterodactyl Daemon]: Fetching container image ghcr.io/pterodactyl/yolks:nodejs_20" },
-  { id: "log-2", timestamp: new Date(Date.now() - 3590000).toLocaleTimeString(), level: "DAEMON", message: "[Pterodactyl Daemon]: Starting container with 512MB RAM, 100% CPU quota (wisp-sg-node01.wispbyte.net)" },
-  { id: "log-3", timestamp: new Date(Date.now() - 3580000).toLocaleTimeString(), level: "INFO", message: "[Container Entry]: node dist/index.js (Node.js v20.18.0)" },
+  { id: "log-2", timestamp: new Date(Date.now() - 3590000).toLocaleTimeString(), level: "DAEMON", message: "[Pterodactyl Daemon]: Starting container with 512MB RAM on allocation aegisbot.wispbyte.app:10144 (Port 10144)" },
+  { id: "log-3", timestamp: new Date(Date.now() - 3580000).toLocaleTimeString(), level: "INFO", message: "[Container Entry]: node dist/index.js (Node.js v20.18.0) | Webpage URL: https://aegisbot.wispbyte.app/" },
   { id: "log-4", timestamp: new Date(Date.now() - 3570000).toLocaleTimeString(), level: "INFO", message: "[AegisMod]: Initializing AegisMod v1.0.0 Hybrid Discord Moderation Engine..." },
   { id: "log-5", timestamp: new Date(Date.now() - 3560000).toLocaleTimeString(), level: "INFO", message: "[AegisMod]: Policy Level set to 'STRICT_TEEN' (Zero-tolerance grooming, self-harm, hate speech; benign gamer slang allowed)" },
   { id: "log-6", timestamp: new Date(Date.now() - 3550000).toLocaleTimeString(), level: "DISCORD", message: "[Discord.js]: Logging in with Privileged Gateway Intents: GuildMembers, GuildMessages, MessageContent" },
@@ -210,7 +212,7 @@ const wispbyteLogs: WispbyteLog[] = [
   { id: "log-8", timestamp: new Date(Date.now() - 3530000).toLocaleTimeString(), level: "INFO", message: "🛡️ AegisMod logged in as AegisMod#4419 (ID: 124892849204918294)" },
   { id: "log-9", timestamp: new Date(Date.now() - 3520000).toLocaleTimeString(), level: "AI_MOD", message: "[Gemini 3.8 Flash]: Model connection primed. Multi-tier token triage cache initialized." },
   { id: "log-10", timestamp: new Date(Date.now() - 120000).toLocaleTimeString(), level: "AUTOMOD", message: "[AutoMod]: Intercepted suspicious link from User#8841: 'free-nitro-airdrop.xyz' -> Auto-timed out 24h [0 tokens]" },
-  { id: "log-11", timestamp: new Date(Date.now() - 45000).toLocaleTimeString(), level: "INFO", message: "[Heartbeat]: Memory: 174 MB / 512 MB | CPU: 8.2% | Latency: 26ms | Guilds: 14 | Monitored Teen Members: 3,420" },
+  { id: "log-11", timestamp: new Date(Date.now() - 45000).toLocaleTimeString(), level: "INFO", message: "[Heartbeat]: Memory: 174 MB / 512 MB | CPU: 8.2% | Latency: 26ms | Guilds: 14 | Webpage: aegisbot.wispbyte.app:10144" },
 ];
 
 function addWispbyteLog(level: WispbyteLog["level"], message: string) {
@@ -371,6 +373,10 @@ app.get("/api/wispbyte/status", (_req: Request, res: Response) => {
       wispbyteNode: "wisp-sg-node01.wispbyte.net (SG-1)",
       containerId: "c8f2a1b9-7b3c",
       geminiModel: "Gemini 3.8 Flash",
+      port: 10144,
+      subdomain: "aegisbot.wispbyte.app",
+      webpageUrl: "https://aegisbot.wispbyte.app/",
+      allocation: "aegisbot.wispbyte.app:10144",
     },
     stats: {
       processedMessages: totalProcessedMessages,
@@ -659,6 +665,153 @@ app.post("/api/stability/heal", (_req: Request, res: Response) => {
   res.json({ success: true, message: "Bot state healed and temporary caches flushed." });
 });
 
+// ==========================================
+// 🚀 GitHub Webhook & Auto-Restart on Commit Endpoints
+// ==========================================
+
+// Main GitHub Webhook Endpoint (configured in GitHub Repository Settings -> Webhooks)
+const handleGitHubWebhook = async (req: Request, res: Response) => {
+  const signature = req.headers["x-hub-signature-256"] as string | undefined;
+  const event = req.headers["x-github-event"] as string | undefined;
+  const rawBody = req.body || {};
+  const payloadString = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+
+  // GitHub Ping Event (when webhook is first created / tested in GitHub repo settings)
+  if (event === "ping" || rawBody.zen) {
+    addWispbyteLog("GIT_HOOK", `[GitHub Ping]: Webhook connection verified! Repository: ${rawBody.repository?.full_name || "aegis-discord-bot"}`);
+    return res.json({
+      status: "pong",
+      message: "GitHub webhook successfully verified and linked to AegisMod Server.",
+      zen: rawBody.zen,
+      hook_id: rawBody.hook_id,
+    });
+  }
+
+  // Handle Push Event (Commits pushed to repository)
+  try {
+    const isPushEvent = !event || event === "push" || !!rawBody.ref;
+    if (!isPushEvent) {
+      return res.json({
+        status: "ignored",
+        message: `Ignored GitHub event type '${event}'. Auto-restart triggers on 'push' events.`,
+      });
+    }
+
+    // Set server status to RESTARTING during deployment
+    const previousStatus = serverStatus;
+    serverStatus = "RESTARTING";
+
+    const result = await gitAutoDeployService.processPushEvent(
+      rawBody,
+      payloadString,
+      signature,
+      (type, message) => addWispbyteLog(type as any, message)
+    );
+
+    if (result.restartInitiated) {
+      serverStartedAt = Date.now();
+      serverStatus = "RUNNING";
+      moderationCache.clear();
+      addWispbyteLog("DAEMON", `[Pterodactyl Daemon]: Zero-downtime hot reload complete. Process re-spawned with latest commit.`);
+      addWispbyteLog("DISCORD", `[Discord.js]: Bot gateway reconnected. Ready to serve 14 guilds.`);
+    } else {
+      serverStatus = previousStatus;
+    }
+
+    res.json(result);
+  } catch (err: any) {
+    console.error("[GitHub Webhook Error]:", err);
+    serverStatus = "RUNNING";
+    res.status(500).json({
+      success: false,
+      error: "Failed to process GitHub webhook",
+      details: err.message,
+    });
+  }
+};
+
+app.post("/api/github/webhook", handleGitHubWebhook);
+app.post("/api/webhook/github-commit", handleGitHubWebhook);
+
+// Get GitHub Webhook & Auto-Restart Status
+app.get("/api/github/webhook/status", (req: Request, res: Response) => {
+  const host = req.get("host");
+  const protocol = req.protocol || "https";
+  const fullHostUrl = host ? `${protocol}://${host}` : undefined;
+  const status = gitAutoDeployService.getStatus(fullHostUrl);
+  res.json(status);
+});
+
+// Simulate a GitHub Commit Push (for instant UI testing & demonstration)
+app.post("/api/github/webhook/simulate", async (req: Request, res: Response) => {
+  const {
+    commitMessage = "feat: update teen safety filters and regex patterns",
+    authorUsername = "yatharthmahi",
+    authorName = "Yatharth Mahi",
+    branch = "main",
+    modifiedFiles = ["server.ts", "src/services/botStabilityService.ts"],
+  } = req.body || {};
+
+  try {
+    serverStatus = "RESTARTING";
+    addWispbyteLog("DAEMON", `[GitHub Simulator]: Receiving simulated push event from @${authorUsername}...`);
+
+    const result = await gitAutoDeployService.simulateCommitPush(
+      commitMessage,
+      authorUsername,
+      authorName,
+      branch,
+      modifiedFiles,
+      (type, message) => addWispbyteLog(type as any, message)
+    );
+
+    serverStartedAt = Date.now();
+    serverStatus = "RUNNING";
+    moderationCache.clear();
+
+    addWispbyteLog("DAEMON", `[Pterodactyl Daemon]: Server restart finalized. Uptime timer reset.`);
+    addWispbyteLog("INFO", `🛡️ [Git Auto-Deploy]: AegisMod hot-reloaded and operational on branch '${branch}'.`);
+
+    res.json(result);
+  } catch (err: any) {
+    serverStatus = "RUNNING";
+    res.status(500).json({ error: "Simulation failed", details: err.message });
+  }
+});
+
+// Update GitHub Auto-Restart Configuration
+app.post("/api/github/webhook/config", (req: Request, res: Response) => {
+  const {
+    enabled,
+    targetBranch,
+    secret,
+    autoPullChanges,
+    zeroDowntimeReload,
+    notifyDiscordChannel,
+    notifyChannelName,
+  } = req.body || {};
+
+  if (typeof secret === "string") {
+    gitAutoDeployService.setSecret(secret);
+  }
+
+  const updated = gitAutoDeployService.updateConfig({
+    ...(typeof enabled === "boolean" ? { enabled } : {}),
+    ...(targetBranch ? { targetBranch } : {}),
+    ...(typeof autoPullChanges === "boolean" ? { autoPullChanges } : {}),
+    ...(typeof zeroDowntimeReload === "boolean" ? { zeroDowntimeReload } : {}),
+    ...(typeof notifyDiscordChannel === "boolean" ? { notifyDiscordChannel } : {}),
+    ...(notifyChannelName ? { notifyChannelName } : {}),
+  });
+
+  addWispbyteLog(
+    "INFO",
+    `[GitHub Webhook Config]: Auto-Restart: ${updated.enabled ? "ENABLED" : "DISABLED"}, Target Branch: '${updated.targetBranch}', ZeroDowntime: ${updated.zeroDowntimeReload}`
+  );
+
+  res.json({ success: true, config: updated });
+});
+
 
 // Wispbyte Configuration Update Endpoint
 app.post("/api/wispbyte/config", (req: Request, res: Response) => {
@@ -669,6 +822,142 @@ app.post("/api/wispbyte/config", (req: Request, res: Response) => {
 
   addWispbyteLog("INFO", `[Wispbyte Config Updated]: RAM: ${memoryAllocatedMb}MB, Policy: ${policyLevel}, AutoRestart: ${autoRestartEnabled}`);
   res.json({ success: true, policy: policyLevel, ramMb: memoryAllocatedMb, autoRestart: autoRestartEnabled });
+});
+
+// Wispbyte Client / Panel API Endpoints (Pterodactyl Standard)
+app.get("/api/wispbyte/api-docs", (_req: Request, res: Response) => {
+  res.json({
+    panelUrl: "https://panel.wispbyte.net",
+    serverIdentifier: "c8f2a1b9",
+    serverUuid: "c8f2a1b9-7b3c-491a-bc01-e2a4f91048b2",
+    allocation: "aegisbot.wispbyte.app:10144",
+    endpoints: wispbyteApiService.getDocumentation(),
+  });
+});
+
+app.get(["/api/client", "/api/client/servers"], (_req: Request, res: Response) => {
+  const server = wispbyteApiService.getServerDetails(memoryAllocatedMb, policyLevel);
+  res.json({
+    object: "list",
+    data: [server],
+    meta: {
+      pagination: {
+        total: 1,
+        count: 1,
+        per_page: 25,
+        current_page: 1,
+        total_pages: 1,
+      },
+    },
+  });
+});
+
+app.get(["/api/client/servers/:serverId", "/api/wispbyte/client/servers/:serverId"], (req: Request, res: Response) => {
+  const server = wispbyteApiService.getServerDetails(memoryAllocatedMb, policyLevel);
+  res.json(server);
+});
+
+app.get(["/api/client/servers/:serverId/resources", "/api/wispbyte/client/servers/:serverId/resources"], (_req: Request, res: Response) => {
+  const memUsedBytes = (160 + Math.floor(Math.sin(Date.now() / 2000) * 15)) * 1024 * 1024;
+  const cpuPercent = Math.max(2.1, Number((8.2 + Math.sin(Date.now() / 3000) * 2.5).toFixed(1)));
+  res.json({
+    object: "stats",
+    attributes: {
+      current_state: serverStatus.toLowerCase(),
+      is_suspended: false,
+      resources: {
+        memory_bytes: memUsedBytes,
+        cpu_absolute: cpuPercent,
+        disk_bytes: 52 * 1024 * 1024,
+        network_rx_bytes: 148920000,
+        network_tx_bytes: 42918000,
+        uptime: Math.floor((Date.now() - serverStartedAt) / 1000),
+      },
+    },
+  });
+});
+
+app.get(["/api/client/servers/:serverId/websocket", "/api/wispbyte/client/servers/:serverId/websocket"], (_req: Request, res: Response) => {
+  res.json(wispbyteApiService.getWebsocketToken());
+});
+
+app.get(["/api/client/servers/:serverId/network/allocations", "/api/wispbyte/client/servers/:serverId/network/allocations"], (_req: Request, res: Response) => {
+  const server = wispbyteApiService.getServerDetails(memoryAllocatedMb, policyLevel);
+  res.json(server.attributes.relationships.allocations);
+});
+
+app.post("/api/wispbyte/client-api/test", async (req: Request, res: Response) => {
+  const { endpointId, customApiKey, customSignal, customCommand } = req.body;
+  const startTime = Date.now();
+  const apiKey = customApiKey || "ptlc_demo_live_client_key_9a8b7c";
+
+  let responseData: any = {};
+  let statusCode = 200;
+  let simulatedCurl = "";
+
+  if (endpointId === "get-server") {
+    responseData = wispbyteApiService.getServerDetails(memoryAllocatedMb, policyLevel);
+    simulatedCurl = `curl "https://panel.wispbyte.net/api/client/servers/c8f2a1b9" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "Accept: application/json"`;
+  } else if (endpointId === "get-resources") {
+    const memBytes = (160 + Math.floor(Math.random() * 20)) * 1024 * 1024;
+    responseData = {
+      object: "stats",
+      attributes: {
+        current_state: serverStatus.toLowerCase(),
+        is_suspended: false,
+        resources: {
+          memory_bytes: memBytes,
+          cpu_absolute: Number((7.8 + Math.random() * 3).toFixed(2)),
+          disk_bytes: 52428800,
+          network_rx_bytes: 148920000,
+          network_tx_bytes: 42918000,
+          uptime: Math.floor((Date.now() - serverStartedAt) / 1000),
+        },
+      },
+    };
+    simulatedCurl = `curl "https://panel.wispbyte.net/api/client/servers/c8f2a1b9/resources" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "Accept: application/json"`;
+  } else if (endpointId === "post-power") {
+    const sig = customSignal || "restart";
+    if (sig === "start" || sig === "stop" || sig === "restart" || sig === "kill") {
+      if (sig === "restart") {
+        serverStatus = "RESTARTING";
+        setTimeout(() => { serverStatus = "RUNNING"; }, 1000);
+      }
+    }
+    responseData = { success: true, signal: sig, executedAt: new Date().toISOString() };
+    simulatedCurl = `curl -X POST "https://panel.wispbyte.net/api/client/servers/c8f2a1b9/power" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"signal":"${sig}"}'`;
+  } else if (endpointId === "post-command") {
+    const cmd = customCommand || "status";
+    responseData = { success: true, command: cmd, executedAt: new Date().toISOString() };
+    simulatedCurl = `curl -X POST "https://panel.wispbyte.net/api/client/servers/c8f2a1b9/command" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"command":"${cmd}"}'`;
+  } else if (endpointId === "get-websocket") {
+    responseData = wispbyteApiService.getWebsocketToken();
+    simulatedCurl = `curl "https://panel.wispbyte.net/api/client/servers/c8f2a1b9/websocket" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "Accept: application/json"`;
+  } else if (endpointId === "get-allocations") {
+    const server = wispbyteApiService.getServerDetails(memoryAllocatedMb, policyLevel);
+    responseData = server.attributes.relationships.allocations;
+    simulatedCurl = `curl "https://panel.wispbyte.net/api/client/servers/c8f2a1b9/network/allocations" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "Accept: application/json"`;
+  } else {
+    responseData = { error: "Unknown endpoint identifier" };
+    statusCode = 400;
+  }
+
+  const durationMs = Date.now() - startTime + Math.floor(Math.random() * 25 + 15);
+
+  res.status(statusCode).json({
+    success: statusCode === 200,
+    statusCode,
+    durationMs,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "x-ratelimit-limit": "240",
+      "x-ratelimit-remaining": "238",
+      "server": "cloudflare",
+    },
+    data: responseData,
+    curlCommand: simulatedCurl,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Guild Memory (Permanent Server Registry) Endpoints

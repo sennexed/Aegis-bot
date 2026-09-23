@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Radio,
   Zap,
+  GitCommit,
 } from "lucide-react";
 import { isSoundEnabled, toggleSound, playTabSwitch } from "../utils/soundEffects";
 
@@ -33,6 +34,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
 
   const navItems = [
     { id: "dashboard", label: "⚡ Wispbyte Dashboard", badge: "LIVE" },
+    { id: "git-autodeploy", label: "🚀 GitHub Auto-Restart", badge: "AUTO-CD" },
     { id: "bot-chat", label: "💬 Interactive Bot Chat", badge: "NEW" },
     { id: "namestyles", label: "✨ Name Styles & Fonts", badge: "STYLES" },
     { id: "autonews", label: "📰 Auto News (13 Papers)" },

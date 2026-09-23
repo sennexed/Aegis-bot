@@ -97,6 +97,10 @@ export interface WispbyteBotDetails {
   wispbyteNode: string;
   containerId: string;
   geminiModel: string;
+  port: number;
+  subdomain: string;
+  webpageUrl: string;
+  allocation: string;
 }
 
 export interface WispbyteStats {
@@ -109,7 +113,7 @@ export interface WispbyteStats {
 export interface WispbyteLogItem {
   id: string;
   timestamp: string;
-  level: "DAEMON" | "INFO" | "DISCORD" | "AI_MOD" | "AUTOMOD" | "WARN" | "ERROR" | "COMMAND";
+  level: "DAEMON" | "INFO" | "DISCORD" | "AI_MOD" | "AUTOMOD" | "WARN" | "ERROR" | "COMMAND" | "GIT_HOOK" | "SERVER_RESTART";
   message: string;
 }
 
@@ -133,4 +137,5 @@ export interface TelemetryEvent {
 export * from "./news";
 export * from "./serverMemory";
 export * from "./stability";
+export * from "./gitWebhook";
 

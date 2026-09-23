@@ -12,6 +12,7 @@ import {
   Zap,
   Save,
   Info,
+  Globe,
 } from "lucide-react";
 
 interface StartupConfigModalProps {
@@ -199,7 +200,30 @@ export const StartupConfigModal: React.FC<StartupConfigModalProps> = ({
               </div>
             </div>
 
-            {/* 5. Auto Restart Toggle */}
+            {/* 5. Webpage & Network Allocation */}
+            <div className="p-3.5 rounded-xl bg-indigo-50/50 border border-indigo-200/70 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-zinc-900 flex items-center gap-1.5">
+                  <Globe className="w-4 h-4 text-indigo-600" />
+                  Webpage Allocation & Subdomain
+                </span>
+                <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                  PORT: 10144
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                <div className="bg-white p-2 rounded-lg border border-indigo-100">
+                  <div className="text-zinc-400 text-[10px] uppercase font-sans font-bold">Subdomain</div>
+                  <div className="text-zinc-800 font-bold truncate">aegisbot.wispbyte.app/</div>
+                </div>
+                <div className="bg-white p-2 rounded-lg border border-indigo-100">
+                  <div className="text-zinc-400 text-[10px] uppercase font-sans font-bold">Webpage Port</div>
+                  <div className="text-indigo-600 font-bold">10144 (HTTP / WS)</div>
+                </div>
+              </div>
+            </div>
+
+            {/* 6. Auto Restart Toggle */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 border border-zinc-200">
               <div>
                 <span className="font-bold text-zinc-900 block">Auto-Restart On Crash</span>
