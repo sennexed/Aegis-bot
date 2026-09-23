@@ -16,7 +16,11 @@ import { wispbyteApiService } from "./src/services/wispbyteApiService.js";
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT
+  ? parseInt(process.env.PORT, 10)
+  : process.env.SERVER_PORT
+  ? parseInt(process.env.SERVER_PORT, 10)
+  : 3000;
 
 app.use(express.json());
 
@@ -1320,7 +1324,17 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`AegisMod Control Server running on port ${PORT}`);
+    console.log(`🛡️ AegisMod Control Server successfully listening on http://0.0.0.0:${PORT}`);
+
+    // Automatically initialize Discord Bot Gateway if token is provided
+    if (process.env.DISCORD_BOT_TOKEN) {
+      console.log("🤖 DISCORD_BOT_TOKEN detected. Starting AegisMod Discord Gateway Client...");
+      import("./src/bot-code/src/index.js").catch(() => {
+        import("./src/bot-code/src/index.js").catch((err) => {
+          console.warn("⚠️ Note: Standalone bot can also be started independently via tsx src/bot-code/src/index.ts:", err.message);
+        });
+      });
+    }
   });
 }
 
