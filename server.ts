@@ -208,7 +208,7 @@ let totalTokensSaved = 349120;
 
 const wispbyteLogs: WispbyteLog[] = [
   { id: "log-1", timestamp: new Date(Date.now() - 3600000).toLocaleTimeString(), level: "DAEMON", message: "[Pterodactyl Daemon]: Fetching container image ghcr.io/pterodactyl/yolks:nodejs_20" },
-  { id: "log-2", timestamp: new Date(Date.now() - 3590000).toLocaleTimeString(), level: "DAEMON", message: "[Pterodactyl Daemon]: Starting container with 512MB RAM on allocation aegisbot.wispbyte.app:10144 (Port 10144)" },
+  { id: "log-2", timestamp: new Date(Date.now() - 3590000).toLocaleTimeString(), level: "DAEMON", message: "[Pterodactyl Daemon]: Starting container with 512MB RAM on allocation aegisbot.wispbyte.app:10734 (Port 10734)" },
   { id: "log-3", timestamp: new Date(Date.now() - 3580000).toLocaleTimeString(), level: "INFO", message: "[Container Entry]: node dist/index.js (Node.js v20.18.0) | Webpage URL: https://aegisbot.wispbyte.app/" },
   { id: "log-4", timestamp: new Date(Date.now() - 3570000).toLocaleTimeString(), level: "INFO", message: "[AegisMod]: Initializing AegisMod v1.0.0 Hybrid Discord Moderation Engine..." },
   { id: "log-5", timestamp: new Date(Date.now() - 3560000).toLocaleTimeString(), level: "INFO", message: "[AegisMod]: Policy Level set to 'STRICT_TEEN' (Zero-tolerance grooming, self-harm, hate speech; benign gamer slang allowed)" },
@@ -217,7 +217,7 @@ const wispbyteLogs: WispbyteLog[] = [
   { id: "log-8", timestamp: new Date(Date.now() - 3530000).toLocaleTimeString(), level: "INFO", message: "🛡️ AegisMod logged in as AegisMod#4419 (ID: 124892849204918294)" },
   { id: "log-9", timestamp: new Date(Date.now() - 3520000).toLocaleTimeString(), level: "AI_MOD", message: "[Gemini 3.8 Flash]: Model connection primed. Multi-tier token triage cache initialized." },
   { id: "log-10", timestamp: new Date(Date.now() - 120000).toLocaleTimeString(), level: "AUTOMOD", message: "[AutoMod]: Intercepted suspicious link from User#8841: 'free-nitro-airdrop.xyz' -> Auto-timed out 24h [0 tokens]" },
-  { id: "log-11", timestamp: new Date(Date.now() - 45000).toLocaleTimeString(), level: "INFO", message: "[Heartbeat]: Memory: 174 MB / 512 MB | CPU: 8.2% | Latency: 26ms | Guilds: 14 | Webpage: aegisbot.wispbyte.app:10144" },
+  { id: "log-11", timestamp: new Date(Date.now() - 45000).toLocaleTimeString(), level: "INFO", message: "[Heartbeat]: Memory: 174 MB / 512 MB | CPU: 8.2% | Latency: 26ms | Guilds: 14 | Webpage: aegisbot.wispbyte.app:10734" },
 ];
 
 function addWispbyteLog(level: WispbyteLog["level"], message: string) {
@@ -378,10 +378,10 @@ app.get("/api/wispbyte/status", (_req: Request, res: Response) => {
       wispbyteNode: "wisp-sg-node01.wispbyte.net (SG-1)",
       containerId: "c8f2a1b9-7b3c",
       geminiModel: "Gemini 3.8 Flash",
-      port: 10144,
-      subdomain: "aegisbot.wispbyte.app",
-      webpageUrl: "https://aegisbot.wispbyte.app/",
-      allocation: "aegisbot.wispbyte.app:10144",
+      port: 10734,
+      subdomain: "aegis-bot.wispbyte.app",
+      webpageUrl: "https://aegis-bot.wispbyte.app/",
+      allocation: "aegis-bot.wispbyte.app:10734",
     },
     stats: {
       processedMessages: totalProcessedMessages,
@@ -835,7 +835,7 @@ app.get("/api/wispbyte/api-docs", (_req: Request, res: Response) => {
     panelUrl: "https://panel.wispbyte.net",
     serverIdentifier: "c8f2a1b9",
     serverUuid: "c8f2a1b9-7b3c-491a-bc01-e2a4f91048b2",
-    allocation: "aegisbot.wispbyte.app:10144",
+    allocation: "aegis-bot.wispbyte.app:10734",
     endpoints: wispbyteApiService.getDocumentation(),
   });
 });
@@ -1311,10 +1311,9 @@ Output structured JSON strictly matching the provided schema.`;
 // Setup Vite or static serving
 async function startServer() {
   const distPath = path.join(process.cwd(), "dist");
-  const hasDist = fs.existsSync(distPath) && fs.existsSync(path.join(distPath, "index.html"));
 
-  if (process.env.NODE_ENV === "production" || (hasDist && process.env.NODE_ENV !== "development")) {
-    console.log("⚡ Serving pre-built static assets (Ultra-light mode: ~45MB RAM)");
+  if (process.env.NODE_ENV === "production") {
+    console.log("⚡ Serving pre-built static assets (Production Mode)");
     app.use(express.static(distPath));
     app.get("*", (_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, "index.html"));
@@ -1323,7 +1322,7 @@ async function startServer() {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
-        allowedHosts: ["aegisbot.wispbyte.app", ".wispbyte.app", ".wispbyte.net", "localhost"],
+        allowedHosts: ["aegis-bot.wispbyte.app", "aegisbot.wispbyte.app", ".wispbyte.app", ".wispbyte.net", "localhost"],
       },
       appType: "spa",
     });

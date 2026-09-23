@@ -15,6 +15,7 @@ import {
   MessageFlags,
   GuildMember,
   EmbedBuilder,
+  Options,
 } from "discord.js";
 import dotenv from "dotenv";
 
@@ -62,7 +63,7 @@ import { handleGuildMemberAdd } from "./events/guildMemberAdd.js";
 
 dotenv.config();
 
-// 1. Initialize Discord Client with Required Gateway Intents
+// 1. Initialize Discord Client with Required Gateway Intents & Low-Memory Sweepers
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -72,6 +73,32 @@ const client = new Client({
     GatewayIntentBits.GuildModeration,
   ],
   partials: [Partials.Message, Partials.Channel, Partials.User],
+  makeCache: Options.cacheWithLimits({
+    MessageManager: 50,
+    PresenceManager: 0,
+    ReactionManager: 0,
+    ReactionUserManager: 0,
+    VoiceStateManager: 0,
+    AutoModerationRuleManager: 10,
+    GuildScheduledEventManager: 0,
+    StageInstanceManager: 0,
+    ThreadMemberManager: 0,
+  }),
+  sweepers: {
+    ...Options.DefaultSweeperSettings,
+    messages: {
+      interval: 300, // Sweep messages every 5 minutes
+      lifetime: 900, // Drop messages older than 15 minutes
+    },
+    users: {
+      interval: 3600,
+      filter: () => (user) => user.id !== client.user?.id,
+    },
+    guildMembers: {
+      interval: 3600,
+      filter: () => (member) => member.id !== client.user?.id,
+    },
+  },
 });
 
 // 2. Instantiate Modular Services

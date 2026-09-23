@@ -69,9 +69,9 @@ DISCORD_CLIENT_ID="your_discord_client_id_here"
 
 # Moderation Profile
 MODERATION_POLICY_LEVEL="STRICT_TEEN"
-PORT=10144
-SUBDOMAIN="aegisbot.wispbyte.app"
-WEBPAGE_URL="https://aegisbot.wispbyte.app/"
+PORT=10734
+SUBDOMAIN="aegis-bot.wispbyte.app"
+WEBPAGE_URL="https://aegis-bot.wispbyte.app/"
 ```
 
 ### Discord Developer Portal Configuration

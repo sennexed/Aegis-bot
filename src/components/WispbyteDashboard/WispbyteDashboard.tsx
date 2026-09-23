@@ -70,10 +70,10 @@ export const WispbyteDashboard: React.FC = () => {
     wispbyteNode: "wisp-sg-node01.wispbyte.net (SG-1)",
     containerId: "c8f2a1b9-7b3c",
     geminiModel: "Gemini 3.8 Flash",
-    port: 10144,
+    port: 10734,
     subdomain: "aegisbot.wispbyte.app",
     webpageUrl: "https://aegisbot.wispbyte.app/",
-    allocation: "aegisbot.wispbyte.app:10144",
+    allocation: "aegisbot.wispbyte.app:10734",
   });
 
   const [stats, setStats] = useState<WispbyteStats>({
@@ -536,7 +536,7 @@ export const WispbyteDashboard: React.FC = () => {
                 </span>
                 <h4 className="font-bold text-zinc-900 mt-2">Network & Web Allocation</h4>
                 <p className="text-zinc-600 mt-1">
-                  Assign port <code className="bg-white px-1 rounded font-mono font-bold text-indigo-600">10144</code> and bind subdomain <code className="bg-white px-1 rounded font-mono font-bold text-indigo-600">aegisbot.wispbyte.app/</code> in the Wispbyte Network tab.
+                  Assign port <code className="bg-white px-1 rounded font-mono font-bold text-indigo-600">10734</code> and bind subdomain <code className="bg-white px-1 rounded font-mono font-bold text-indigo-600">aegisbot.wispbyte.app/</code> in the Wispbyte Network tab.
                 </p>
               </div>
 

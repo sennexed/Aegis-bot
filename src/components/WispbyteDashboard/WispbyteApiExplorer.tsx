@@ -117,7 +117,7 @@ export const WispbyteApiExplorer: React.FC = () => {
               Wispbyte Dashboard & Server API Explorer
             </h2>
             <p className="text-zinc-300 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
-              Interact directly with the Wispbyte hosting control panel. Fetch live telemetry, execute power actions, query network allocations on <strong className="text-white">aegisbot.wispbyte.app:10144</strong>, and stream console WebSockets.
+              Interact directly with the Wispbyte hosting control panel. Fetch live telemetry, execute power actions, query network allocations on <strong className="text-white">aegisbot.wispbyte.app:10734</strong>, and stream console WebSockets.
             </p>
           </div>
 
@@ -128,7 +128,7 @@ export const WispbyteApiExplorer: React.FC = () => {
               <span>https://panel.wispbyte.net</span>
             </div>
             <div className="text-[11px] text-zinc-400 flex items-center justify-between pt-2 border-t border-zinc-700/60 font-mono">
-              <span>Port: 10144</span>
+              <span>Port: 10734</span>
               <span>ID: c8f2a1b9</span>
             </div>
           </div>

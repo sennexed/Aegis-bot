@@ -318,10 +318,10 @@ ws.onmessage = (msg) => console.log("[Console WS]:", JSON.parse(msg.data));`,
             {
               object: "server_allocation",
               attributes: {
-                id: 10144,
+                id: 10734,
                 ip: "aegisbot.wispbyte.app",
                 ip_alias: "aegisbot.wispbyte.app",
-                port: 10144,
+                port: 10734,
                 notes: "Primary Webpage & Bot Gateway HTTP/WS Port",
                 is_default: true,
               },

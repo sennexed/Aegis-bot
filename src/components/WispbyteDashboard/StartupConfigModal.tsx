@@ -208,7 +208,7 @@ export const StartupConfigModal: React.FC<StartupConfigModalProps> = ({
                   Webpage Allocation & Subdomain
                 </span>
                 <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
-                  PORT: 10144
+                  PORT: 10734
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
@@ -218,7 +218,7 @@ export const StartupConfigModal: React.FC<StartupConfigModalProps> = ({
                 </div>
                 <div className="bg-white p-2 rounded-lg border border-indigo-100">
                   <div className="text-zinc-400 text-[10px] uppercase font-sans font-bold">Webpage Port</div>
-                  <div className="text-indigo-600 font-bold">10144 (HTTP / WS)</div>
+                  <div className="text-indigo-600 font-bold">10734 (HTTP / WS)</div>
                 </div>
               </div>
             </div>

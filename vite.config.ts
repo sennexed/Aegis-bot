@@ -12,7 +12,7 @@ export default defineConfig(() => {
       },
     },
     server: {
-      allowedHosts: ['aegisbot.wispbyte.app', '.wispbyte.app', '.wispbyte.net', 'localhost'],
+      allowedHosts: ['aegis-bot.wispbyte.app', 'aegisbot.wispbyte.app', '.wispbyte.app', '.wispbyte.net', 'localhost'],
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},

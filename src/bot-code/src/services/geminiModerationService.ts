@@ -31,6 +31,16 @@ export class GeminiModerationService {
   private hasApiKey: boolean;
   private modelCooldowns = new Map<string, number>();
   private readonly COOLDOWN_DURATION_MS = 45 * 1000; // 45 seconds cooldown during spikes
+  private analysisCache = new Map<string, { result: AIAnalysisOutput; timestamp: number }>();
+  private readonly CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes TTL
+  private readonly BENIGN_SHORT_MESSAGES = new Set([
+    "gg", "ggwp", "ggs", "lol", "lmao", "lmfao", "rofl", "w", "l", "fr", "frfr",
+    "ong", "ngl", "tbh", "idk", "idc", "brb", "gtg", "gn", "gm", "glhf", "ez",
+    "pog", "poggers", "clutch", "sheesh", "bet", "no cap", "cap", "fax", "ok",
+    "okay", "k", "sure", "nice", "cool", "ye", "yes", "yea", "yeah", "nah", "no",
+    "nope", "hi", "hello", "hey", "yo", "sup", "whatsup", "wassup", "cya", "bye",
+    "thanks", "ty", "thx", "np", "yw", "welcome", "good morning", "good night"
+  ]);
 
   constructor(apiKey?: string) {
     const key = apiKey !== undefined ? apiKey : process.env.GEMINI_API_KEY;
@@ -105,6 +115,28 @@ export class GeminiModerationService {
   public async analyzeMessage(content: string, authorName: string = "User"): Promise<AIAnalysisOutput> {
     const sanitized = this.sanitizeInput(content);
     const sanitizedAuthor = authorName.replace(/["\n\r]/g, "").slice(0, 32);
+    const normalized = sanitized.trim().toLowerCase();
+
+    // 1. High-Speed Benign Slang Fast-Path (0 tokens, 0ms latency)
+    if (this.BENIGN_SHORT_MESSAGES.has(normalized)) {
+      return {
+        flagged: false,
+        category: "NONE",
+        severity: "NONE",
+        recommendedAction: "ALLOW",
+        confidence: 0.99,
+        reason: "Benign community phrase / gamer slang verified.",
+        highlightedPhrases: [],
+        ageAppropriateNotes: "Casual safe expression.",
+        tokensUsed: 0,
+      };
+    }
+
+    // 2. Fast LRU / TTL Memory Cache Check (0 tokens, instant response)
+    const cached = this.analysisCache.get(normalized);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL_MS) {
+      return { ...cached.result, tokensUsed: 0 };
+    }
 
     // If no API key is provided, execute deterministic heuristic fallback
     if (!this.hasApiKey) {
@@ -185,7 +217,7 @@ export class GeminiModerationService {
           // Clear any active cooldown on successful call
           this.modelCooldowns.delete(model);
 
-          return {
+          const result: AIAnalysisOutput = {
             flagged: !!parsed.flagged,
             category: parsed.category || "NONE",
             severity: parsed.severity || "NONE",
@@ -196,6 +228,20 @@ export class GeminiModerationService {
             ageAppropriateNotes: parsed.ageAppropriateNotes || "Strict teenage community guidelines enforced.",
             tokensUsed: estimatedTokens,
           };
+
+          // Cache result for quick retrieval and token conservation
+          this.analysisCache.set(normalized, {
+            result,
+            timestamp: Date.now(),
+          });
+
+          // Trim cache size if it exceeds 1000 items
+          if (this.analysisCache.size > 1000) {
+            const oldestKey = this.analysisCache.keys().next().value;
+            if (oldestKey) this.analysisCache.delete(oldestKey);
+          }
+
+          return result;
         } catch (err: any) {
           const rawErr = err?.message || String(err);
           const isHighDemand = /503|UNAVAILABLE|high demand|temporarily unavailable/i.test(rawErr);

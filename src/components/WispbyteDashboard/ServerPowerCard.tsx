@@ -53,7 +53,7 @@ export const ServerPowerCard: React.FC<ServerPowerCardProps> = ({
   const [copiedDomain, setCopiedDomain] = useState(false);
 
   const subdomain = botDetails.subdomain || "aegisbot.wispbyte.app";
-  const port = botDetails.port || 10144;
+  const port = botDetails.port || 10734;
   const webpageUrl = botDetails.webpageUrl || `https://${subdomain}/`;
   const allocation = botDetails.allocation || `${subdomain}:${port}`;
 
