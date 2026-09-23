@@ -1345,9 +1345,15 @@ app.get("/api/memory/guilds", (_req: Request, res: Response) => {
 async function startServer() {
   const distPath = path.join(process.cwd(), "dist");
 
+  const staticOptions = {
+    maxAge: "1d",
+    etag: true,
+    index: false,
+  };
+
   if (process.env.NODE_ENV === "production") {
     console.log("⚡ Serving pre-built static assets (Production Mode)");
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, staticOptions));
     app.get("*", (_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
@@ -1364,7 +1370,7 @@ async function startServer() {
       app.use(vite.middlewares);
     } catch (err: any) {
       console.warn("Notice during Vite initialization:", err?.message || err);
-      app.use(express.static(distPath));
+      app.use(express.static(distPath, staticOptions));
       app.get("*", (_req: Request, res: Response) => {
         res.sendFile(path.join(distPath, "index.html"));
       });
