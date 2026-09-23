@@ -42,7 +42,7 @@ export const GitHubAutoDeployFeature: React.FC = () => {
 
   // Simulation Form State
   const [commitMessage, setCommitMessage] = useState("feat: update teen safety filters and regex patterns");
-  const [commitAuthor, setCommitAuthor] = useState("yatharthmahi");
+  const [commitAuthor, setCommitAuthor] = useState("sennexed");
   const [commitBranch, setCommitBranch] = useState("main");
   const [modifiedFiles, setModifiedFiles] = useState<string[]>([
     "server.ts",
@@ -174,7 +174,7 @@ export const GitHubAutoDeployFeature: React.FC = () => {
         body: JSON.stringify({
           commitMessage,
           authorUsername: commitAuthor,
-          authorName: commitAuthor === "yatharthmahi" ? "Yatharth Mahi" : commitAuthor,
+          authorName: commitAuthor === "sennexed" ? "Sennexed" : commitAuthor,
           branch: commitBranch,
           modifiedFiles,
         }),
@@ -820,11 +820,19 @@ jobs:
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-100 text-indigo-800">
                     STEP 1
                   </span>
-                  <span className="text-xs text-zinc-400">GitHub Settings</span>
+                  <a
+                    href="https://github.com/sennexed/Aegis-bot/settings/hooks"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1"
+                  >
+                    <span>Open Webhooks</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
                 </div>
                 <h4 className="text-xs font-bold text-zinc-900">Open Repository Webhooks</h4>
                 <p className="text-xs text-zinc-600">
-                  Navigate to your GitHub repository, click <strong className="text-zinc-900">Settings</strong> in the top menu, then click <strong className="text-zinc-900">Webhooks</strong> in the left sidebar, and click <strong className="text-zinc-900">Add webhook</strong>.
+                  Navigate to <strong className="text-zinc-900">github.com/sennexed/Aegis-bot</strong> &gt; <strong className="text-zinc-900">Settings</strong> &gt; <strong className="text-zinc-900">Webhooks</strong>, and click <strong className="text-zinc-900">Add webhook</strong>.
                 </p>
               </div>
 

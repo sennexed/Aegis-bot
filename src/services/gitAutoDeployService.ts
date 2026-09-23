@@ -34,13 +34,13 @@ export class GitAutoDeployService {
     shortSha: "4f8a1c9",
     message: "feat: add 13 famous newspapers auto-syndication & bot styling",
     author: {
-      name: "Yatharth Mahi",
-      username: "yatharthmahi",
+      name: "Sennexed",
+      username: "sennexed",
       email: "yatharthmahi@gmail.com",
       avatarUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=64&q=80",
     },
     timestamp: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
-    url: "https://github.com/yatharthmahi/aegis-discord-bot/commit/4f8a1c9",
+    url: "https://github.com/sennexed/Aegis-bot/commit/4f8a1c9",
     modified: ["server.ts", "src/services/newsService.ts", "src/types/nameStyles.ts"],
     added: ["src/data/newsSources.ts"],
     removed: [],
@@ -54,15 +54,15 @@ export class GitAutoDeployService {
       commitSha: "4f8a1c9e82b7d301f2e84c935a8264d01b693e5a",
       commitShortSha: "4f8a1c9",
       commitMessage: "feat: add 13 famous newspapers auto-syndication & bot styling",
-      authorName: "Yatharth Mahi",
-      authorUsername: "yatharthmahi",
-      repository: "yatharthmahi/aegis-discord-bot",
+      authorName: "Sennexed",
+      authorUsername: "sennexed",
+      repository: "sennexed/Aegis-bot",
       status: "SUCCESS",
       restartDurationMs: 1420,
       filesChangedCount: 4,
       actionTaken: "PULL_AND_GRACEFUL_RESTART",
       logs: [
-        "[GitHub Webhook] Push event received for branch 'refs/heads/main'",
+        "[GitHub Webhook] Push event received for repository 'sennexed/Aegis-bot' on 'refs/heads/main'",
         "[Git Engine] Verified HMAC signature and payload integrity",
         "[Git Pull] Fast-forward merge 4f8a1c9 (4 files changed)",
         "[Node Process] SIGUSR2 graceful restart dispatched",
@@ -77,19 +77,19 @@ export class GitAutoDeployService {
       commitSha: "9b3c7d2e01a8f4c56b78d901e23f45a67b89c012",
       commitShortSha: "9b3c7d2",
       commitMessage: "chore: optimize multi-tier local triage token heuristics",
-      authorName: "Yatharth Mahi",
-      authorUsername: "yatharthmahi",
-      repository: "yatharthmahi/aegis-discord-bot",
+      authorName: "Sennexed",
+      authorUsername: "sennexed",
+      repository: "sennexed/Aegis-bot",
       status: "SUCCESS",
       restartDurationMs: 1280,
       filesChangedCount: 2,
       actionTaken: "PULL_AND_GRACEFUL_RESTART",
       logs: [
-        "[GitHub Webhook] Push event received for branch 'refs/heads/main'",
+        "[GitHub Webhook] Push event received for repository 'sennexed/Aegis-bot' on 'refs/heads/main'",
         "[Git Engine] Verified payload integrity",
         "[Git Pull] Updated 2 files",
-        "[Node Process] Hot reloaded module server.ts",
-        "[Deployer] Server online with 0 dropped gateway packets",
+        "[Node Process] Hot-reloaded server processes without dropping incoming Discord events",
+        "[Gateway] Shard #0 heartbeat verified (22ms ping)",
       ],
     },
   ];
@@ -201,9 +201,9 @@ export class GitAutoDeployService {
     const commitSha = headCommit.id || crypto.randomBytes(20).toString("hex");
     const commitShortSha = commitSha.substring(0, 7);
     const commitMessage = headCommit.message || "Updated repository files";
-    const authorName = headCommit.author?.name || headCommit.committer?.name || "Developer";
-    const authorUsername = headCommit.author?.username || rawBody.sender?.login || "git-user";
-    const repository = rawBody.repository?.full_name || rawBody.repository?.name || "aegis-discord-bot";
+    const authorName = headCommit.author?.name || headCommit.committer?.name || "Sennexed";
+    const authorUsername = headCommit.author?.username || rawBody.sender?.login || "sennexed";
+    const repository = rawBody.repository?.full_name || rawBody.repository?.name || "sennexed/Aegis-bot";
 
     const allModified = [
       ...(headCommit.modified || []),
@@ -311,8 +311,8 @@ export class GitAutoDeployService {
 
   public async simulateCommitPush(
     commitMessage = "feat: enhance auto-moderation rules",
-    authorUsername = "yatharthmahi",
-    authorName = "Yatharth Mahi",
+    authorUsername = "sennexed",
+    authorName = "Sennexed",
     branch = "main",
     modifiedFiles: string[] = ["server.ts", "src/components/LiveModerationTester.tsx"],
     loggerCallback?: (type: string, message: string) => void
@@ -321,10 +321,10 @@ export class GitAutoDeployService {
     const mockPayload = {
       ref: `refs/heads/${branch}`,
       repository: {
-        name: "aegis-discord-bot",
-        full_name: `${authorUsername}/aegis-discord-bot`,
-        owner: authorUsername,
-        url: `https://github.com/${authorUsername}/aegis-discord-bot`,
+        name: "Aegis-bot",
+        full_name: `sennexed/Aegis-bot`,
+        owner: "sennexed",
+        url: `https://github.com/sennexed/Aegis-bot`,
       },
       pusher: {
         name: authorName,
@@ -338,7 +338,7 @@ export class GitAutoDeployService {
         id: fakeSha,
         message: commitMessage,
         timestamp: new Date().toISOString(),
-        url: `https://github.com/${authorUsername}/aegis-discord-bot/commit/${fakeSha}`,
+        url: `https://github.com/sennexed/Aegis-bot/commit/${fakeSha}`,
         author: {
           name: authorName,
           username: authorUsername,

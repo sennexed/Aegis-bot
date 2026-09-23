@@ -678,7 +678,7 @@ const handleGitHubWebhook = async (req: Request, res: Response) => {
 
   // GitHub Ping Event (when webhook is first created / tested in GitHub repo settings)
   if (event === "ping" || rawBody.zen) {
-    addWispbyteLog("GIT_HOOK", `[GitHub Ping]: Webhook connection verified! Repository: ${rawBody.repository?.full_name || "aegis-discord-bot"}`);
+    addWispbyteLog("GIT_HOOK", `[GitHub Ping]: Webhook connection verified! Repository: ${rawBody.repository?.full_name || "sennexed/Aegis-bot"}`);
     return res.json({
       status: "pong",
       message: "GitHub webhook successfully verified and linked to AegisMod Server.",
@@ -746,8 +746,8 @@ app.get("/api/github/webhook/status", (req: Request, res: Response) => {
 app.post("/api/github/webhook/simulate", async (req: Request, res: Response) => {
   const {
     commitMessage = "feat: update teen safety filters and regex patterns",
-    authorUsername = "yatharthmahi",
-    authorName = "Yatharth Mahi",
+    authorUsername = "sennexed",
+    authorName = "Sennexed",
     branch = "main",
     modifiedFiles = ["server.ts", "src/services/botStabilityService.ts"],
   } = req.body || {};

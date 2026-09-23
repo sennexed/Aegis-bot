@@ -118,4 +118,18 @@ The bot includes an automated test suite in `tests/moderation.test.ts` verifying
 
 ## Deployment on Wispbyte or Cloud Containers
 
+### Option 1: Automatic Git Pull on Startup (Recommended)
+Configure the **Startup Command** in your Wispbyte Pterodactyl container:
+```bash
+if [ -d .git ]; then git pull origin main; else git clone https://github.com/sennexed/Aegis-bot.git .; fi && npm install && npm run build && npm start
+```
+
+### Option 2: Instant GitHub Webhook Auto-Restart
+Add the following Webhook in your GitHub repo (**https://github.com/sennexed/Aegis-bot/settings/hooks**):
+- **Payload URL**: `https://aegisbot.wispbyte.app/api/github/webhook` (or `http://aegisbot.wispbyte.app:10144/api/github/webhook`)
+- **Content type**: `application/json`
+- **Events**: Push events
+
+Whenever you push to `sennexed/Aegis-bot`, the server automatically pulls and reboots with zero downtime!
+
 Refer to `WISPBYTE_DEPLOYMENT.md` in this directory for comprehensive step-by-step instructions on deploying AegisMod on Wispbyte, Pterodactyl, Docker, or Cloud Run.
