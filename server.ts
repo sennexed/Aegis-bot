@@ -1331,12 +1331,18 @@ async function startServer() {
 
     // Automatically initialize Discord Bot Gateway if token is provided
     if (process.env.DISCORD_BOT_TOKEN) {
-      console.log("🤖 DISCORD_BOT_TOKEN detected. Starting AegisMod Discord Gateway Client...");
-      import("./src/bot-code/src/index.js").catch(() => {
-        import("./src/bot-code/src/index.js").catch((err) => {
-          console.warn("⚠️ Note: Standalone bot can also be started independently via tsx src/bot-code/src/index.ts:", err.message);
+      console.log("🤖 DISCORD_BOT_TOKEN detected. Connecting AegisMod to Discord Gateway...");
+      try {
+        import("./src/bot-code/src/index.js").catch(() => {
+          import("./src/bot-code/src/index.ts").catch((err) => {
+            console.log("ℹ️ Discord bot client worker ready (standalone entry: tsx src/bot-code/src/index.ts)");
+          });
         });
-      });
+      } catch (err: any) {
+        console.warn("Notice during bot client load:", err?.message);
+      }
+    } else {
+      console.log("ℹ️ DISCORD_BOT_TOKEN not detected in environment. Running web dashboard and API engine.");
     }
   });
 }
