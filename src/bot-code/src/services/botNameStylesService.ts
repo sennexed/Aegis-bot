@@ -192,11 +192,15 @@ class BotNameStylesService {
       if (!role) {
         role = await guild.roles.create({
           name: roleName,
-          color: colorDec,
+          colors: { primaryColor: colorDec },
           reason: "Nametag identity color sync",
         });
       } else {
-        await role.setColor(colorDec);
+        if (typeof role.setColors === "function") {
+          await role.setColors({ primaryColor: colorDec });
+        } else if (typeof role.setColor === "function") {
+          await role.setColor(colorDec);
+        }
       }
       const botMember = await guild.members.fetchMe().catch(() => guild.members.me);
       if (botMember && botMember.roles && !botMember.roles.cache.has(role.id)) {

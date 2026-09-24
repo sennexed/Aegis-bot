@@ -245,7 +245,7 @@ import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, BOT_COLOR_PRESETS } from "./src/types
 import { guildMemoryService } from "./src/services/guildMemoryService.js";
 import { botStabilityService } from "./src/services/botStabilityService.js";
 import { wispbyteApiService } from "./src/services/wispbyteApiService.js";
-import { startDiscordBot } from "./src/bot-code/src/index.js";
+import { startDiscordBot, getBotGatewayStatus, getLastLoginError } from "./src/bot-code/src/index.js";
 
 const app = express();
 const PORT = process.env.PORT
@@ -569,15 +569,33 @@ app.get("/api/health", (_req: Request, res: Response) => {
   });
 });
 
+// Real Discord Bot Gateway Status Endpoint
+app.get("/api/bot/status", (_req: Request, res: Response) => {
+  const botGateway = getBotGatewayStatus();
+  res.json({
+    online: botGateway.isReady,
+    tag: botGateway.tag,
+    id: botGateway.id,
+    ping: botGateway.ping,
+    guildsCount: botGateway.guildCount,
+    usersCount: botGateway.userCount,
+    hasTokenConfigured: !!process.env.DISCORD_BOT_TOKEN,
+    lastError: getLastLoginError(),
+  });
+});
+
 // Wispbyte Server Status Endpoint
 app.get("/api/wispbyte/status", (_req: Request, res: Response) => {
+  const botGateway = getBotGatewayStatus();
   const isRunning = serverStatus === "RUNNING";
   const jitter = Math.sin(Date.now() / 3000);
   const cpuUsage = isRunning ? +(9.4 + jitter * 4.2).toFixed(1) : 0;
   const memoryUsageMb = isRunning ? +(168 + jitter * 16).toFixed(0) : 0;
   const inboundKbps = isRunning ? +(120 + jitter * 45).toFixed(0) : 0;
   const outboundKbps = isRunning ? +(48 + jitter * 15).toFixed(0) : 0;
-  const pingMs = isRunning ? +(24 + Math.abs(jitter * 8)).toFixed(0) : 0;
+  const pingMs = botGateway.isReady && botGateway.ping > 0 
+    ? botGateway.ping 
+    : (isRunning ? +(24 + Math.abs(jitter * 8)).toFixed(0) : 0);
 
   res.json({
     serverStatus,
@@ -595,24 +613,26 @@ app.get("/api/wispbyte/status", (_req: Request, res: Response) => {
       discordPingMs: Number(pingMs),
     },
     botDetails: {
-      name: "AegisMod",
-      discriminator: "4419",
-      id: "124892849204918294",
+      name: botGateway.tag ? botGateway.tag.split("#")[0] : "AegisMod",
+      discriminator: botGateway.tag && botGateway.tag.includes("#") ? botGateway.tag.split("#")[1] : "0000",
+      id: botGateway.id || "124892849204918294",
       avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80",
-      guildsCount: 14,
-      membersCount: 3420,
+      guildsCount: botGateway.guildCount > 0 ? botGateway.guildCount : 14,
+      membersCount: botGateway.userCount > 0 ? botGateway.userCount : 3420,
       channelsCount: 86,
       shardsCount: 1,
+      gatewayOnline: botGateway.isReady,
+      lastLoginError: getLastLoginError(),
       policyLevel,
       autoRestart: autoRestartEnabled,
-      nodeVersion: "Node.js v20.18.0 LTS",
+      nodeVersion: "Node.js v22 LTS",
       wispbyteNode: "wisp-sg-node01.wispbyte.net (SG-1)",
       containerId: "c8f2a1b9-7b3c",
       geminiModel: "Gemini 3.8 Flash",
-      port: 10734,
+      port: PORT,
       subdomain: "aegis-bot.wispbyte.app",
       webpageUrl: "https://aegis-bot.wispbyte.app/",
-      allocation: "aegis-bot.wispbyte.app:10734",
+      allocation: `aegis-bot.wispbyte.app:${PORT}`,
     },
     stats: {
       processedMessages: totalProcessedMessages,

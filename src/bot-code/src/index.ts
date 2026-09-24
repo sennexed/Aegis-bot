@@ -64,7 +64,7 @@ import { handleGuildMemberAdd } from "./events/guildMemberAdd.js";
 
 
 // 1. Initialize Discord Client with Required Gateway Intents & Low-Memory Sweepers
-const client = new Client({
+export const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
@@ -686,7 +686,26 @@ process.on("SIGTERM", () => {
   process.exit(0);
 });
 
-// 8. Bot Login Export
+// 8. Bot Login Export & Gateway Diagnostics
+let lastDiscordLoginError: string | null = null;
+
+export function getLastLoginError(): string | null {
+  return lastDiscordLoginError;
+}
+
+export function getBotGatewayStatus() {
+  return {
+    isReady: client.isReady(),
+    tag: client.user?.tag || null,
+    id: client.user?.id || null,
+    ping: client.ws?.ping ?? -1,
+    status: client.ws?.status ?? 5,
+    guildCount: client.guilds?.cache?.size || 0,
+    userCount: client.users?.cache?.size || 0,
+    lastError: lastDiscordLoginError,
+  };
+}
+
 export function startDiscordBot() {
   const rawToken = process.env.DISCORD_BOT_TOKEN;
   const token = rawToken ? rawToken.trim().replace(/^["']|["']$/g, "").trim() : "";
@@ -694,13 +713,23 @@ export function startDiscordBot() {
   if (token && token.length > 20 && !token.includes("your_bot_token") && !token.includes("placeholder")) {
     const masked = token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)} (${token.length} chars)` : "***";
     console.log(`🤖 Attempting Discord Bot login with token: ${masked}`);
-    client.login(token).catch((err) => {
+    lastDiscordLoginError = null;
+    client.login(token).then(() => {
+      lastDiscordLoginError = null;
+    }).catch((err) => {
+      lastDiscordLoginError = err.message || String(err);
       console.error("❌ Failed to login to Discord:", err.message || err);
       console.error("💡 Tip: Make sure you copied the 'Token' from Discord Developer Portal -> Bot -> Reset Token (NOT the Client Secret or Application ID).");
+      if (err.message?.includes("disallowed intents") || err.message?.includes("PRIVILEGED")) {
+        console.error("🚨 Privileged Gateway Intents error: Enable 'MESSAGE CONTENT INTENT' and 'SERVER MEMBERS INTENT' in Discord Developer Portal -> Bot -> Privileged Gateway Intents.");
+      }
     });
   } else if (rawToken) {
+    lastDiscordLoginError = "DISCORD_BOT_TOKEN appears to be a placeholder or invalid format.";
     console.warn("⚠️ DISCORD_BOT_TOKEN appears to be a placeholder or invalid format. Please set your actual Discord Bot Token in Wispbyte / .env.");
   } else {
+    lastDiscordLoginError = "DISCORD_BOT_TOKEN not provided in environment.";
     console.log("ℹ️ DISCORD_BOT_TOKEN not provided in environment. Running in web dashboard and API mode.");
   }
 }
+
