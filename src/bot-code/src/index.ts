@@ -61,7 +61,7 @@ import { handleMessageUpdate } from "./events/messageUpdate.js";
 import { handleMessageDelete } from "./events/messageDelete.js";
 import { handleGuildMemberAdd } from "./events/guildMemberAdd.js";
 
-dotenv.config();
+
 
 // 1. Initialize Discord Client with Required Gateway Intents & Low-Memory Sweepers
 const client = new Client({
