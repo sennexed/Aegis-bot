@@ -35,6 +35,7 @@ import { BotStabilityPanel } from "./BotStabilityPanel";
 import { GitHubAutoDeployFeature } from "../GitHubAutoDeployFeature";
 import { WispbyteApiExplorer } from "./WispbyteApiExplorer";
 import { SystemHealthWidget } from "./SystemHealthWidget";
+import { liveMetricsSyncService } from "../../services/liveMetricsSyncService";
 
 export const WispbyteDashboard: React.FC = () => {
   // Server State
@@ -176,12 +177,36 @@ export const WispbyteDashboard: React.FC = () => {
     fetchStatus();
     fetchLogs();
     fetchEvents();
+
+    // Subscribe to low-overhead live telemetry stream
+    const unsubscribe = liveMetricsSyncService.subscribe((latest) => {
+      setUptimeSeconds(latest.uptimeSeconds);
+      setMetrics((prev) => ({
+        ...prev,
+        cpuPercent: latest.cpuPercent,
+        memoryMb: latest.memoryMb,
+        memoryPercent: latest.memoryPercent,
+        memoryLimitMb: latest.memoryLimitMb,
+        discordPingMs: latest.shardPingMs,
+      }));
+      setHistoryCpu((prev) => [...prev.slice(1), latest.cpuPercent]);
+      setStats((prev) => ({
+        ...prev,
+        processedMessages: latest.processedMessages,
+        violationsPrevented: latest.violationsPrevented,
+        tokensSavedByTriage: latest.tokensSaved,
+      }));
+    });
+
     const interval = setInterval(() => {
-      fetchStatus();
       fetchLogs();
       fetchEvents();
-    }, 2800);
-    return () => clearInterval(interval);
+    }, 3000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
   // Handle Power Action

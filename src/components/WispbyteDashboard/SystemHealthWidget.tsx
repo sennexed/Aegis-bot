@@ -14,6 +14,7 @@ import {
   Play,
   Pause,
 } from "lucide-react";
+import { liveMetricsSyncService, LiveTelemetryPayload } from "../../services/liveMetricsSyncService";
 
 interface TelemetryPoint {
   time: string;
@@ -24,68 +25,33 @@ interface TelemetryPoint {
   heapUsedMb: number;
 }
 
-interface TelemetryResponse {
-  success: boolean;
-  current: TelemetryPoint;
-  history: TelemetryPoint[];
-  system: {
-    platform: string;
-    arch: string;
-    uptimeSeconds: number;
-    memoryAllocatedMb: number;
-    nodeVersion: string;
-    timestamp: string;
-  };
-}
-
 export const SystemHealthWidget: React.FC = () => {
-  const [data, setData] = useState<TelemetryPoint[]>([]);
-  const [current, setCurrent] = useState<TelemetryPoint | null>(null);
-  const [systemInfo, setSystemInfo] = useState<TelemetryResponse["system"] | null>(null);
+  const [data, setData] = useState<LiveTelemetryPayload[]>(liveMetricsSyncService.getHistory());
+  const [current, setCurrent] = useState<LiveTelemetryPayload | null>(liveMetricsSyncService.getCurrent());
   const [isLive, setIsLive] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const [activeMetric, setActiveMetric] = useState<"both" | "cpu" | "ram">("both");
-  const [hoveredPoint, setHoveredPoint] = useState<TelemetryPoint | null>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<LiveTelemetryPayload | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  const fetchTelemetry = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch("/api/system/telemetry");
-      if (res.ok) {
-        const json: TelemetryResponse = await res.json();
-        if (json.success) {
-          setData(json.history || []);
-          setCurrent(json.current);
-          setSystemInfo(json.system);
-        }
-      }
-    } catch {
-      // Fallback local simulation if network is transient
-      const now = new Date();
-      const point: TelemetryPoint = {
-        time: now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-        timestamp: Date.now(),
-        cpuPercent: Number((0.6 + Math.random() * 1.6).toFixed(1)),
-        memoryMb: Math.round(38 + Math.random() * 4),
-        memoryPercent: 8,
-        heapUsedMb: 24,
-      };
-      setCurrent(point);
-      setData((prev) => [...prev.slice(-25), point]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Polling interval
+  // Subscribe to live synchronized metrics stream
   useEffect(() => {
-    fetchTelemetry();
-    if (!isLive) return;
-    const interval = setInterval(fetchTelemetry, 3000);
-    return () => clearInterval(interval);
+    const unsubscribe = liveMetricsSyncService.subscribe((latest, hist) => {
+      if (isLive) {
+        setCurrent(latest);
+        setData(hist);
+      }
+    });
+
+    return () => unsubscribe();
   }, [isLive]);
+
+  const handleManualRefresh = async () => {
+    setLoading(true);
+    await liveMetricsSyncService.fetchTick();
+    setLoading(false);
+  };
 
   // Render D3 chart
   useEffect(() => {
@@ -275,7 +241,7 @@ export const SystemHealthWidget: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Live CPU load & memory footprint running on Node {systemInfo?.nodeVersion || "v22"} • 512MB Container
+              Live CPU load & memory footprint running on Node {current?.nodeVersion || "v22"} • 512MB Container
             </p>
           </div>
         </div>
@@ -325,7 +291,7 @@ export const SystemHealthWidget: React.FC = () => {
 
           {/* Refresh button */}
           <button
-            onClick={fetchTelemetry}
+            onClick={handleManualRefresh}
             disabled={loading}
             className="p-2 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-700/80 transition"
           >
@@ -413,7 +379,7 @@ export const SystemHealthWidget: React.FC = () => {
             <span>ONLINE</span>
           </div>
           <div className="text-[11px] text-zinc-400 mt-1 font-mono">
-            {systemInfo ? `${Math.floor(systemInfo.uptimeSeconds / 3600)}h ${Math.floor((systemInfo.uptimeSeconds % 3600) / 60)}m uptime` : "0.1% CPU target"}
+            {current ? `${Math.floor(current.uptimeSeconds / 3600)}h ${Math.floor((current.uptimeSeconds % 3600) / 60)}m uptime` : "0.1% CPU target"}
           </div>
         </div>
       </div>
