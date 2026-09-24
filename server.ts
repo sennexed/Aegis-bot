@@ -1719,13 +1719,21 @@ async function startServer() {
     }
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`🛡️ AegisMod Control Server successfully listening on http://0.0.0.0:${PORT}`);
 
     if (process.env.DISCORD_BOT_TOKEN) {
       console.log("🤖 DISCORD_BOT_TOKEN detected. Discord Gateway active.");
     } else {
       console.log("ℹ️ DISCORD_BOT_TOKEN not detected in environment. Running web dashboard and API engine.");
+    }
+  });
+
+  server.on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+      console.warn(`⚠️ Port ${PORT} is already in use. AegisMod server is likely already running in another process.`);
+    } else {
+      console.error("Server error:", err);
     }
   });
 }
