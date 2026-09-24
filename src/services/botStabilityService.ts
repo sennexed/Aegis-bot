@@ -105,9 +105,12 @@ export class BotStabilityService {
    * Periodic memory sentinel every 30 seconds
    */
   private startPeriodicSentinel(): void {
-    setInterval(() => {
+    const timer = setInterval(() => {
       this.checkHealthMetrics();
     }, 30 * 1000);
+    if (typeof timer.unref === "function") {
+      timer.unref();
+    }
   }
 
   private checkHealthMetrics(): void {

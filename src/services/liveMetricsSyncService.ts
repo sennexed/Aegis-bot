@@ -94,11 +94,14 @@ class LiveMetricsSyncService {
     };
   }
 
-  public startSync(rateMs: number = 3000) {
+  public startSync(rateMs: number = 10000) {
     this.pollingRateMs = rateMs;
     if (this.pollInterval) clearInterval(this.pollInterval);
     this.isPollingActive = true;
     this.pollInterval = setInterval(() => this.fetchTick(), this.pollingRateMs);
+    if (this.pollInterval && typeof (this.pollInterval as any).unref === "function") {
+      (this.pollInterval as any).unref();
+    }
   }
 
   public stopSync() {

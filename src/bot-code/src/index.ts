@@ -222,7 +222,10 @@ client.once(Events.ClientReady, async (readyClient) => {
   await registerSlashCommands();
 
   // Periodic cache cleanup every 15 minutes
-  setInterval(() => triageService.clearExpired(), 15 * 60 * 1000);
+  const triageTimer = setInterval(() => triageService.clearExpired(), 15 * 60 * 1000);
+  if (typeof triageTimer.unref === "function") {
+    triageTimer.unref();
+  }
 
   // Initialize AutoNews bot client
   autoNewsBotService.setClient(readyClient);
