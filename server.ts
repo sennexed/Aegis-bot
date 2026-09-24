@@ -5,7 +5,7 @@ import os from "os";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { newsService } from "./src/services/newsService.js";
-import { FAMOUS_NEWS_SOURCES } from "./src/data/newsSources.js";
+import { FAMOUS_NEWS_SOURCES } from "./src/data/newsSources";
 import { AutoNewsConfig } from "./src/types/news.js";
 import { botNameStylesService } from "./src/services/botNameStylesService.js";
 import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, BOT_COLOR_PRESETS } from "./src/types/nameStyles.js";
