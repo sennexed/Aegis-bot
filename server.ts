@@ -1,9 +1,11 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
 import os from "os";
 import { GoogleGenAI, Type } from "@google/genai";
-import dotenv from "dotenv";
 import { newsService } from "./src/services/newsService.js";
 import { AutoNewsConfig, NewsSourceConfig } from "./src/types/news.js";
 
@@ -245,8 +247,6 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (reason) => {
   console.error("[AegisMod Unhandled Rejection]", reason);
 });
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT
