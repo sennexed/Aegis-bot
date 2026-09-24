@@ -108,6 +108,11 @@ export const autoModCommand = {
             inline: true,
           },
           {
+            name: "🌍 Multilingual Speech Filter",
+            value: "✅ **Active** (Filters Hindi/Hinglish, Russian Mat, Arabic/Arabizi, Spanish, etc.)",
+            inline: true,
+          },
+          {
             name: "🎭 Allow Tenor/Giphy GIFs",
             value: config.allowGifs ? "✅ **Allowed** (Safe GIF culture enabled, slugs exempted from profanity checks)" : "❌ **Blocked**",
             inline: true,

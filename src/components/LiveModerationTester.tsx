@@ -64,6 +64,48 @@ const PRESET_MESSAGES = [
     expected: "AI: SEVERE_PROFANITY_OR_ABUSE (DELETE)",
   },
   {
+    label: "Hindi / Hinglish Cuss (Local)",
+    author: "DesiPlayer",
+    content: "madarchod stop trolling this chat bsdk",
+    expected: "AutoMod: Hindi (DELETE)",
+  },
+  {
+    label: "Hindi Devanagari (Local)",
+    author: "DelhiGamer",
+    content: "चूतिया साले चुप बैठ मादरचोद",
+    expected: "AutoMod: Hindi Devanagari (DELETE)",
+  },
+  {
+    label: "Russian Mat / Romanized (Local)",
+    author: "CSGOPusher",
+    content: "cyka blyat idiot uninstall the game",
+    expected: "AutoMod: Russian Mat (DELETE)",
+  },
+  {
+    label: "Russian Mat / Cyrillic (Local)",
+    author: "DotaRus",
+    content: "пошел нахуй сука блять",
+    expected: "AutoMod: Russian Cyrillic (DELETE)",
+  },
+  {
+    label: "Arabic / Arabizi (Local)",
+    author: "GulfGamer",
+    content: "kos omk ya sharmouta get out of here",
+    expected: "AutoMod: Arabic Arabizi (DELETE)",
+  },
+  {
+    label: "Arabic Script (Local)",
+    author: "ArabPro",
+    content: "كس أمك يا شرموطة كل خرا",
+    expected: "AutoMod: Arabic (DELETE)",
+  },
+  {
+    label: "Spanish Cuss (Local)",
+    author: "LatamKing",
+    content: "hijo de puta vete a la mierda cabron",
+    expected: "AutoMod: Spanish (DELETE)",
+  },
+  {
     label: "Predatory / Grooming Attempt",
     author: "SuspiciousAdult",
     content: "Hey how old are you? Drop your snapchat and send a selfie in my DMs, keep it secret.",
@@ -212,6 +254,15 @@ export const LiveModerationTester: React.FC = () => {
               <span>Force Gemini Call (Bypass Triage)</span>
             </label>
           </div>
+        </div>
+
+        {/* Multilingual Support Banner */}
+        <div className="mt-3 px-3 py-2 rounded-lg bg-emerald-50/70 border border-emerald-200/80 flex items-center justify-between flex-wrap gap-2 text-xs">
+          <div className="flex items-center gap-2 text-emerald-800 font-medium">
+            <span className="text-base">🌍</span>
+            <span><strong>Multilingual Local Speech Filter Active:</strong> Zero-token protection against local cuss words in Hindi/Hinglish, Russian Mat, Arabic/Arabizi, Spanish, Tagalog & more.</span>
+          </div>
+          <span className="text-[11px] font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold">Tier-1 Native Filter</span>
         </div>
 
         {/* Quick Presets */}

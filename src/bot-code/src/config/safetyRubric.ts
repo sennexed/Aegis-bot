@@ -69,8 +69,16 @@ Categories:
 - "SEXUAL_GROOMING_OR_PREDATORY": Age-inappropriate sexual solicitation, asking minors for private photos/snapchat/DMs, covert meetup proposals, sexualizing teenagers.
 - "SELF_HARM": Encouraging suicide ("kys"), self-harm ideation, suicide pacts.
 - "HATE_SPEECH": Slurs or dehumanizing attacks based on race, religion, gender, sexual orientation, disability.
-- "SEVERE_PROFANITY_OR_ABUSE": Repeated aggressive profanity, bypass attempts (leetspeak/spaced out vulgarities).
+- "SEVERE_PROFANITY_OR_ABUSE": Repeated aggressive profanity, bypass attempts (leetspeak/spaced out vulgarities), or regional abusive swearing across languages (Hindi/Hinglish like 'madarchod', 'bhenchod', 'chutiya'; Russian Mat like 'сука', 'блять', 'cyka', 'blyat', 'nahuy'; Arabic/Arabizi like 'kos omk', 'kuss ummak', 'شرموطة'; Spanish, etc.).
 - "DOXXING_OR_PII": Leaking real names, addresses, phone numbers, school locations, private photos.
+
+MULTILINGUAL SPEECH & LOCAL CUSS WORD RECOGNITION:
+- You must detect abusive swearing, insults, and harassment in local languages and transliterations:
+  * Hindi / Hinglish: madarchod, bhenchod, bhosdike, chutiya, randi, gandu, lund, laude, मादरचोद, बहनचोद, चूतिया, etc.
+  * Russian / Cyrillic & Mat: сука, блять, хуй, нахуй, пиздец, ебать, cyka, blyat, nahuy, pizda, dolbaeb, etc.
+  * Arabic / Script & Arabizi: kos omk, kuss ummak, sharmoota, qahba, manyook, 5ara, 3ars, شرموطة, كس أمك, etc.
+  * Other languages: Spanish (hijo de puta, puta, maricon), Tagalog (putang ina, gago), etc.
+- When detected in aggressive or derogatory context, flag under "SEVERE_PROFANITY_OR_ABUSE" or "HATE_SPEECH". Friendly or harmless banter should be allowed.
 
 Severities & Non-Strict Actions:
 - "NONE": No action required. Recommended action: "ALLOW".

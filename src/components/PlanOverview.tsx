@@ -245,14 +245,14 @@ export const PlanOverview: React.FC = () => {
 
           <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-zinc-800 uppercase tracking-wide">Profanity & Bypasses</span>
-              <span className="text-[10px] px-2 py-0.5 bg-zinc-200 text-zinc-800 font-bold rounded-full">LOW</span>
+              <span className="text-xs font-bold text-zinc-800 uppercase tracking-wide">Profanity & Local Speech</span>
+              <span className="text-[10px] px-2 py-0.5 bg-zinc-200 text-zinc-800 font-bold rounded-full">MULTILINGUAL</span>
             </div>
             <p className="text-xs text-zinc-700 mt-2 leading-relaxed">
-              Severe vulgarity directed at people, spaced-out profanity (&quot;f u c k&quot;), zero-width characters, or leetspeak evasion.
+              Severe vulgarity across languages including Hindi/Hinglish (madarchod, bhenchod, bsdk), Russian Mat (cyka, blyat, nahuy, сука, блять), Arabic/Arabizi (kos omk, kuss ummak, sharmoota), Spanish, spaced-out evasion, and leetspeak bypasses.
             </p>
             <div className="mt-3 text-[11px] font-semibold text-zinc-900">
-              Action: DM Warning / Message Removal (Based on server config)
+              Action: Message Deletion / Cooldown Warning (Zero-token Tier-1)
             </div>
           </div>
         </div>

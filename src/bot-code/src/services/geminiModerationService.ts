@@ -333,18 +333,20 @@ export class GeminiModerationService {
       };
     }
 
-    // Check profanity filter
+    // Check profanity and multilingual speech filter
     const profanity = PROFANITY_FILTER.checkProfanity(lower);
     if (profanity && (profanity.severity === "HIGH" || profanity.severity === "MEDIUM")) {
+      const category = profanity.category || "SEVERE_PROFANITY_OR_ABUSE";
+      const langLabel = profanity.language || "Local Speech";
       return {
         flagged: true,
-        category: "SEVERE_PROFANITY_OR_ABUSE",
+        category,
         severity: profanity.severity === "HIGH" ? "CRITICAL" : "HIGH",
         recommendedAction: "DELETE",
-        confidence: 0.9,
-        reason: `${baseReason} Prohibited abusive content: "${profanity.word}".`,
+        confidence: 0.95,
+        reason: `${baseReason} Prohibited abusive content (${langLabel}): "${profanity.word}".`,
         highlightedPhrases: [profanity.word],
-        ageAppropriateNotes: "Filtered by local safety dictionary.",
+        ageAppropriateNotes: `Filtered by multilingual safety dictionary (${langLabel}).`,
         tokensUsed: 0,
         isApiErrorFallback: true,
       };

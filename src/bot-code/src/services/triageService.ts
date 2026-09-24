@@ -4,6 +4,8 @@
  * Prevents unnecessary Gemini API calls by pre-filtering 80-90% of benign chat.
  */
 
+import { PROFANITY_FILTER } from "../config/profanityFilter.js";
+
 export interface TriageResult {
   shouldCallGemini: boolean;
   localVerdict?: {
@@ -123,7 +125,28 @@ export class TriageService {
       };
     }
 
-    // 4. Default: Require contextual AI analysis from Gemini
+    // 4. Multilingual Profanity & Local Speech Filter (Hindi, Russian, Arabic, etc.)
+    const profanityMatch = PROFANITY_FILTER.checkProfanity(trimmed);
+    if (profanityMatch) {
+      const isCritical = profanityMatch.severity === "HIGH";
+      const lang = profanityMatch.language || "Local Speech";
+      const verdict = {
+        flagged: true,
+        category: profanityMatch.category || "SEVERE_PROFANITY_OR_ABUSE",
+        severity: isCritical ? ("HIGH" as const) : ("MEDIUM" as const),
+        recommendedAction: "DELETE" as const,
+        reason: `Tier-1 Multilingual AutoMod intercepted abusive speech (${lang}): "${profanityMatch.word}"`
+      };
+
+      this.cacheVerdict(normalized, verdict);
+      return {
+        shouldCallGemini: false,
+        localVerdict: verdict,
+        reason: `Fast filter: Prohibited ${lang} profanity intercepted without consuming API tokens.`
+      };
+    }
+
+    // 5. Default: Require contextual AI analysis from Gemini
     return {
       shouldCallGemini: true,
       reason: "Tier-3 Passed: Message requires nuanced contextual evaluation by Gemini AI."

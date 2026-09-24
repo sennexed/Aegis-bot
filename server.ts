@@ -245,6 +245,8 @@ import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, BOT_COLOR_PRESETS } from "./src/types
 import { guildMemoryService } from "./src/services/guildMemoryService.js";
 import { botStabilityService } from "./src/services/botStabilityService.js";
 import { wispbyteApiService } from "./src/services/wispbyteApiService.js";
+import { PROFANITY_FILTER } from "./src/bot-code/src/config/profanityFilter.js";
+import { centralBlacklistService } from "./src/bot-code/src/services/centralBlacklistService.js";
 import { startDiscordBot, getBotGatewayStatus, getLastLoginError } from "./src/bot-code/src/index.js";
 
 const app = express();
@@ -402,6 +404,22 @@ function runLocalTriage(text: string): {
       severity: "CRITICAL",
       recommendedAction,
       highlightedPhrases: [zeroMatch[0]],
+    };
+  }
+
+  // 5b. Local cuss words and speech filter (Hindi, Russian, Arabic, etc.)
+  const profanityMatch = PROFANITY_FILTER.checkProfanity(text);
+  if (profanityMatch) {
+    const isCritical = profanityMatch.severity === "HIGH";
+    const lang = profanityMatch.language || "Local Speech";
+    return {
+      status: "LOCAL_FLAG",
+      ruleName: `Multilingual Cuss Filter (${lang})`,
+      category: profanityMatch.category || "SEVERE_PROFANITY_OR_ABUSE",
+      severity: isCritical ? "HIGH" : "MEDIUM",
+      recommendedAction: "DELETE",
+      reason: `Prohibited abusive local speech detected (${lang}): "${profanityMatch.word}"`,
+      highlightedPhrases: [profanityMatch.word],
     };
   }
 
@@ -1227,6 +1245,192 @@ app.post("/api/guilds/reboot-check", async (_req: Request, res: Response) => {
   }
 });
 
+// Multilingual Profanity & Speech Filter Stats
+app.get("/api/profanity/stats", (_req: Request, res: Response) => {
+  res.json({
+    totalTerms: PROFANITY_FILTER.allEntries.length,
+    highSeverityCount: PROFANITY_FILTER.highSeverity.size,
+    mediumSeverityCount: PROFANITY_FILTER.mediumSeverity.size,
+    lowSeverityCount: PROFANITY_FILTER.lowSeverity.size,
+    supportedLanguages: PROFANITY_FILTER.supportedLanguages,
+    languageBreakdown: PROFANITY_FILTER.getLanguageStats(),
+  });
+});
+
+// ==============================================================
+// 🛡️ Central JSON Multilingual Blacklist Management Endpoints
+// Prioritized at Tier-1 locally before sending data to Gemini AI
+// ==============================================================
+
+app.get("/api/blacklist", (req: Request, res: Response) => {
+  const { language, severity, category, search, enabled } = req.query;
+  const terms = centralBlacklistService.getAll({
+    language: language ? String(language) : undefined,
+    severity: severity ? String(severity) : undefined,
+    category: category ? String(category) : undefined,
+    search: search ? String(search) : undefined,
+    enabled: enabled !== undefined ? enabled === "true" : undefined,
+  });
+  const metadata = centralBlacklistService.getMetadata();
+
+  res.json({
+    success: true,
+    metadata,
+    terms,
+    count: terms.length,
+  });
+});
+
+app.get("/api/blacklist/json", (_req: Request, res: Response) => {
+  const doc = centralBlacklistService.getJsonDocument();
+  res.json(doc);
+});
+
+app.post("/api/blacklist/term", (req: Request, res: Response) => {
+  try {
+    const { term, language, severity, category, isPhrase, notes, addedBy } = req.body;
+    if (!term || typeof term !== "string" || !term.trim()) {
+      return res.status(400).json({ error: "Term string is required" });
+    }
+
+    const created = centralBlacklistService.addTerm({
+      term: term.trim(),
+      language: language || "Hindi (Hinglish)",
+      severity: ["HIGH", "MEDIUM", "LOW"].includes(severity) ? severity : "HIGH",
+      category: [
+        "SEVERE_PROFANITY_OR_ABUSE",
+        "HATE_SPEECH",
+        "SELF_HARM",
+        "SEXUAL_GROOMING_OR_PREDATORY",
+      ].includes(category)
+        ? category
+        : "SEVERE_PROFANITY_OR_ABUSE",
+      isPhrase: typeof isPhrase === "boolean" ? isPhrase : term.includes(" "),
+      enabled: true,
+      notes: notes || "Configured via Safety Features Suite",
+      addedBy: addedBy || "Staff Moderator",
+    });
+
+    addWispbyteLog(
+      "AUTOMOD",
+      `[Central Blacklist]: Added new ${created.language} term "${created.term}" (${created.severity}) - Prioritized before Gemini.`
+    );
+
+    res.json({ success: true, term: created, metadata: centralBlacklistService.getMetadata() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to add term to blacklist" });
+  }
+});
+
+app.put("/api/blacklist/term/:id", (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    const updated = centralBlacklistService.updateTerm(id, updates);
+    if (!updated) {
+      return res.status(404).json({ error: "Blacklist term not found" });
+    }
+
+    addWispbyteLog(
+      "AUTOMOD",
+      `[Central Blacklist]: Updated term ID ${id} ("${updated.term}") - Synchronized with live filter.`
+    );
+
+    res.json({ success: true, term: updated, metadata: centralBlacklistService.getMetadata() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to update blacklist term" });
+  }
+});
+
+app.delete("/api/blacklist/term/:id", (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const existing = centralBlacklistService.getById(id);
+    const deleted = centralBlacklistService.deleteTerm(id);
+    if (!deleted) {
+      return res.status(404).json({ error: "Blacklist term not found" });
+    }
+
+    addWispbyteLog(
+      "AUTOMOD",
+      `[Central Blacklist]: Deleted term ID ${id} (${existing?.term || "Unknown"}) from central blacklist.`
+    );
+
+    res.json({ success: true, message: "Term deleted", id, metadata: centralBlacklistService.getMetadata() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to delete blacklist term" });
+  }
+});
+
+app.post("/api/blacklist/toggle/:id", (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const toggled = centralBlacklistService.toggleTerm(id);
+    if (!toggled) {
+      return res.status(404).json({ error: "Blacklist term not found" });
+    }
+
+    addWispbyteLog(
+      "AUTOMOD",
+      `[Central Blacklist]: Term "${toggled.term}" ${toggled.enabled ? "ENABLED" : "DISABLED"} in pre-Gemini filter.`
+    );
+
+    res.json({ success: true, term: toggled, metadata: centralBlacklistService.getMetadata() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to toggle blacklist term" });
+  }
+});
+
+app.post("/api/blacklist/import", (req: Request, res: Response) => {
+  try {
+    const { json, mode = "MERGE" } = req.body;
+    if (!json) {
+      return res.status(400).json({ error: "Missing JSON payload for blacklist import" });
+    }
+
+    const result = centralBlacklistService.importJson(json, mode);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    addWispbyteLog(
+      "AUTOMOD",
+      `[Central Blacklist]: Imported ${result.importedCount} terms via JSON (mode: ${mode}). Live triage re-primed.`
+    );
+
+    res.json({
+      ...result,
+      metadata: centralBlacklistService.getMetadata(),
+      doc: centralBlacklistService.getJsonDocument(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to import JSON blacklist" });
+  }
+});
+
+app.post("/api/blacklist/reset", (_req: Request, res: Response) => {
+  try {
+    const total = centralBlacklistService.resetToDefaults();
+    addWispbyteLog(
+      "AUTOMOD",
+      `[Central Blacklist]: Restored default verified multilingual lexicon (${total} terms across Hindi, Russian, Arabic, etc.).`
+    );
+    res.json({ success: true, total, metadata: centralBlacklistService.getMetadata() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to reset blacklist" });
+  }
+});
+
+app.post("/api/blacklist/test", (req: Request, res: Response) => {
+  try {
+    const { content } = req.body;
+    const testResult = centralBlacklistService.testContent(content);
+    res.json({ success: true, result: testResult });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to test text" });
+  }
+});
+
 // API Live Moderate endpoint
 app.post("/api/moderate", async (req: Request, res: Response) => {
   const startTime = Date.now();
@@ -1366,8 +1570,16 @@ Categories:
 - "SEXUAL_GROOMING_OR_PREDATORY": Age-inappropriate sexual solicitation, asking minors for private photos/snapchat/DMs, covert meetup proposals, sexualizing teenagers.
 - "SELF_HARM": Encouraging suicide ("kys"), self-harm ideation, suicide pacts.
 - "HATE_SPEECH": Slurs or dehumanizing attacks based on race, religion, gender, sexual orientation, disability.
-- "SEVERE_PROFANITY_OR_ABUSE": Repeated aggressive profanity, bypass attempts (leetspeak/spaced out vulgarities).
+- "SEVERE_PROFANITY_OR_ABUSE": Repeated aggressive profanity, bypass attempts (leetspeak/spaced out vulgarities), or regional abusive swearing across languages (Hindi/Hinglish like 'madarchod', 'bhenchod', 'chutiya'; Russian Mat like 'сука', 'блять', 'cyka', 'blyat', 'nahuy'; Arabic/Arabizi like 'kos omk', 'kuss ummak', 'شرموطة'; Spanish, etc.).
 - "DOXXING_OR_PII": Leaking real names, addresses, phone numbers, school locations, private photos.
+
+MULTILINGUAL SPEECH & LOCAL CUSS WORD RECOGNITION:
+- You must detect abusive swearing, insults, and harassment in local languages and transliterations:
+  * Hindi / Hinglish: madarchod, bhenchod, bhosdike, chutiya, randi, gandu, lund, laude, मादरचोद, बहनचोद, चूतिया, etc.
+  * Russian / Cyrillic & Mat: сука, блять, хуй, нахуй, пиздец, ебать, cyka, blyat, nahuy, pizda, dolbaeb, etc.
+  * Arabic / Script & Arabizi: kos omk, kuss ummak, sharmoota, qahba, manyook, 5ara, 3ars, شرموطة, كس أمك, etc.
+  * Other languages: Spanish (hijo de puta, puta, maricon), Tagalog (putang ina, gago), etc.
+- When detected in aggressive or derogatory context, flag under "SEVERE_PROFANITY_OR_ABUSE" or "HATE_SPEECH". Harmless gamer banter should be allowed.
 
 POLICY DIRECTIVE:
 - PERMANENT BANS ARE DISABLED: Never recommend "BAN" under any circumstances.

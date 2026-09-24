@@ -68,6 +68,9 @@ const SLASH_COMMANDS = [
 
 const PRESETS = [
   { label: "Harmless Banter", text: "gg guys that 1v3 round was unreal, let's queue competitive" },
+  { label: "Hindi Cuss (Local)", text: "madarchod stop trolling this chat bsdk" },
+  { label: "Russian Mat (Local)", text: "пошел нахуй сука блять" },
+  { label: "Arabic Arabizi (Local)", text: "kos omk ya sharmouta get out" },
   { label: "Scam Invite Link", text: "Join my free nitro generator server right now: discord.gg/free-nitro-100k" },
   { label: "Phishing Domain", text: "Claim free $50 steam wallet gift card: https://discrod-app.gift/steam" },
   { label: "Cyberbullying / Attack", text: "Nobody wants you here, you are useless. Uninstall and disappear." },

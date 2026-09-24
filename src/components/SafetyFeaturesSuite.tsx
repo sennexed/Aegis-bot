@@ -25,9 +25,11 @@ import {
   UserPlus,
   Calendar,
   Coffee,
+  Globe,
 } from "lucide-react";
 import { PHISHING_FILTER } from "../bot-code/src/config/phishingFilter";
 import { POLICY_DEFINITIONS, ChannelPolicyProfile } from "../bot-code/src/services/channelPolicyService";
+import { MultilingualBlacklistManager } from "./MultilingualBlacklistManager";
 
 export const SafetyFeaturesSuite: React.FC = () => {
   const [selectedSubTab, setSelectedSubTab] = useState<string>("duty");
@@ -285,19 +287,19 @@ export const SafetyFeaturesSuite: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-indigo-600 font-semibold text-sm">
               <Zap className="w-4 h-4" />
-              <span>AegisMod Suite 2.0 • 14 Advanced Safety & Operations Features</span>
+              <span>AegisMod Suite 2.0 • 15 Advanced Safety & Operations Features</span>
             </div>
             <h2 className="text-2xl font-bold text-zinc-900 mt-1">
               Advanced Moderation, Safety & Governance Suite
             </h2>
             <p className="text-sm text-zinc-600 mt-1">
-              Complete hybrid teen safety operations: AI Triage, Staff Duty Shifts, Leave of Absence (LOA), Anonymous Mod-Mail, Incident Reports, and Compliance Audit Exporter.
+              Complete hybrid teen safety operations: Central Multilingual Blacklist, AI Triage, Staff Duty Shifts, Leave of Absence (LOA), Anonymous Mod-Mail, Incident Reports, and Compliance Audit Exporter.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 bg-emerald-50 text-emerald-700 font-medium text-xs rounded-full border border-emerald-200 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5" /> 14 Systems Online
+              <CheckCircle2 className="w-3.5 h-3.5" /> 15 Systems Online
             </span>
           </div>
         </div>
@@ -305,6 +307,7 @@ export const SafetyFeaturesSuite: React.FC = () => {
         {/* Feature Sub-Navigation */}
         <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-zinc-100">
           {[
+            { id: "blacklist", label: "🌍 Multilingual Blacklist (JSON)", icon: Globe },
             { id: "duty", label: "Staff Duty Tracker (/duty)", icon: Clock },
             { id: "loa", label: "Leave of Absence (/loa)", icon: Calendar },
             { id: "modmail", label: "Anonymous Mod-Mail (/modmail)", icon: Inbox },
@@ -2236,6 +2239,9 @@ export const SafetyFeaturesSuite: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* SUB-VIEW: CENTRAL MULTILINGUAL BLACKLIST MANAGER */}
+      {selectedSubTab === "blacklist" && <MultilingualBlacklistManager />}
     </div>
   );
 };

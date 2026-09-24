@@ -290,28 +290,32 @@ export class AutoModService {
         }
       }
 
-      // Profanity Filter dictionary check (High, Medium, and Low severity)
-      const profanity = PROFANITY_FILTER.checkProfanity(normalized);
+      // Profanity & Multilingual Speech Filter (Hindi, Russian, Arabic, Spanish, etc.)
+      const profanity = PROFANITY_FILTER.checkProfanity(trimmed) || PROFANITY_FILTER.checkProfanity(normalized);
       if (profanity) {
+        const langLabel = profanity.language || "Multilingual";
         if (profanity.severity === "HIGH") {
-          const isSelfHarm = /kys|suicide|kill|die/i.test(profanity.word);
+          const category = profanity.category || (/kys|suicide|kill|die/i.test(profanity.word) ? "SELF_HARM" : "SEVERE_PROFANITY_OR_ABUSE");
+          const isSelfHarm = category === "SELF_HARM";
+          const isPredatory = category === "SEXUAL_GROOMING_OR_PREDATORY";
+          const action = isPredatory ? "TIMEOUT_1H" : "DELETE";
           return {
             triggered: true,
-            ruleName: "Severe Safety & Exploitation Filter",
-            category: isSelfHarm ? "SELF_HARM" : "SEXUAL_GROOMING_OR_PREDATORY",
+            ruleName: `Multilingual Safety & Slur Filter (${langLabel})`,
+            category,
             severity: "CRITICAL",
-            recommendedAction: isSelfHarm ? "DELETE" : "TIMEOUT_1H",
-            reason: `Zero-tolerance severe term intercepted: "${profanity.word}"`,
+            recommendedAction: action,
+            reason: `Zero-tolerance abusive local speech intercepted (${langLabel}): "${profanity.word}"`,
             matchedContent: profanity.word,
           };
         } else if (profanity.severity === "MEDIUM") {
           return {
             triggered: true,
-            ruleName: "Profanity & Targeted Abuse Filter",
-            category: "SEVERE_PROFANITY_OR_ABUSE",
+            ruleName: `Multilingual Profanity Filter (${langLabel})`,
+            category: profanity.category || "SEVERE_PROFANITY_OR_ABUSE",
             severity: "HIGH",
             recommendedAction: "DELETE",
-            reason: `Heavy profanity or abusive language detected: "${profanity.word}"`,
+            reason: `Heavy profanity or abusive language detected (${langLabel}): "${profanity.word}"`,
             matchedContent: profanity.word,
           };
         }
