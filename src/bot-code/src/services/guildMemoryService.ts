@@ -49,9 +49,7 @@ export class GuildMemoryService {
         this.servers.forEach((val, key) => {
           dataObj[key] = val;
         });
-        const tempPath = `${this.storageFilePath}.tmp`;
-        await fs.promises.writeFile(tempPath, JSON.stringify(dataObj, null, 2), "utf8");
-        await fs.promises.rename(tempPath, this.storageFilePath);
+        await fs.promises.writeFile(this.storageFilePath, JSON.stringify(dataObj, null, 2), "utf8");
       })
       .catch((err) => {
         console.error("[AegisMod Memory] Failed to persist guild memory to disk:", err);

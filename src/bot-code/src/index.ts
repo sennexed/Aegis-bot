@@ -51,7 +51,6 @@ import { reportCommand } from "./commands/report.js";
 import { loaCommand } from "./commands/loa.js";
 import { newsCommand } from "./commands/news.js";
 import { nameStyleCommand } from "./commands/namestyle.js";
-import { ticTacToeCommand, handleTicTacToeButton } from "./commands/tictactoe.js";
 import { autoNewsBotService } from "./services/autoNewsBotService.js";
 import { newsService } from "./services/newsService.js";
 import { botNameStylesService } from "./services/botNameStylesService.js";
@@ -143,13 +142,12 @@ export async function syncGuildCommands(guildId: string, isSetupComplete: boolea
     loaCommand.data.toJSON(),
     newsCommand.data.toJSON(),
     nameStyleCommand.data.toJSON(),
-    ticTacToeCommand.data.toJSON(),
     ...moderationCommands.map((c) => c.data.toJSON()),
   ];
 
   const commandsToRegister = isSetupComplete
     ? fullCommands
-    : [setupCommand.data.toJSON(), ticTacToeCommand.data.toJSON()];
+    : [setupCommand.data.toJSON()];
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -690,12 +688,18 @@ process.on("SIGTERM", () => {
 
 // 8. Bot Login Export
 export function startDiscordBot() {
-  const token = process.env.DISCORD_BOT_TOKEN;
-  if (token && token.trim()) {
-    console.log("🤖 Attempting Discord Bot login...");
+  const rawToken = process.env.DISCORD_BOT_TOKEN;
+  const token = rawToken ? rawToken.trim().replace(/^["']|["']$/g, "").trim() : "";
+
+  if (token && token.length > 20 && !token.includes("your_bot_token") && !token.includes("placeholder")) {
+    const masked = token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)} (${token.length} chars)` : "***";
+    console.log(`🤖 Attempting Discord Bot login with token: ${masked}`);
     client.login(token).catch((err) => {
       console.error("❌ Failed to login to Discord:", err.message || err);
+      console.error("💡 Tip: Make sure you copied the 'Token' from Discord Developer Portal -> Bot -> Reset Token (NOT the Client Secret or Application ID).");
     });
+  } else if (rawToken) {
+    console.warn("⚠️ DISCORD_BOT_TOKEN appears to be a placeholder or invalid format. Please set your actual Discord Bot Token in Wispbyte / .env.");
   } else {
     console.log("ℹ️ DISCORD_BOT_TOKEN not provided in environment. Running in web dashboard and API mode.");
   }

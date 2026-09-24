@@ -145,10 +145,15 @@ export class AutoModService {
       data[guildId] = config;
     }
 
-    const tempPath = `${this.configFilePath}.tmp.${Date.now()}`;
+    const dir = path.dirname(this.configFilePath);
+    if (!fs.existsSync(dir)) {
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+      } catch {}
+    }
+
     fs.promises
-      .writeFile(tempPath, JSON.stringify(data, null, 2), "utf8")
-      .then(() => fs.promises.rename(tempPath, this.configFilePath))
+      .writeFile(this.configFilePath, JSON.stringify(data, null, 2), "utf8")
       .then(() => {
         this.isSaving = false;
         if (this.needsSave) {

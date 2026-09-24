@@ -53,9 +53,11 @@ export class RoleService {
         this.guildRoles.forEach((val, key) => {
           obj[key] = val;
         });
-        const tempPath = `${this.dataFilePath}.tmp`;
-        await fs.promises.writeFile(tempPath, JSON.stringify(obj, null, 2), "utf8");
-        await fs.promises.rename(tempPath, this.dataFilePath);
+        const dir = path.dirname(this.dataFilePath);
+        if (!fs.existsSync(dir)) {
+          await fs.promises.mkdir(dir, { recursive: true });
+        }
+        await fs.promises.writeFile(this.dataFilePath, JSON.stringify(obj, null, 2), "utf8");
       })
       .catch((err) => {
         console.error("[RoleService] Failed to persist role mappings to disk:", err);

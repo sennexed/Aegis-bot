@@ -166,9 +166,7 @@ export class GuildMemoryService {
       this.servers.forEach((val, key) => {
         dataObj[key] = val;
       });
-      const tempPath = `${this.storageFilePath}.tmp`;
-      fs.writeFileSync(tempPath, JSON.stringify(dataObj, null, 2), "utf8");
-      fs.renameSync(tempPath, this.storageFilePath);
+      fs.writeFileSync(this.storageFilePath, JSON.stringify(dataObj, null, 2), "utf8");
       this.lastSavedAt = Date.now();
     } catch (err) {
       console.error("[GuildMemory] Error writing synchronous permanent storage:", err);
@@ -188,9 +186,7 @@ export class GuildMemoryService {
         this.servers.forEach((val, key) => {
           dataObj[key] = val;
         });
-        const tempPath = `${this.storageFilePath}.tmp`;
-        await fs.promises.writeFile(tempPath, JSON.stringify(dataObj, null, 2), "utf8");
-        await fs.promises.rename(tempPath, this.storageFilePath);
+        await fs.promises.writeFile(this.storageFilePath, JSON.stringify(dataObj, null, 2), "utf8");
         this.lastSavedAt = Date.now();
       })
       .catch((err) => {

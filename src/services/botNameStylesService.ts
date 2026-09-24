@@ -73,9 +73,7 @@ class BotNameStylesService {
           history: this.history,
           updatedAt: new Date().toISOString(),
         };
-        const tempPath = `${this.storageFilePath}.tmp`;
-        await fs.promises.writeFile(tempPath, JSON.stringify(dataObj, null, 2), "utf8");
-        await fs.promises.rename(tempPath, this.storageFilePath);
+        await fs.promises.writeFile(this.storageFilePath, JSON.stringify(dataObj, null, 2), "utf8");
       })
       .catch((err) => {
         console.error("[NameStyles] Failed to persist name styles to disk:", err);

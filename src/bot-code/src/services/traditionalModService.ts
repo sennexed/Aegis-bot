@@ -80,9 +80,11 @@ export class TraditionalModService {
           caseCounter: this.caseCounter,
           infractions: obj,
         };
-        const tempPath = `${this.infractionsFilePath}.tmp`;
-        await fs.promises.writeFile(tempPath, JSON.stringify(data, null, 2), "utf8");
-        await fs.promises.rename(tempPath, this.infractionsFilePath);
+        const dir = path.dirname(this.infractionsFilePath);
+        if (!fs.existsSync(dir)) {
+          await fs.promises.mkdir(dir, { recursive: true });
+        }
+        await fs.promises.writeFile(this.infractionsFilePath, JSON.stringify(data, null, 2), "utf8");
       })
       .catch((err) => {
         console.error("[TraditionalModService] Failed to persist infractions to disk:", err);
