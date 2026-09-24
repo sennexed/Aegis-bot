@@ -20,8 +20,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { NewsArticle, AutoNewsConfig, NewsSourceConfig } from "../types/news";
-import { FAMOUS_NEWS_SOURCES } from "../data/newsSources";
+import { NewsArticle, AutoNewsConfig, NewsSourceConfig, FAMOUS_NEWS_SOURCES } from "../types/news";
 import { playClickSound, playSuccessChime } from "../utils/soundEffects";
 
 export const AutoNewsFeature: React.FC = () => {

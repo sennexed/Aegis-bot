@@ -10,7 +10,82 @@ import {
   Layers,
   ChevronRight,
 } from "lucide-react";
-import { BOT_FILES, BotFileDefinition } from "../data/botFiles";
+export interface BotFileDefinition {
+  path: string;
+  name: string;
+  category: "entry" | "service" | "command" | "event";
+  language: string;
+  description: string;
+  content: string;
+}
+
+export const BOT_FILES: BotFileDefinition[] = [
+  {
+    path: "src/bot-code/src/index.ts",
+    name: "index.ts",
+    category: "entry",
+    language: "typescript",
+    description: "Main AegisMod Discord bot entry point, gateway client initialization, and slash command router.",
+    content: `/**
+ * AegisMod - Main Bot Entry Point
+ * Discord Hybrid Moderation Bot for Teen Communities
+ * Powered by Gemini 3.8 Flash & discord.js v14
+ */
+
+import { Client, GatewayIntentBits, Partials, Options } from "discord.js";
+import { GeminiModerationService } from "./services/geminiModerationService.js";
+import { AutoModService } from "./services/autoModService.js";
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildModeration,
+  ],
+  partials: [Partials.Message, Partials.Channel, Partials.User],
+});
+
+client.once("ready", () => {
+  console.log(\`Logged in as \${client.user?.tag}!\`);
+});
+`,
+  },
+  {
+    path: "src/bot-code/src/services/geminiModerationService.ts",
+    name: "geminiModerationService.ts",
+    category: "service",
+    language: "typescript",
+    description: "Multimodal AI moderation service utilizing Gemini 3.8 Flash for cyberbullying and safety analysis.",
+    content: `import { GoogleGenAI } from "@google/genai";
+
+export class GeminiModerationService {
+  private ai: GoogleGenAI;
+  private hasApiKey: boolean;
+
+  constructor(apiKey?: string) {
+    const key = apiKey !== undefined ? apiKey : process.env.GEMINI_API_KEY;
+    this.hasApiKey = Boolean(key && key.trim());
+    this.ai = this.hasApiKey ? new GoogleGenAI({ apiKey: key || "" }) : (null as any);
+  }
+}
+`,
+  },
+  {
+    path: "src/bot-code/src/services/autoModService.ts",
+    name: "autoModService.ts",
+    category: "service",
+    language: "typescript",
+    description: "Heuristic and rule-based AutoMod engine handling spam, raid prevention, and rate limits.",
+    content: `export class AutoModService {
+  constructor() {
+    console.log("AutoMod service initialized.");
+  }
+}
+`,
+  },
+];
 
 export const CodeExplorer: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<BotFileDefinition>(BOT_FILES[0]);

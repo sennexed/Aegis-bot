@@ -46,16 +46,18 @@ export class GeminiModerationService {
     const key = apiKey !== undefined ? apiKey : process.env.GEMINI_API_KEY;
     this.hasApiKey = Boolean(key && key.trim());
     if (!this.hasApiKey) {
-      console.warn("[GeminiModerationService] WARNING: GEMINI_API_KEY is not defined. The bot will automatically utilize local Standard AutoMod and heuristic safety analysis.");
-    }
-    this.ai = new GoogleGenAI({
-      apiKey: key || "",
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
+      console.log("ℹ️ [GeminiModerationService] GEMINI_API_KEY not configured. Running in Standard AutoMod / heuristic mode.");
+      this.ai = null as any;
+    } else {
+      this.ai = new GoogleGenAI({
+        apiKey: key || "",
+        httpOptions: {
+          headers: {
+            "User-Agent": "aistudio-build",
+          },
         },
-      },
-    });
+      });
+    }
   }
 
   private sleep(ms: number): Promise<void> {
