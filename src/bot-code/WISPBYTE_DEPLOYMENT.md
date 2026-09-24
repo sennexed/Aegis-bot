@@ -82,13 +82,13 @@ NODE_ENV="production"
 
 ### Step D: Configure Startup Command
 In the **Startup** tab:
-- **Recommended Fast Self-Healing Startup Command**:
+- **Recommended Standard Startup Command**:
   ```bash
-  if [ -d /home/container/.git ]; then echo "🔄 Pulling updates..."; git fetch origin main && git reset --hard origin/main; else echo "📦 Cloning..."; git clone --depth 1 -b main https://github.com/sennexed/Aegis-bot.git /home/container; fi; if ! node -e "require('discord.js')" >/dev/null 2>&1; then echo "📥 Repairing & installing dependencies..."; rm -rf node_modules package-lock.json /tmp/npm-cache ~/.npm 2>/dev/null; npm install --no-progress --no-audit --no-fund; fi; echo "🚀 Starting AegisMod..."; npm start
+  if [ -d /home/container/.git ]; then echo "🔄 Pulling updates..."; git fetch origin main && git reset --hard origin/main; else echo "📦 Cloning..."; git clone --depth 1 -b main https://github.com/sennexed/Aegis-bot.git /home/container; fi; npm install --no-audit --no-fund; echo "🚀 Starting AegisMod..."; npm start
   ```
-- Or simple direct run if you already ran `npm install`:
+- Or simple direct run if you already have the repository cloned:
   ```bash
-  npm start
+  npm install && npm start
   ```
 
 ### Step E: Start Your Server

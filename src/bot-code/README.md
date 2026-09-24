@@ -121,7 +121,7 @@ The bot includes an automated test suite in `tests/moderation.test.ts` verifying
 ### Deploying on Wispbyte
 Configure the **Startup Command** in your Wispbyte Pterodactyl container:
 ```bash
-if [ -d /home/container/.git ]; then echo "🔄 Pulling repository updates..."; git fetch origin main && git reset --hard origin/main; else echo "📦 Cloning repository..."; git clone --depth 1 -b main https://github.com/sennexed/Aegis-bot.git /home/container; fi; if ! node -e "require('discord.js')" >/dev/null 2>&1; then echo "📥 Repairing & installing dependencies..."; rm -rf node_modules package-lock.json /tmp/npm-cache ~/.npm 2>/dev/null; npm install --no-progress --no-audit --no-fund; fi; echo "🚀 Starting server..."; npm start
+if [ -d /home/container/.git ]; then echo "🔄 Pulling updates..."; git fetch origin main && git reset --hard origin/main; else echo "📦 Cloning..."; git clone --depth 1 -b main https://github.com/sennexed/Aegis-bot.git /home/container; fi; npm install --no-audit --no-fund; echo "🚀 Starting server..."; npm start
 ```
 
 Refer to `WISPBYTE_DEPLOYMENT.md` in this directory for comprehensive step-by-step instructions on deploying AegisMod on Wispbyte, Pterodactyl, Docker, or Cloud Run.
