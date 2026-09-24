@@ -13,6 +13,7 @@ import { guildMemoryService } from "./src/services/guildMemoryService.js";
 import { botStabilityService } from "./src/services/botStabilityService.js";
 import { gitAutoDeployService } from "./src/services/gitAutoDeployService.js";
 import { wispbyteApiService } from "./src/services/wispbyteApiService.js";
+import "./src/bot-code/src/index.ts";
 
 // Global process error boundary to prevent exit 135 / container terminations
 process.on("uncaughtException", (err) => {
@@ -1498,14 +1499,8 @@ async function startServer() {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🛡️ AegisMod Control Server successfully listening on http://0.0.0.0:${PORT}`);
 
-    // Automatically initialize Discord Bot Gateway if token is provided
     if (process.env.DISCORD_BOT_TOKEN) {
-      console.log("🤖 DISCORD_BOT_TOKEN detected. Connecting AegisMod to Discord Gateway...");
-      import("./src/bot-code/src/index.js")
-        .catch(() => import("./src/bot-code/src/index.ts"))
-        .catch((err) => {
-          console.warn("Notice during bot client load:", err?.message || err);
-        });
+      console.log("🤖 DISCORD_BOT_TOKEN detected. Discord Gateway active.");
     } else {
       console.log("ℹ️ DISCORD_BOT_TOKEN not detected in environment. Running web dashboard and API engine.");
     }

@@ -1,6 +1,0 @@
-{
-  "name": "AegisMod - Discord Hybrid AI Moderation Bot",
-  "description": "Smooth, animated Wispbyte hosting dashboard and control panel for AegisMod Discord bot, featuring real-time telemetry, interactive terminal console, resource monitoring, bot configuration, and AI moderation controls.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
