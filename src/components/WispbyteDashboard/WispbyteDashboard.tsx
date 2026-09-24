@@ -32,7 +32,6 @@ import { DiscordBotTelemetry, TelemetryEvent } from "./DiscordBotTelemetry";
 import { StartupConfigModal } from "./StartupConfigModal";
 import { QuickDeployModal } from "./QuickDeployModal";
 import { BotStabilityPanel } from "./BotStabilityPanel";
-import { GitHubAutoDeployFeature } from "../GitHubAutoDeployFeature";
 import { WispbyteApiExplorer } from "./WispbyteApiExplorer";
 import { SystemHealthWidget } from "./SystemHealthWidget";
 import { liveMetricsSyncService } from "../../services/liveMetricsSyncService";
@@ -87,7 +86,7 @@ export const WispbyteDashboard: React.FC = () => {
 
   const [logs, setLogs] = useState<WispbyteLogItem[]>([]);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-  const [activeSubTab, setActiveSubTab] = useState<"console" | "guilds" | "stability" | "git" | "api" | "guide">("console");
+  const [activeSubTab, setActiveSubTab] = useState<"console" | "guilds" | "stability" | "api" | "guide">("console");
 
   // Modals
   const [isConfigOpen, setIsConfigOpen] = useState(false);
@@ -404,18 +403,6 @@ export const WispbyteDashboard: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveSubTab("git")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeSubTab === "git"
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
-                : "bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200"
-            }`}
-          >
-            <RotateCw className="w-3.5 h-3.5 text-indigo-500" />
-            <span>GitHub CI/CD & Auto-Restart</span>
-          </button>
-
-          <button
             onClick={() => setActiveSubTab("api")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeSubTab === "api"
@@ -493,18 +480,6 @@ export const WispbyteDashboard: React.FC = () => {
             transition={{ duration: 0.2 }}
           >
             <BotStabilityPanel />
-          </motion.div>
-        )}
-
-        {activeSubTab === "git" && (
-          <motion.div
-            key="git"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-          >
-            <GitHubAutoDeployFeature />
           </motion.div>
         )}
 

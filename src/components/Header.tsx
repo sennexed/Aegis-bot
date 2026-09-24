@@ -51,7 +51,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
   const navItems = [
     { id: "dashboard", label: "⚡ Wispbyte Dashboard", badge: "LIVE" },
     { id: "interactive-api", label: "🌐 Interactive API", badge: "REST" },
-    { id: "git-autodeploy", label: "🚀 GitHub Auto-Restart", badge: "AUTO-CD" },
     { id: "bot-chat", label: "💬 Interactive Bot Chat", badge: "NEW" },
     { id: "namestyles", label: "✨ Name Styles & Fonts", badge: "STYLES" },
     { id: "autonews", label: "📰 Auto News (13 Papers)" },
@@ -70,7 +69,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
       items: [
         { id: "dashboard", label: "Wispbyte Control Center", icon: Server, badge: "LIVE", desc: "Resource telemetry, terminal logs, and power control" },
         { id: "interactive-api", label: "Live Interactive API Lab", icon: Code2, badge: "NEW", desc: "Execute REST requests, test latency & export cURL" },
-        { id: "git-autodeploy", label: "GitHub Auto-Restart CI/CD", icon: GitCommit, badge: "AUTO", desc: "Instant remote deployment & commit webhooks" },
       ],
     },
     {

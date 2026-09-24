@@ -8,9 +8,6 @@ import { Shield, Sparkles, Server, RefreshCw } from "lucide-react";
 const InteractiveApiCenter = lazy(() =>
   import("./components/InteractiveApiCenter").then((m) => ({ default: m.InteractiveApiCenter }))
 );
-const GitHubAutoDeployFeature = lazy(() =>
-  import("./components/GitHubAutoDeployFeature").then((m) => ({ default: m.GitHubAutoDeployFeature }))
-);
 const InteractiveBotChatSandbox = lazy(() =>
   import("./components/InteractiveBotChatSandbox").then((m) => ({ default: m.InteractiveBotChatSandbox }))
 );
@@ -73,7 +70,6 @@ export default function App() {
             >
               {activeTab === "dashboard" && <WispbyteDashboard />}
               {activeTab === "interactive-api" && <InteractiveApiCenter />}
-              {activeTab === "git-autodeploy" && <GitHubAutoDeployFeature />}
               {activeTab === "bot-chat" && <InteractiveBotChatSandbox />}
               {activeTab === "namestyles" && <BotNameStylesFeature />}
               {activeTab === "autonews" && <AutoNewsFeature />}
