@@ -227,20 +227,16 @@ client.once(Events.ClientReady, async (readyClient) => {
   // Initialize AutoNews bot client
   autoNewsBotService.setClient(readyClient);
 
-  // Sync bot display nickname style across connected guilds on startup
+  // Sync bot display nickname style & nametag role color across connected guilds on startup
   try {
     const styleConfig = botNameStylesService.getConfig();
     if (styleConfig.autoSyncNickname) {
+      await botNameStylesService.syncAcrossGuilds(readyClient, styleConfig);
       const styledNick = botNameStylesService.formatFormattedNickname(styleConfig);
-      for (const [, guild] of readyClient.guilds.cache) {
-        if (guild.members.me) {
-          guild.members.me.setNickname(styledNick).catch(() => null);
-        }
-      }
-      console.log(`[NameStyles] Applied styled nickname '${styledNick}' across connected guilds.`);
+      console.log(`[NameStyles] Applied styled nickname '${styledNick}' & nametag color '${styleConfig.primaryColor}' across connected guilds.`);
     }
   } catch (err) {
-    console.warn("[NameStyles] Could not apply nickname sync on startup:", err);
+    console.warn("[NameStyles] Could not apply nickname/role color sync on startup:", err);
   }
 });
 

@@ -182,6 +182,56 @@ class BotNameStylesService {
   }
 
   /**
+   * Automatic Role Color Sync:
+   * Discord raw nicknames cannot render colors or gradients directly.
+   * Creates or updates a dedicated identity role with the hexColor and assigns it to the bot.
+   */
+  public async syncBotNametagColor(guild: any, hexColor: string, roleName = "AEGIS Identity") {
+    if (!guild || !guild.roles) return null;
+    try {
+      let role = guild.roles.cache.find((r: any) => r.name === roleName);
+      const colorVal = hexColor.startsWith("#") ? hexColor : `#${hexColor}`;
+      if (!role) {
+        role = await guild.roles.create({
+          name: roleName,
+          color: colorVal as any,
+          reason: "Nametag identity color sync",
+        });
+      } else {
+        await role.setColor(colorVal as any);
+      }
+      const botMember = await guild.members.fetchMe();
+      if (botMember && !botMember.roles.cache.has(role.id)) {
+        await botMember.roles.add(role);
+      }
+      return role;
+    } catch (err: any) {
+      console.warn(`[NameStyles] Could not sync role color in guild ${guild.name || guild.id}:`, err?.message || err);
+      return null;
+    }
+  }
+
+  /**
+   * Synchronizes both nickname text and identity role color across all guilds in the Discord client
+   */
+  public async syncAcrossGuilds(client: any, config: BotNameStyleConfig = this.config) {
+    if (!client || !client.guilds || !client.guilds.cache) return;
+    const formattedNick = this.formatFormattedNickname(config);
+    const hexColor = config.primaryColor || "#38bdf8";
+
+    for (const [, guild] of client.guilds.cache) {
+      try {
+        if (guild.members && guild.members.me) {
+          await guild.members.me.setNickname(formattedNick).catch(() => null);
+        }
+        await this.syncBotNametagColor(guild, hexColor);
+      } catch {
+        // Graceful continuation
+      }
+    }
+  }
+
+  /**
    * Get history of style changes
    */
   public getHistory() {

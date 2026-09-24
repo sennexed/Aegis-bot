@@ -245,15 +245,16 @@ export const nameStyleCommand = {
 
       const res = botNameStylesService.updateConfig(updates);
 
-      // Attempt to sync guild nickname if bot has permissions
+      // Attempt to sync guild nickname and identity role color if bot has permissions
       let nicknameNotice = "";
       if (interaction.guild && interaction.guild.members.me) {
         try {
           const formattedNick = botNameStylesService.formatFormattedNickname(res.config);
-          await interaction.guild.members.me.setNickname(formattedNick);
-          nicknameNotice = `\n✅ Server nickname updated to: **${formattedNick}**`;
+          await interaction.guild.members.me.setNickname(formattedNick).catch(() => null);
+          const role = await botNameStylesService.syncBotNametagColor(interaction.guild, res.config.primaryColor);
+          nicknameNotice = `\n✅ Server nickname updated to: **${formattedNick}**\n🎨 Identity role synced to **${res.config.primaryColor}** (${role?.name || "AEGIS Identity"}).`;
         } catch (err: any) {
-          nicknameNotice = `\n⚠️ Note: Could not update server nickname (${err?.message || "Missing Manage Nicknames permission"}).`;
+          nicknameNotice = `\n⚠️ Note: Could not update server nickname/role (${err?.message || "Missing Manage Nicknames / Manage Roles permission"}).`;
         }
       }
 
@@ -293,14 +294,15 @@ export const nameStyleCommand = {
       const formattedNick = botNameStylesService.formatFormattedNickname(currentConfig);
 
       try {
-        await interaction.guild.members.me.setNickname(formattedNick);
+        await interaction.guild.members.me.setNickname(formattedNick).catch(() => null);
+        const role = await botNameStylesService.syncBotNametagColor(interaction.guild, currentConfig.primaryColor);
         return interaction.reply({
-          content: `✅ Successfully synced bot nickname to **${formattedNick}** with active **${currentConfig.fontId}** font and **${currentConfig.effectId}** styling!`,
+          content: `✅ Successfully synced bot nickname to **${formattedNick}** (Font: **${currentConfig.fontId}**, Effect: **${currentConfig.effectId}**) and synced nametag color **${currentConfig.primaryColor}** on role \`${role?.name || "AEGIS Identity"}\`!`,
           flags: MessageFlags.Ephemeral,
         });
       } catch (err: any) {
         return interaction.reply({
-          content: `❌ Failed to update bot nickname: ${err?.message || "Please verify the bot has Manage Nicknames permissions."}`,
+          content: `❌ Failed to update bot nickname or role color: ${err?.message || "Please verify the bot has Manage Nicknames and Manage Roles permissions."}`,
           flags: MessageFlags.Ephemeral,
         });
       }
