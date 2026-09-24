@@ -82,13 +82,13 @@ NODE_ENV="production"
 
 ### Step D: Configure Startup Command
 In the **Startup** tab:
-- **Build / Run Command**:
+- **Recommended Fast Startup Command (Zero-reinstall on reboot)**:
   ```bash
-  npm install && npx tsx src/index.ts
+  if [ -d /home/container/.git ]; then echo "🔄 Pulling updates..."; git fetch origin main && git reset --hard origin/main; else echo "📦 Cloning..."; git clone --depth 1 -b main https://github.com/sennexed/Aegis-bot.git /home/container; fi; if [ ! -d "node_modules/tsx" ]; then echo "📥 Installing dependencies..."; rm -rf /tmp/npm-cache 2>/dev/null; npm install --no-progress --no-audit --no-fund; fi; echo "🚀 Starting server..."; npm start
   ```
-- Or if pre-building with TypeScript:
+- Or simple direct run if you already ran `npm install`:
   ```bash
-  npm install && npm run build && npm run start
+  npm start
   ```
 
 ### Step E: Start Your Server

@@ -51,6 +51,7 @@ import { reportCommand } from "./commands/report.js";
 import { loaCommand } from "./commands/loa.js";
 import { newsCommand } from "./commands/news.js";
 import { nameStyleCommand } from "./commands/namestyle.js";
+import { ticTacToeCommand, handleTicTacToeButton } from "./commands/tictactoe.js";
 import { autoNewsBotService } from "./services/autoNewsBotService.js";
 import { newsService } from "./services/newsService.js";
 import { botNameStylesService } from "./services/botNameStylesService.js";
@@ -142,12 +143,13 @@ export async function syncGuildCommands(guildId: string, isSetupComplete: boolea
     loaCommand.data.toJSON(),
     newsCommand.data.toJSON(),
     nameStyleCommand.data.toJSON(),
+    ticTacToeCommand.data.toJSON(),
     ...moderationCommands.map((c) => c.data.toJSON()),
   ];
 
   const commandsToRegister = isSetupComplete
     ? fullCommands
-    : [setupCommand.data.toJSON()];
+    : [setupCommand.data.toJSON(), ticTacToeCommand.data.toJSON()];
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
