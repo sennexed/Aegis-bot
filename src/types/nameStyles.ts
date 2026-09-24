@@ -229,12 +229,12 @@ export const BOT_NAME_EFFECTS: EffectStyleDefinition[] = [
 // Curated Discord Color Palettes (with Hex & Decimal values)
 export const BOT_COLOR_PRESETS: ColorPresetDefinition[] = [
   {
-    id: "indian-tricolor-dark",
-    name: "Tiranga Dark (Indian Flag)",
-    hex: "#D95700", // Rich dark saffron / deep orange
-    decimal: 14243584,
-    secondaryHex: "#FFFFFF", // Crisp white
-    tertiaryHex: "#0D652D", // Rich dark emerald green
+    id: "indian-tricolor-vibrant",
+    name: "Tiranga Vibrant (Indian Flag)",
+    hex: "#FF9933", // High-luminance Saffron / Vibrant Orange
+    decimal: 16750899,
+    secondaryHex: "#FFFFFF", // Crisp White
+    tertiaryHex: "#138808", // High-luminance Emerald Green
     isTricolor: true,
   },
   { id: "discord-blurple", name: "Discord Blurple", hex: "#5865F2", decimal: 5793266, secondaryHex: "#858EFA" },
@@ -258,14 +258,14 @@ export function discordDecimalToHex(decimal: number): string {
   return "#" + decimal.toString(16).padStart(6, "0");
 }
 
-// Default Bot Name Style State: Default gradient color set to dark Indian Flag colors (Dark Saffron Orange #D95700, White #FFFFFF, Dark Green #0D652D)
+// Default Bot Name Style State: High-Luminance Tricolor Palette (Saffron #FF9933, White #FFFFFF, Emerald Green #138808)
 export const DEFAULT_BOT_NAME_STYLE: BotNameStyleConfig = {
   displayName: "AegisMod",
   fontId: "gg-sans",
   effectId: "gradient",
-  primaryColor: "#D95700", // Dark Saffron Orange
+  primaryColor: "#FF9933", // High-Luminance Saffron Orange
   secondaryColor: "#FFFFFF", // White
-  tertiaryColor: "#0D652D", // Dark Green
+  tertiaryColor: "#138808", // Vibrant Emerald Green
   clanTag: "AEGIS",
   clanBadge: "🛡️",
   autoSyncNickname: true,

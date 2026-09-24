@@ -190,19 +190,19 @@ class BotNameStylesService {
     if (!guild || !guild.roles) return null;
     try {
       let role = guild.roles.cache.find((r: any) => r.name === roleName);
-      const colorVal = hexColor.startsWith("#") ? hexColor : `#${hexColor}`;
+      const colorDec = hexToDiscordDecimal(hexColor);
       if (!role) {
         role = await guild.roles.create({
           name: roleName,
-          color: colorVal as any,
+          color: colorDec,
           reason: "Nametag identity color sync",
         });
       } else {
-        await role.setColor(colorVal as any);
+        await role.setColor(colorDec);
       }
-      const botMember = await guild.members.fetchMe();
-      if (botMember && !botMember.roles.cache.has(role.id)) {
-        await botMember.roles.add(role);
+      const botMember = await guild.members.fetchMe().catch(() => guild.members.me);
+      if (botMember && botMember.roles && !botMember.roles.cache.has(role.id)) {
+        await botMember.roles.add(role).catch(() => null);
       }
       return role;
     } catch (err: any) {

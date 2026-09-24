@@ -43,7 +43,7 @@ export function getLiveNameStyle(
     display: "inline-block",
   };
 
-  const pColor = config.primaryColor || "#D95700";
+  const pColor = config.primaryColor || "#FF9933";
   const sColor = config.secondaryColor || (config.tertiaryColor ? "#FFFFFF" : pColor);
   const tColor = config.tertiaryColor;
 
@@ -563,9 +563,9 @@ export const BotNameStylesFeature: React.FC = () => {
                       />
                       <input
                         type="color"
-                        value={config.tertiaryColor || "#0D652D"}
+                        value={config.tertiaryColor || "#138808"}
                         onChange={(e) => updateStyle({ tertiaryColor: e.target.value })}
-                        title="Gradient Tertiary Color (Indian Flag Dark Green)"
+                        title="Gradient Tertiary Color (Indian Flag Emerald Green #138808)"
                         className="w-9 h-9 rounded-xl border border-zinc-200 cursor-pointer p-0.5 bg-white"
                       />
                     </>
@@ -968,7 +968,8 @@ export const BotNameStylesFeature: React.FC = () => {
             </h4>
 
             <pre className="p-4 rounded-2xl bg-zinc-900 text-zinc-200 text-xs font-mono overflow-x-auto leading-relaxed border border-zinc-800">
-{`// Example Discord REST API call to apply Name Styles with Indian Flag Tricolor
+{`// 1. High-Luminance Tricolor Palette & Discord REST API:
+// Saffron: #FF9933 (16750899), White: #FFFFFF (16777215), Emerald Green: #138808 (1280008)
 import { REST, Routes } from "discord.js";
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_BOT_TOKEN);
@@ -979,7 +980,7 @@ await rest.patch(Routes.user(), {
     name_style: {
       font_id: "gg-sans",                      // One of 12 fonts
       effect_id: "gradient",                   // Linear gradient shader
-      colors: [14243584, 16777215, 877869]     // [Dark Orange #D95700, White #FFFFFF, Dark Green #0D652D]
+      colors: [16750899, 16777215, 1280008]    // [#FF9933 Saffron, #FFFFFF White, #138808 Emerald Green]
     },
     clan: {
       tag: "AEGIS",
@@ -987,7 +988,15 @@ await rest.patch(Routes.user(), {
       identity_enabled: true
     }
   }
-});`}
+});
+
+// 2. Web / Node.js Canvas Gradient Preview:
+const gradient = ctx.createLinearGradient(x, 0, x + textWidth, 0);
+gradient.addColorStop(0, '#FF9933');
+gradient.addColorStop(0.5, '#FFFFFF');
+gradient.addColorStop(1, '#138808');
+ctx.fillStyle = gradient;
+ctx.fillText(formattedNickname, x, y);`}
             </pre>
           </div>
         </div>
