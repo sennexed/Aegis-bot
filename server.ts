@@ -1685,7 +1685,7 @@ async function startServer() {
   };
 
   // In production with pre-built dist, serve static files with cache headers
-  if (hasDist && process.env.NODE_ENV === "production" && process.env.VITE_DEV !== "true") {
+  if (hasDist && process.env.VITE_DEV !== "true") {
     console.log("⚡ Serving pre-built static assets (Production Mode)");
     app.use(express.static(distPath, staticOptions));
     app.get("*", (req: Request, res: Response, next) => {
