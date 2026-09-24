@@ -1,6 +1,14 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+// Global process error boundary to prevent container crashes
+process.on("uncaughtException", (err) => {
+  console.error("[AegisMod Uncaught Exception]", err?.message || err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[AegisMod Unhandled Rejection]", reason);
+});
+
 import express, { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
@@ -239,14 +247,6 @@ import { botStabilityService } from "./src/services/botStabilityService.js";
 import { gitAutoDeployService } from "./src/services/gitAutoDeployService.js";
 import { wispbyteApiService } from "./src/services/wispbyteApiService.js";
 import "./src/bot-code/src/index.ts";
-
-// Global process error boundary to prevent exit 135 / container terminations
-process.on("uncaughtException", (err) => {
-  console.error("[AegisMod Uncaught Exception]", err?.message || err);
-});
-process.on("unhandledRejection", (reason) => {
-  console.error("[AegisMod Unhandled Rejection]", reason);
-});
 
 const app = express();
 const PORT = process.env.PORT
