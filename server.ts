@@ -246,7 +246,7 @@ import { guildMemoryService } from "./src/services/guildMemoryService.js";
 import { botStabilityService } from "./src/services/botStabilityService.js";
 import { gitAutoDeployService } from "./src/services/gitAutoDeployService.js";
 import { wispbyteApiService } from "./src/services/wispbyteApiService.js";
-import "./src/bot-code/src/index.ts";
+import { startDiscordBot } from "./src/bot-code/src/index.js";
 
 const app = express();
 const PORT = process.env.PORT
@@ -1726,6 +1726,13 @@ async function startServer() {
       console.log("🤖 DISCORD_BOT_TOKEN detected. Discord Gateway active.");
     } else {
       console.log("ℹ️ DISCORD_BOT_TOKEN not detected in environment. Running web dashboard and API engine.");
+    }
+
+    // Start Discord Bot after server is up and env variables are fully initialized
+    try {
+      startDiscordBot();
+    } catch (botErr) {
+      console.error("❌ Error starting Discord bot:", botErr);
     }
   });
 

@@ -686,11 +686,15 @@ process.on("SIGTERM", () => {
   process.exit(0);
 });
 
-// 8. Bot Login
-if (process.env.DISCORD_BOT_TOKEN) {
-  client.login(process.env.DISCORD_BOT_TOKEN).catch((err) => {
-    console.error("Failed to login to Discord:", err.message);
-  });
-} else {
-  console.log("ℹ️ DISCORD_BOT_TOKEN not provided in local environment. Running in sandbox/control mode.");
+// 8. Bot Login Export
+export function startDiscordBot() {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (token && token.trim()) {
+    console.log("🤖 Attempting Discord Bot login...");
+    client.login(token).catch((err) => {
+      console.error("❌ Failed to login to Discord:", err.message || err);
+    });
+  } else {
+    console.log("ℹ️ DISCORD_BOT_TOKEN not provided in environment. Running in web dashboard and API mode.");
+  }
 }
