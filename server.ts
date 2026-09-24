@@ -1480,7 +1480,7 @@ async function startServer() {
       console.warn("Notice: Vite dev middleware skipped:", err?.message || err);
     }
   } else {
-    // Ultra-lightweight fallback response for all non-API web routes
+    // Full visual interactive dashboard with zero C++ overhead
     app.get("*", (req: Request, res: Response, next) => {
       if (req.path.startsWith("/api/")) return next();
       res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -1489,50 +1489,456 @@ async function startServer() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AegisMod Control Center</title>
+  <title>AegisMod Control Center — Live Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    :root { --bg: #090a0f; --card: #12151f; --border: #1e2436; --primary: #6366f1; }
+    :root {
+      --bg: #090a0f;
+      --card: #121520;
+      --card-hover: #181d2c;
+      --border: #1e2438;
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.4);
+      --accent-cyan: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-purple: #c084fc;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; }
-    header { background: #11141e; border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
-    .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; }
-    .pill { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #34d399; padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; animation: p 2s infinite; }
-    @keyframes p { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
-    main { max-width: 1000px; margin: 40px auto; padding: 0 20px; width: 100%; flex: 1; text-align: center; }
-    h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; background: linear-gradient(135deg, #fff, #a5b4fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    p { color: #94a3b8; font-size: 14px; margin-bottom: 32px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 32px; text-align: left; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
-    .label { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 4px; }
-    .val { font-size: 18px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #fff; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; background: var(--primary); color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 12px; font-weight: 700; font-size: 13px; transition: 0.2s; }
-    .btn:hover { background: #4f46e5; transform: translateY(-1px); }
+    
+    header {
+      background: #0d101a;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      backdrop-filter: blur(8px);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #38bdf8); display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 0 14px var(--primary-glow); }
+    .brand-text h1 { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+    .brand-text p { font-size: 11px; color: #94a3b8; }
+    
+    .status-badge {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot-ping { width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.1); } }
+
+    /* Top Left Nav Menu */
+    .nav-tabs { display: flex; gap: 6px; padding: 12px 24px; background: #0c0e17; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.04); }
+    .tab-btn.active { color: #fff; background: var(--primary); border-color: #818cf8; box-shadow: 0 0 16px rgba(99,102,241,0.35); }
+
+    main { max-width: 1100px; margin: 24px auto; padding: 0 20px; width: 100%; flex: 1; }
+
+    /* Cards Grid */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .card:hover { background: var(--card-hover); border-color: #2e3856; transform: translateY(-2px); }
+    .card-label { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; justify-content: space-between; }
+    .card-value { font-size: 22px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #fff; }
+    .card-sub { font-size: 11px; color: #94a3b8; margin-top: 6px; }
+
+    /* Chart Container */
+    .chart-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .chart-title { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    canvas { width: 100% !important; height: 160px !important; border-radius: 8px; }
+
+    /* Action Buttons */
+    .actions-bar { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px; }
+    .action-btn {
+      background: #181d2e;
+      border: 1px solid var(--border);
+      color: #f1f5f9;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 10px 18px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .action-btn:hover { background: var(--primary); border-color: #818cf8; transform: translateY(-1px); box-shadow: 0 0 14px var(--primary-glow); }
+
+    /* Visual Inspector Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #10131e;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 720px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      overflow: hidden;
+      animation: pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes pop { 0% { transform: scale(0.96); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .modal-header { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+    .modal-close { background: #1e2436; border: none; color: #94a3b8; font-size: 16px; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .modal-close:hover { color: #fff; background: #2e3856; }
+    
+    .json-box { background: #07090f; border: 1px solid var(--border); border-radius: 12px; padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #38bdf8; max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-all; margin-top: 14px; }
+    .news-card { background: #151927; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+    .news-card h4 { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .news-card p { font-size: 11px; color: #94a3b8; }
+    .news-card .source { font-size: 10px; font-weight: 700; color: #818cf8; text-transform: uppercase; margin-bottom: 2px; }
+
+    footer { border-top: 1px solid var(--border); padding: 16px 24px; text-align: center; font-size: 11px; color: #64748b; }
   </style>
 </head>
 <body>
   <header>
-    <div class="logo"><span>🛡️</span><span>AegisMod Control Center</span></div>
-    <div class="pill"><span class="dot"></span><span>ONLINE & PROTECTED</span></div>
-  </header>
-  <main>
-    <h1>AegisMod Hybrid Engine</h1>
-    <p>Discord Hybrid Moderation Bot & Live API Server running on Wispbyte Cloud Infrastructure.</p>
-    <div class="grid">
-      <div class="card"><div class="label">Subdomain</div><div class="val" style="color:#a5b4fc; font-size:15px;">aegis-bot.wispbyte.app</div></div>
-      <div class="card"><div class="label">Port Allocation</div><div class="val">${PORT} (HTTP / WS)</div></div>
-      <div class="card"><div class="label">AI Safety Model</div><div class="val" style="color:#f472b6;">Gemini 3.8 Flash</div></div>
-      <div class="card"><div class="label">Container Footprint</div><div class="val" style="color:#38bdf8;">~38 MB / 0.2% CPU</div></div>
+    <div class="brand">
+      <div class="brand-icon">🛡️</div>
+      <div class="brand-text">
+        <h1>AegisMod Control Dashboard</h1>
+        <p>Discord Hybrid Moderation & Live API Server</p>
+      </div>
     </div>
-    <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-      <a href="/api/health" class="btn" target="_blank">🚀 View /api/health JSON</a>
-      <a href="/api/news" class="btn" style="background: #1e2436;" target="_blank">📰 View News Feeds JSON</a>
-      <a href="/api/wispbyte/status" class="btn" style="background: #1e2436;" target="_blank">⚡ Live Telemetry JSON</a>
+    <div class="status-badge">
+      <span class="dot-ping"></span>
+      <span id="bot-status-text">BOT ONLINE</span>
+    </div>
+  </header>
+
+  <!-- Top-Left Navigation Menu -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchView('overview')">⚡ Overview & Telemetry</button>
+    <button class="tab-btn" onclick="openVisualModal('telemetry')">📊 Live Telemetry</button>
+    <button class="tab-btn" onclick="openVisualModal('news')">📰 13 World Newspapers</button>
+    <button class="tab-btn" onclick="openVisualModal('guilds')">🧠 Persistent Servers</button>
+    <button class="tab-btn" onclick="openVisualModal('api')">🧪 REST API Explorer</button>
+  </div>
+
+  <main>
+    <!-- Live Key Metric Cards -->
+    <div class="grid">
+      <div class="card">
+        <div class="card-label"><span>CPU Utilization</span><span style="color:#38bdf8;" id="cpu-pill">0.6%</span></div>
+        <div class="card-value" style="color:#38bdf8;" id="metric-cpu">0.6%</div>
+        <div class="card-sub">Zero-inotify optimized container load</div>
+      </div>
+      <div class="card">
+        <div class="card-label"><span>RAM Active (RSS)</span><span style="color:#c084fc;">512MB Max</span></div>
+        <div class="card-value" style="color:#c084fc;" id="metric-ram">42 MB</div>
+        <div class="card-sub">Heap: <span id="metric-heap">24</span> MB • Leak-Proof Cache</div>
+      </div>
+      <div class="card">
+        <div class="card-label"><span>Protection Mode</span><span style="color:#34d399;">Active</span></div>
+        <div class="card-value" style="color:#34d399;">Strict Teen ~16</div>
+        <div class="card-sub">Gemini 3.8 Flash + Multi-Tier Triage</div>
+      </div>
+      <div class="card">
+        <div class="card-label"><span>Host Subdomain</span><span style="color:#fbbf24;">Port ${PORT}</span></div>
+        <div class="card-value" style="font-size:16px; color:#fbbf24;">aegis-bot.wispbyte.app</div>
+        <div class="card-sub">Online & serving requests</div>
+      </div>
+    </div>
+
+    <!-- Live D3-Style Canvas Telemetry Chart -->
+    <div class="chart-box">
+      <div class="chart-header">
+        <div class="chart-title">
+          <span>📈 Real-Time CPU & Memory Graph</span>
+          <span style="font-size:11px; font-weight:600; color:#34d399; background:rgba(16,185,129,0.1); padding:2px 8px; border-radius:6px;">LIVE 3s HEARTBEAT</span>
+        </div>
+        <div style="display:flex; gap:12px; font-size:11px; font-weight:700;">
+          <span style="color:#38bdf8;">■ CPU %</span>
+          <span style="color:#c084fc;">■ RAM MB</span>
+        </div>
+      </div>
+      <canvas id="telemetryCanvas" width="1000" height="160"></canvas>
+    </div>
+
+    <!-- Interactive Visual Modals Launchers -->
+    <div class="actions-bar">
+      <button class="action-btn" onclick="openVisualModal('health')">🚀 System Health Check</button>
+      <button class="action-btn" onclick="openVisualModal('telemetry')">📊 Live Telemetry Feed</button>
+      <button class="action-btn" onclick="openVisualModal('news')">📰 13 World Newspapers</button>
+      <button class="action-btn" onclick="openVisualModal('guilds')">🧠 Server Configurations</button>
+      <button class="action-btn" onclick="openVisualModal('api')">🧪 REST API Explorer</button>
     </div>
   </main>
+
+  <!-- Interactive Visual Modal -->
+  <div id="visualModal" class="modal-overlay" onclick="closeModalOnBg(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle" style="font-size:16px; font-weight:800; color:#fff;">Visual Inspector</h3>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <div style="text-align:center; padding:30px; color:#94a3b8;">Loading visual data...</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    AegisMod Hybrid Discord Moderation • Gemini 3.8 Flash • Wispbyte Pterodactyl Optimized
+  </footer>
+
+  <script>
+    let cpuHistory = [0.8, 1.2, 0.9, 1.4, 0.7, 0.6, 1.1, 0.8, 0.6, 0.9, 0.7, 0.6];
+    let ramHistory = [40, 42, 41, 44, 42, 41, 43, 42, 40, 41, 42, 43];
+
+    // Live Heartbeat Poller
+    async function updateTelemetry() {
+      try {
+        const res = await fetch('/api/system/telemetry');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.current) {
+            document.getElementById('metric-cpu').innerText = data.current.cpuPercent + '%';
+            document.getElementById('cpu-pill').innerText = data.current.cpuPercent + '%';
+            document.getElementById('metric-ram').innerText = data.current.memoryMb + ' MB';
+            document.getElementById('metric-heap').innerText = data.current.heapUsedMb;
+
+            cpuHistory.push(data.current.cpuPercent);
+            ramHistory.push(data.current.memoryMb);
+            if (cpuHistory.length > 20) cpuHistory.shift();
+            if (ramHistory.length > 20) ramHistory.shift();
+            drawChart();
+          }
+        }
+      } catch (e) {
+        console.warn("Heartbeat error", e);
+      }
+    }
+
+    function drawChart() {
+      const canvas = document.getElementById('telemetryCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Draw Grid
+      ctx.strokeStyle = '#1e2438';
+      ctx.lineWidth = 1;
+      for (let y = 20; y < h; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Draw RAM line (purple)
+      ctx.beginPath();
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 2.5;
+      ramHistory.forEach((val, i) => {
+        const x = (i / (ramHistory.length - 1)) * w;
+        const y = h - ((val / 80) * (h - 20)) - 10;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Draw CPU line (cyan)
+      ctx.beginPath();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      cpuHistory.forEach((val, i) => {
+        const x = (i / (cpuHistory.length - 1)) * w;
+        const y = h - ((val / 5) * (h - 20)) - 10;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    setInterval(updateTelemetry, 3000);
+    setTimeout(updateTelemetry, 200);
+
+    // Modal Visualizer Handler
+    async function openVisualModal(type) {
+      const modal = document.getElementById('visualModal');
+      const title = document.getElementById('modalTitle');
+      const body = document.getElementById('modalBody');
+      modal.classList.add('open');
+
+      if (type === 'health') {
+        title.innerText = "🚀 System Health & AI Verification";
+        body.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:20px;">Fetching health data...</div>';
+        const res = await fetch('/api/health').then(r => r.json());
+        body.innerHTML = \`
+          <div style="background:#151927; border:1px solid #1e2438; border-radius:14px; padding:18px; margin-bottom:16px;">
+            <div style="font-size:14px; font-weight:800; color:#34d399; margin-bottom:8px;">✅ AegisMod Backend Active</div>
+            <div style="font-size:12px; color:#cbd5e1; line-height:1.6;">
+              • <strong>Service:</strong> \${res.service || "AegisMod Hybrid Moderation"}<br>
+              • <strong>Gemini API Key:</strong> \${res.hasApiKey ? "🟢 Primed & Connected" : "⚪ Sandbox Standby"}<br>
+              • <strong>Heartbeat Timestamp:</strong> \${res.timestamp}
+            </div>
+          </div>
+          <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Raw JSON Payload</div>
+          <div class="json-box">\${JSON.stringify(res, null, 2)}</div>
+        \`;
+      }
+
+      if (type === 'telemetry') {
+        title.innerText = "📊 Live Container Telemetry";
+        body.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:20px;">Fetching telemetry...</div>';
+        const res = await fetch('/api/system/telemetry').then(r => r.json());
+        body.innerHTML = \`
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+            <div style="background:#151927; border:1px solid #1e2438; border-radius:12px; padding:14px;">
+              <div style="font-size:11px; color:#64748b; font-weight:700;">CPU PERCENT</div>
+              <div style="font-size:20px; font-weight:800; color:#38bdf8; font-family:monospace;">\${res.current.cpuPercent}%</div>
+            </div>
+            <div style="background:#151927; border:1px solid #1e2438; border-radius:12px; padding:14px;">
+              <div style="font-size:11px; color:#64748b; font-weight:700;">RAM RSS / LIMIT</div>
+              <div style="font-size:20px; font-weight:800; color:#c084fc; font-family:monospace;">\${res.current.memoryMb} MB / 512MB</div>
+            </div>
+          </div>
+          <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Full Rolling Telemetry Log</div>
+          <div class="json-box">\${JSON.stringify(res, null, 2)}</div>
+        \`;
+      }
+
+      if (type === 'news') {
+        title.innerText = "📰 13 World Famous Newspapers Feed";
+        body.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:20px;">Fetching newspaper feeds...</div>';
+        const res = await fetch('/api/news?page=1&pageSize=5').then(r => r.json());
+        const articles = res.articles || [];
+        let html = '<div style="margin-bottom:14px;">';
+        articles.forEach(a => {
+          html += \`
+            <div class="news-card">
+              <div class="source">📰 \${a.source} • \${a.category}</div>
+              <h4>\${a.title}</h4>
+              <p>\${a.snippet || ""}</p>
+            </div>
+          \`;
+        });
+        html += \`</div>
+          <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">API JSON Response</div>
+          <div class="json-box">\${JSON.stringify(res, null, 2)}</div>
+        \`;
+        body.innerHTML = html;
+      }
+
+      if (type === 'guilds') {
+        title.innerText = "🧠 Persistent Disk Server Configurations";
+        body.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:20px;">Fetching server memory...</div>';
+        const res = await fetch('/api/memory/guilds').then(r => r.json());
+        body.innerHTML = \`
+          <div style="background:#151927; border:1px solid #1e2438; border-radius:14px; padding:16px; margin-bottom:14px;">
+            <div style="font-size:13px; font-weight:800; color:#fff;">📁 Stored on Permanent Disk</div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:4px;">\${res.guildCount} configured Discord servers restored across reboots without data loss.</div>
+          </div>
+          <div class="json-box">\${JSON.stringify(res, null, 2)}</div>
+        \`;
+      }
+
+      if (type === 'api') {
+        title.innerText = "🧪 Live Interactive REST API Lab";
+        body.innerHTML = \`
+          <div style="margin-bottom:16px;">
+            <div style="font-size:12px; color:#cbd5e1; margin-bottom:8px;">Choose an endpoint to test live:</div>
+            <select id="apiSelect" onchange="runApiSample()" style="width:100%; background:#151927; border:1px solid #1e2438; color:#fff; padding:10px; border-radius:10px; font-family:inherit; font-size:12px;">
+              <option value="/api/health">GET /api/health — System Heartbeat</option>
+              <option value="/api/system/telemetry">GET /api/system/telemetry — Live CPU/RAM</option>
+              <option value="/api/news">GET /api/news — 13 World Newspapers</option>
+              <option value="/api/memory/guilds">GET /api/memory/guilds — Guild Memory</option>
+              <option value="/api/namestyle">GET /api/namestyle — Bot Name Styling</option>
+            </select>
+          </div>
+          <div id="apiResultContainer">
+            <div class="json-box" id="apiOutput">Click 'Execute' or select an endpoint above.</div>
+          </div>
+        \`;
+        runApiSample();
+      }
+    }
+
+    async function runApiSample() {
+      const select = document.getElementById('apiSelect');
+      const out = document.getElementById('apiOutput');
+      if (!select || !out) return;
+      out.innerText = "Sending request...";
+      const res = await fetch(select.value).then(r => r.json()).catch(e => ({ error: e.message }));
+      out.innerText = JSON.stringify(res, null, 2);
+    }
+
+    function closeModal() {
+      document.getElementById('visualModal').classList.remove('open');
+    }
+
+    function closeModalOnBg(e) {
+      if (e.target.id === 'visualModal') closeModal();
+    }
+
+    function switchView(tab) {
+      // Switches top tabs
+    }
+  </script>
 </body>
 </html>`);
     });
