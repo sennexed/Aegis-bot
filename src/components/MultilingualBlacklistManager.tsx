@@ -316,21 +316,55 @@ export const MultilingualBlacklistManager: React.FC = () => {
 
   // Language flag / tag helper
   const getLangBadge = (lang: string) => {
-    if (lang.includes("Hindi")) return { flag: "🇮🇳", label: lang, color: "bg-orange-50 text-orange-700 border-orange-200" };
-    if (lang.includes("Russian")) return { flag: "🇷🇺", label: lang, color: "bg-sky-50 text-sky-700 border-sky-200" };
-    if (lang.includes("Arabic")) return { flag: "🇸🇦", label: lang, color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-    if (lang.includes("Spanish")) return { flag: "🇪🇸", label: lang, color: "bg-amber-50 text-amber-700 border-amber-200" };
-    if (lang.includes("Portuguese")) return { flag: "🇧🇷", label: lang, color: "bg-teal-50 text-teal-700 border-teal-200" };
-    if (lang.includes("Tagalog")) return { flag: "🇵🇭", label: lang, color: "bg-indigo-50 text-indigo-700 border-indigo-200" };
-    if (lang.includes("French")) return { flag: "🇫🇷", label: lang, color: "bg-blue-50 text-blue-700 border-blue-200" };
-    if (lang.includes("German")) return { flag: "🇩🇪", label: lang, color: "bg-stone-100 text-stone-700 border-stone-300" };
+    const l = lang.toLowerCase();
+    if (l.includes("hinglish") || l === "hinglish") {
+      return { flag: "🇮🇳 🔤", label: "Hinglish (Roman)", color: "bg-orange-50 text-orange-800 border-orange-200" };
+    }
+    if (l.includes("devanagari")) {
+      return { flag: "🇮🇳 ॐ", label: "Hindi (Devanagari)", color: "bg-amber-50 text-amber-800 border-amber-200" };
+    }
+    if (l.includes("hindi")) {
+      return { flag: "🇮🇳", label: lang, color: "bg-orange-50 text-orange-700 border-orange-200" };
+    }
+    if (l.includes("russian")) {
+      return { flag: "🇷🇺", label: lang, color: "bg-sky-50 text-sky-700 border-sky-200" };
+    }
+    if (l.includes("arabic")) {
+      return { flag: "🇸🇦", label: lang, color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    }
+    if (l.includes("spanish")) {
+      return { flag: "🇪🇸", label: lang, color: "bg-yellow-50 text-yellow-800 border-yellow-200" };
+    }
+    if (l.includes("portuguese")) {
+      return { flag: "🇧🇷", label: lang, color: "bg-teal-50 text-teal-700 border-teal-200" };
+    }
+    if (l.includes("tagalog")) {
+      return { flag: "🇵🇭", label: lang, color: "bg-indigo-50 text-indigo-700 border-indigo-200" };
+    }
+    if (l.includes("french")) {
+      return { flag: "🇫🇷", label: lang, color: "bg-blue-50 text-blue-700 border-blue-200" };
+    }
+    if (l.includes("german")) {
+      return { flag: "🇩🇪", label: lang, color: "bg-stone-100 text-stone-700 border-stone-300" };
+    }
+    if (l.includes("english")) {
+      return { flag: "🇬🇧", label: lang, color: "bg-zinc-100 text-zinc-800 border-zinc-300" };
+    }
     return { flag: "🌐", label: lang, color: "bg-zinc-100 text-zinc-700 border-zinc-200" };
   };
 
-  // Filtered terms list
+  // Filtered terms list with enhanced Hinglish matching
   const filteredTerms = terms.filter((item) => {
-    if (selectedLanguage !== "ALL" && !item.language.toLowerCase().includes(selectedLanguage.toLowerCase())) {
-      return false;
+    if (selectedLanguage !== "ALL") {
+      const itemLang = item.language.toLowerCase();
+      const selLang = selectedLanguage.toLowerCase();
+      if (selLang === "hinglish") {
+        if (!itemLang.includes("hinglish")) return false;
+      } else if (selLang === "devanagari") {
+        if (!itemLang.includes("devanagari")) return false;
+      } else if (!itemLang.includes(selLang)) {
+        return false;
+      }
     }
     if (selectedSeverity !== "ALL" && item.severity !== selectedSeverity) {
       return false;
@@ -348,6 +382,14 @@ export const MultilingualBlacklistManager: React.FC = () => {
     }
     return true;
   });
+
+  // Language count shortcuts
+  const hinglishCount = terms.filter((t) => t.language.toLowerCase().includes("hinglish")).length;
+  const devanagariCount = terms.filter((t) => t.language.toLowerCase().includes("devanagari")).length;
+  const russianCount = terms.filter((t) => t.language.toLowerCase().includes("russian")).length;
+  const arabicCount = terms.filter((t) => t.language.toLowerCase().includes("arabic")).length;
+  const spanishCount = terms.filter((t) => t.language.toLowerCase().includes("spanish")).length;
+  const englishCount = terms.filter((t) => t.language.toLowerCase().includes("english")).length;
 
   return (
     <div className="space-y-6">
@@ -507,6 +549,89 @@ export const MultilingualBlacklistManager: React.FC = () => {
       {/* SUB-VIEW 1: TERMS DIRECTORY */}
       {activeSubView === "terms" && (
         <div className="space-y-4">
+          {/* Quick Language Filter Chips */}
+          <div className="flex flex-wrap items-center gap-2 bg-white p-3 border border-zinc-200 rounded-xl shadow-xs">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5 mr-1">
+              <Languages className="w-3.5 h-3.5 text-indigo-600" /> Filter:
+            </span>
+            <button
+              onClick={() => setSelectedLanguage("ALL")}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                selectedLanguage === "ALL"
+                  ? "bg-zinc-900 text-white shadow-xs"
+                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+              }`}
+            >
+              All ({terms.length})
+            </button>
+            <button
+              onClick={() => setSelectedLanguage("Hinglish")}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                selectedLanguage === "Hinglish"
+                  ? "bg-orange-600 text-white shadow-xs ring-2 ring-orange-400/40"
+                  : "bg-orange-50 text-orange-800 border border-orange-200 hover:bg-orange-100"
+              }`}
+            >
+              <span>🇮🇳 🔤 Hinglish Filter</span>
+              <span className="px-1.5 py-0.2 bg-white/40 rounded text-[10px]">{hinglishCount}</span>
+            </button>
+            <button
+              onClick={() => setSelectedLanguage("Devanagari")}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                selectedLanguage === "Devanagari"
+                  ? "bg-amber-600 text-white shadow-xs"
+                  : "bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100"
+              }`}
+            >
+              <span>🇮🇳 ॐ Hindi Devanagari</span>
+              <span className="px-1.5 py-0.2 bg-white/40 rounded text-[10px]">{devanagariCount}</span>
+            </button>
+            <button
+              onClick={() => setSelectedLanguage("Russian")}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                selectedLanguage === "Russian"
+                  ? "bg-sky-600 text-white shadow-xs"
+                  : "bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100"
+              }`}
+            >
+              <span>🇷🇺 Russian</span>
+              <span className="px-1.5 py-0.2 bg-white/40 rounded text-[10px]">{russianCount}</span>
+            </button>
+            <button
+              onClick={() => setSelectedLanguage("Arabic")}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                selectedLanguage === "Arabic"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
+              }`}
+            >
+              <span>🇸🇦 Arabic</span>
+              <span className="px-1.5 py-0.2 bg-white/40 rounded text-[10px]">{arabicCount}</span>
+            </button>
+            <button
+              onClick={() => setSelectedLanguage("Spanish")}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                selectedLanguage === "Spanish"
+                  ? "bg-yellow-600 text-white shadow-xs"
+                  : "bg-yellow-50 text-yellow-800 border border-yellow-200 hover:bg-yellow-100"
+              }`}
+            >
+              <span>🇪🇸 Spanish</span>
+              <span className="px-1.5 py-0.2 bg-white/40 rounded text-[10px]">{spanishCount}</span>
+            </button>
+            <button
+              onClick={() => setSelectedLanguage("English")}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                selectedLanguage === "English"
+                  ? "bg-zinc-800 text-white shadow-xs"
+                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+              }`}
+            >
+              <span>🇬🇧 English</span>
+              <span className="px-1.5 py-0.2 bg-white/40 rounded text-[10px]">{englishCount}</span>
+            </button>
+          </div>
+
           {/* Filter Bar */}
           <div className="bg-white border border-zinc-200 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
             <div className="relative flex-1">
@@ -524,18 +649,19 @@ export const MultilingualBlacklistManager: React.FC = () => {
               <select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="text-xs border border-zinc-200 rounded-lg px-2.5 py-2 bg-white text-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="text-xs border border-zinc-200 rounded-lg px-2.5 py-2 bg-white text-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-semibold"
               >
                 <option value="ALL">All Languages ({terms.length})</option>
-                <option value="Hindi">Hindi (Devanagari & Hinglish)</option>
-                <option value="Russian">Russian (Cyrillic & Mat)</option>
-                <option value="Arabic">Arabic (Script & Arabizi)</option>
-                <option value="Spanish">Spanish</option>
-                <option value="English">English</option>
-                <option value="Portuguese">Portuguese</option>
-                <option value="Tagalog">Tagalog</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
+                <option value="Hinglish">🇮🇳 🔤 Hinglish Filter ({hinglishCount})</option>
+                <option value="Devanagari">🇮🇳 ॐ Hindi Devanagari ({devanagariCount})</option>
+                <option value="Russian">🇷🇺 Russian (Cyrillic & Mat)</option>
+                <option value="Arabic">🇸🇦 Arabic (Script & Arabizi)</option>
+                <option value="Spanish">🇪🇸 Spanish</option>
+                <option value="English">🇬🇧 English</option>
+                <option value="Portuguese">🇧🇷 Portuguese</option>
+                <option value="Tagalog">🇵🇭 Tagalog</option>
+                <option value="French">🇫🇷 French</option>
+                <option value="German">🇩🇪 German</option>
               </select>
 
               <select
@@ -890,8 +1016,11 @@ export const MultilingualBlacklistManager: React.FC = () => {
               </span>
               <div className="flex flex-wrap gap-2 text-xs">
                 {[
-                  { label: "🇮🇳 Hindi (Devanagari)", text: "मादरचोद तुम क्या कर रहे हो" },
-                  { label: "🇮🇳 Hindi (Hinglish)", text: "bhai bhenchod stop trolling in voice chat" },
+                  { label: "🇮🇳 🔤 Hinglish: 'chup kar bsdk'", text: "abe chup kar bsdk apna kaam kar" },
+                  { label: "🇮🇳 🔤 Hinglish: 'bhenchod'", text: "bhai bhenchod stop trolling in voice chat" },
+                  { label: "🇮🇳 🔤 Hinglish: 'randi rona'", text: "ye chutiya randi rona band kar" },
+                  { label: "🇮🇳 🔤 Hinglish: 'aukat me reh'", text: "teri maa chuda aukat me reh samjha" },
+                  { label: "🇮🇳 ॐ Hindi (Devanagari)", text: "मादरचोद तुम क्या कर रहे हो" },
                   { label: "🇷🇺 Russian (Cyrillic)", text: "завали ебало иди нахуй" },
                   { label: "🇷🇺 Russian (Mat)", text: "cyka blyat idiot player" },
                   { label: "🇸🇦 Arabic (Script)", text: "يا ابن الكلب سكر تمك" },
@@ -1109,18 +1238,18 @@ export const MultilingualBlacklistManager: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, language: e.target.value })}
                     className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
                   >
-                    <option value="Hindi (Devanagari)">Hindi (Devanagari)</option>
-                    <option value="Hindi (Hinglish)">Hindi (Hinglish)</option>
-                    <option value="Russian (Cyrillic)">Russian (Cyrillic)</option>
-                    <option value="Russian (Romanized Mat)">Russian (Romanized Mat)</option>
-                    <option value="Arabic">Arabic (Script)</option>
-                    <option value="Arabic (Arabizi)">Arabic (Arabizi)</option>
-                    <option value="Spanish">Spanish</option>
-                    <option value="Portuguese">Portuguese</option>
-                    <option value="Tagalog">Tagalog</option>
-                    <option value="French">French</option>
-                    <option value="German">German</option>
-                    <option value="English">English</option>
+                    <option value="Hinglish">🇮🇳 🔤 Hinglish (Hindi in Roman script)</option>
+                    <option value="Hindi (Devanagari)">🇮🇳 ॐ Hindi (Devanagari script)</option>
+                    <option value="Russian (Cyrillic)">🇷🇺 Russian (Cyrillic script)</option>
+                    <option value="Russian (Romanized Mat)">🇷🇺 Russian (Romanized Mat)</option>
+                    <option value="Arabic">🇸🇦 Arabic (Arabic script)</option>
+                    <option value="Arabic (Arabizi)">🇸🇦 Arabic (Arabizi / Franco)</option>
+                    <option value="Spanish">🇪🇸 Spanish</option>
+                    <option value="English">🇬🇧 English</option>
+                    <option value="Portuguese">🇧🇷 Portuguese</option>
+                    <option value="Tagalog">🇵🇭 Tagalog</option>
+                    <option value="French">🇫🇷 French</option>
+                    <option value="German">🇩🇪 German</option>
                   </select>
                 </div>
 

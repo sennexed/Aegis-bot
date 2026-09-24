@@ -59,12 +59,42 @@ export class CentralBlacklistService {
         if (Array.isArray(doc.terms)) {
           this.terms.clear();
           for (const item of doc.terms) {
+            const lang = item.language === "Hindi (Hinglish)" ? "Hinglish" : item.language;
             this.terms.set(item.id, {
               ...item,
+              language: lang,
               enabled: item.enabled !== false, // default true
             });
           }
-          console.log(`[CentralBlacklist] 📚 Loaded ${this.terms.size} terms from central JSON blacklist.`);
+
+          // Sync in any newly added default lexicon terms (e.g. enriched Hinglish cuss words)
+          const existingTermsSet = new Set(Array.from(this.terms.values()).map((t) => t.term.toLowerCase()));
+          let newAdded = 0;
+          for (const entry of DEFAULT_PROFANITY_ENTRIES) {
+            if (!existingTermsSet.has(entry.term.toLowerCase())) {
+              const id = `bl-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+              this.terms.set(id, {
+                id,
+                term: entry.term,
+                language: entry.language,
+                severity: entry.severity,
+                category: entry.category,
+                isPhrase: entry.isPhrase || entry.term.includes(" "),
+                enabled: true,
+                notes: `Built-in verified ${entry.language} offensive terminology`,
+                addedBy: "System Verified Lexicon",
+                addedAt: new Date().toISOString(),
+              });
+              existingTermsSet.add(entry.term.toLowerCase());
+              newAdded++;
+            }
+          }
+
+          if (newAdded > 0) {
+            this.persistToDisk();
+          }
+
+          console.log(`[CentralBlacklist] 📚 Loaded ${this.terms.size} terms from central JSON blacklist (${newAdded} new terms synced).`);
           this.syncToFilter();
           return;
         }
