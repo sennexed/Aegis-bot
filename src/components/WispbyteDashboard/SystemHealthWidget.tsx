@@ -53,167 +53,175 @@ export const SystemHealthWidget: React.FC = () => {
     setLoading(false);
   };
 
-  // Render D3 chart
+  // Render D3 chart with zero-jank frame scheduling
   useEffect(() => {
     if (!svgRef.current || data.length < 2) return;
 
-    const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove();
+    let animId: number;
+    animId = requestAnimationFrame(() => {
+      if (!svgRef.current) return;
+      const svg = d3.select(svgRef.current);
+      svg.selectAll("*").remove();
 
-    const width = svgRef.current.clientWidth || 600;
-    const height = 180;
-    const margin = { top: 16, right: 24, bottom: 28, left: 36 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+      const width = svgRef.current.clientWidth || 600;
+      const height = 180;
+      const margin = { top: 16, right: 24, bottom: 28, left: 36 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
 
-    const g = svg
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
+      const g = svg
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // X Scale (Time index)
-    const xScale = d3
-      .scaleLinear()
-      .domain([0, data.length - 1])
-      .range([0, innerWidth]);
+      // X Scale (Time index)
+      const xScale = d3
+        .scaleLinear()
+        .domain([0, data.length - 1])
+        .range([0, innerWidth]);
 
-    // Y Scale for CPU (0% to 10% or max + padding)
-    const maxCpu = (d3.max(data, (d: TelemetryPoint) => d.cpuPercent) ?? 5) * 1.25;
-    const yCpuScale = d3.scaleLinear().domain([0, Math.max(5, maxCpu)]).range([innerHeight, 0]);
+      // Y Scale for CPU (0% to 10% or max + padding)
+      const maxCpu = (d3.max(data, (d: TelemetryPoint) => d.cpuPercent) ?? 5) * 1.25;
+      const yCpuScale = d3.scaleLinear().domain([0, Math.max(5, maxCpu)]).range([innerHeight, 0]);
 
-    // Y Scale for RAM (0 MB to 100 MB or max)
-    const maxRam = (d3.max(data, (d: TelemetryPoint) => d.memoryMb) ?? 64) * 1.2;
-    const yRamScale = d3.scaleLinear().domain([0, Math.max(64, maxRam)]).range([innerHeight, 0]);
+      // Y Scale for RAM (0 MB to 100 MB or max)
+      const maxRam = (d3.max(data, (d: TelemetryPoint) => d.memoryMb) ?? 64) * 1.2;
+      const yRamScale = d3.scaleLinear().domain([0, Math.max(64, maxRam)]).range([innerHeight, 0]);
 
-    // Add subtle gridlines
-    const yAxisTicks = [0, innerHeight / 2, innerHeight];
-    g.selectAll(".grid-line")
-      .data(yAxisTicks)
-      .enter()
-      .append("line")
-      .attr("class", "grid-line")
-      .attr("x1", 0)
-      .attr("x2", innerWidth)
-      .attr("y1", (d) => d)
-      .attr("y2", (d) => d)
-      .attr("stroke", "#334155")
-      .attr("stroke-opacity", 0.3)
-      .attr("stroke-dasharray", "3,3");
+      // Add subtle gridlines
+      const yAxisTicks = [0, innerHeight / 2, innerHeight];
+      g.selectAll(".grid-line")
+        .data(yAxisTicks)
+        .enter()
+        .append("line")
+        .attr("class", "grid-line")
+        .attr("x1", 0)
+        .attr("x2", innerWidth)
+        .attr("y1", (d) => d)
+        .attr("y2", (d) => d)
+        .attr("stroke", "#334155")
+        .attr("stroke-opacity", 0.3)
+        .attr("stroke-dasharray", "3,3");
 
-    // Gradients
-    const defs = svg.append("defs");
+      // Gradients
+      const defs = svg.append("defs");
 
-    // CPU Area Gradient
-    const cpuGrad = defs
-      .append("linearGradient")
-      .attr("id", "cpu-gradient")
-      .attr("x1", "0%")
-      .attr("y1", "0%")
-      .attr("x2", "0%")
-      .attr("y2", "100%");
-    cpuGrad.append("stop").attr("offset", "0%").attr("stop-color", "#38bdf8").attr("stop-opacity", 0.35);
-    cpuGrad.append("stop").attr("offset", "100%").attr("stop-color", "#38bdf8").attr("stop-opacity", 0.0);
+      // CPU Area Gradient
+      const cpuGrad = defs
+        .append("linearGradient")
+        .attr("id", "cpu-gradient")
+        .attr("x1", "0%")
+        .attr("y1", "0%")
+        .attr("x2", "0%")
+        .attr("y2", "100%");
+      cpuGrad.append("stop").attr("offset", "0%").attr("stop-color", "#38bdf8").attr("stop-opacity", 0.35);
+      cpuGrad.append("stop").attr("offset", "100%").attr("stop-color", "#38bdf8").attr("stop-opacity", 0.0);
 
-    // RAM Area Gradient
-    const ramGrad = defs
-      .append("linearGradient")
-      .attr("id", "ram-gradient")
-      .attr("x1", "0%")
-      .attr("y1", "0%")
-      .attr("x2", "0%")
-      .attr("y2", "100%");
-    ramGrad.append("stop").attr("offset", "0%").attr("stop-color", "#a855f7").attr("stop-opacity", 0.35);
-    ramGrad.append("stop").attr("offset", "100%").attr("stop-color", "#a855f7").attr("stop-opacity", 0.0);
+      // RAM Area Gradient
+      const ramGrad = defs
+        .append("linearGradient")
+        .attr("id", "ram-gradient")
+        .attr("x1", "0%")
+        .attr("y1", "0%")
+        .attr("x2", "0%")
+        .attr("y2", "100%");
+      ramGrad.append("stop").attr("offset", "0%").attr("stop-color", "#a855f7").attr("stop-opacity", 0.35);
+      ramGrad.append("stop").attr("offset", "100%").attr("stop-color", "#a855f7").attr("stop-opacity", 0.0);
 
-    // D3 Area & Line Generators for RAM
-    if (activeMetric === "both" || activeMetric === "ram") {
-      const ramArea = d3
-        .area<TelemetryPoint>()
-        .curve(d3.curveMonotoneX)
-        .x((_, i) => xScale(i))
-        .y0(innerHeight)
-        .y1((d) => yRamScale(d.memoryMb));
+      // D3 Area & Line Generators for RAM
+      if (activeMetric === "both" || activeMetric === "ram") {
+        const ramArea = d3
+          .area<TelemetryPoint>()
+          .curve(d3.curveMonotoneX)
+          .x((_, i) => xScale(i))
+          .y0(innerHeight)
+          .y1((d) => yRamScale(d.memoryMb));
 
-      const ramLine = d3
-        .line<TelemetryPoint>()
-        .curve(d3.curveMonotoneX)
-        .x((_, i) => xScale(i))
-        .y((d) => yRamScale(d.memoryMb));
+        const ramLine = d3
+          .line<TelemetryPoint>()
+          .curve(d3.curveMonotoneX)
+          .x((_, i) => xScale(i))
+          .y((d) => yRamScale(d.memoryMb));
 
-      g.append("path")
-        .datum(data)
-        .attr("fill", "url(#ram-gradient)")
-        .attr("d", ramArea);
+        g.append("path")
+          .datum(data)
+          .attr("fill", "url(#ram-gradient)")
+          .attr("d", ramArea);
 
-      g.append("path")
-        .datum(data)
-        .attr("fill", "none")
-        .attr("stroke", "#c084fc")
-        .attr("stroke-width", 2)
-        .attr("d", ramLine);
-    }
-
-    // D3 Area & Line Generators for CPU
-    if (activeMetric === "both" || activeMetric === "cpu") {
-      const cpuArea = d3
-        .area<TelemetryPoint>()
-        .curve(d3.curveMonotoneX)
-        .x((_, i) => xScale(i))
-        .y0(innerHeight)
-        .y1((d) => yCpuScale(d.cpuPercent));
-
-      const cpuLine = d3
-        .line<TelemetryPoint>()
-        .curve(d3.curveMonotoneX)
-        .x((_, i) => xScale(i))
-        .y((d) => yCpuScale(d.cpuPercent));
-
-      g.append("path")
-        .datum(data)
-        .attr("fill", "url(#cpu-gradient)")
-        .attr("d", cpuArea);
-
-      g.append("path")
-        .datum(data)
-        .attr("fill", "none")
-        .attr("stroke", "#38bdf8")
-        .attr("stroke-width", 2.2)
-        .attr("d", cpuLine);
-    }
-
-    // X-Axis Labels (first, middle, last)
-    const labelIndices = [0, Math.floor(data.length / 2), data.length - 1];
-    labelIndices.forEach((idx) => {
-      if (data[idx]) {
-        g.append("text")
-          .attr("x", xScale(idx))
-          .attr("y", innerHeight + 18)
-          .attr("text-anchor", idx === 0 ? "start" : idx === data.length - 1 ? "end" : "middle")
-          .attr("fill", "#64748b")
-          .attr("font-size", "10px")
-          .attr("font-family", "monospace")
-          .text(data[idx].time);
+        g.append("path")
+          .datum(data)
+          .attr("fill", "none")
+          .attr("stroke", "#c084fc")
+          .attr("stroke-width", 2)
+          .attr("d", ramLine);
       }
+
+      // D3 Area & Line Generators for CPU
+      if (activeMetric === "both" || activeMetric === "cpu") {
+        const cpuArea = d3
+          .area<TelemetryPoint>()
+          .curve(d3.curveMonotoneX)
+          .x((_, i) => xScale(i))
+          .y0(innerHeight)
+          .y1((d) => yCpuScale(d.cpuPercent));
+
+        const cpuLine = d3
+          .line<TelemetryPoint>()
+          .curve(d3.curveMonotoneX)
+          .x((_, i) => xScale(i))
+          .y((d) => yCpuScale(d.cpuPercent));
+
+        g.append("path")
+          .datum(data)
+          .attr("fill", "url(#cpu-gradient)")
+          .attr("d", cpuArea);
+
+        g.append("path")
+          .datum(data)
+          .attr("fill", "none")
+          .attr("stroke", "#38bdf8")
+          .attr("stroke-width", 2.2)
+          .attr("d", cpuLine);
+      }
+
+      // X-Axis Labels (first, middle, last)
+      const labelIndices = [0, Math.floor(data.length / 2), data.length - 1];
+      labelIndices.forEach((idx) => {
+        if (data[idx]) {
+          g.append("text")
+            .attr("x", xScale(idx))
+            .attr("y", innerHeight + 18)
+            .attr("text-anchor", idx === 0 ? "start" : idx === data.length - 1 ? "end" : "middle")
+            .attr("fill", "#64748b")
+            .attr("font-size", "10px")
+            .attr("font-family", "monospace")
+            .text(data[idx].time);
+        }
+      });
+
+      // Invisible hover overlay
+      const overlay = g
+        .append("rect")
+        .attr("width", innerWidth)
+        .attr("height", innerHeight)
+        .attr("fill", "transparent")
+        .attr("cursor", "crosshair");
+
+      overlay.on("mousemove", (event) => {
+        const [pointerX] = d3.pointer(event);
+        const clampedX = Math.max(0, Math.min(innerWidth, pointerX));
+        const rawIndex = Math.round(xScale.invert(clampedX));
+        const targetIndex = Math.max(0, Math.min(data.length - 1, rawIndex));
+        setHoveredPoint(data[targetIndex] || null);
+      });
+
+      overlay.on("mouseleave", () => {
+        setHoveredPoint(null);
+      });
     });
 
-    // Invisible hover overlay
-    const overlay = g
-      .append("rect")
-      .attr("width", innerWidth)
-      .attr("height", innerHeight)
-      .attr("fill", "transparent")
-      .attr("cursor", "crosshair");
-
-    overlay.on("mousemove", (event) => {
-      const [pointerX] = d3.pointer(event);
-      const clampedX = Math.max(0, Math.min(innerWidth, pointerX));
-      const rawIndex = Math.round(xScale.invert(clampedX));
-      const targetIndex = Math.max(0, Math.min(data.length - 1, rawIndex));
-      setHoveredPoint(data[targetIndex] || null);
-    });
-
-    overlay.on("mouseleave", () => {
-      setHoveredPoint(null);
-    });
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
   }, [data, activeMetric]);
 
   const activePoint = hoveredPoint || current || data[data.length - 1];
