@@ -79,7 +79,7 @@ export const MultilingualBlacklistManager: React.FC = () => {
   const [editingTermId, setEditingTermId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     term: "",
-    language: "Hindi (Hinglish)",
+    language: "Hinglish",
     severity: "HIGH" as "HIGH" | "MEDIUM" | "LOW",
     category: "SEVERE_PROFANITY_OR_ABUSE" as BlacklistTerm["category"],
     isPhrase: false,
@@ -173,7 +173,7 @@ export const MultilingualBlacklistManager: React.FC = () => {
     setEditingTermId(null);
     setFormData({
       term: "",
-      language: "Hindi (Hinglish)",
+      language: "Hinglish",
       severity: "HIGH",
       category: "SEVERE_PROFANITY_OR_ABUSE",
       isPhrase: false,
@@ -362,6 +362,8 @@ export const MultilingualBlacklistManager: React.FC = () => {
         if (!itemLang.includes("hinglish")) return false;
       } else if (selLang === "devanagari") {
         if (!itemLang.includes("devanagari")) return false;
+      } else if (selLang === "hindi") {
+        if (!itemLang.includes("hindi") && !itemLang.includes("hinglish") && !itemLang.includes("devanagari")) return false;
       } else if (!itemLang.includes(selLang)) {
         return false;
       }

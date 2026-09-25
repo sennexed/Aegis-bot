@@ -32,7 +32,7 @@ import { POLICY_DEFINITIONS, ChannelPolicyProfile } from "../bot-code/src/servic
 import { MultilingualBlacklistManager } from "./MultilingualBlacklistManager";
 
 export const SafetyFeaturesSuite: React.FC = () => {
-  const [selectedSubTab, setSelectedSubTab] = useState<string>("duty");
+  const [selectedSubTab, setSelectedSubTab] = useState<string>("blacklist");
 
   // 1. Passport state
   const [targetUser, setTargetUser] = useState({

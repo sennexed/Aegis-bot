@@ -13,8 +13,7 @@ import { PolicyEngine, ModerationClassification } from "../src/services/policyEn
 import { AutoModService } from "../src/services/autoModService.js";
 import { GeminiModerationService } from "../src/services/geminiModerationService.js";
 import { PHISHING_FILTER } from "../src/config/phishingFilter.js";
-import { newsService } from "../src/services/newsService.js";
-import { FAMOUS_NEWS_SOURCES } from "../src/data/newsSources.js";
+import { newsService, FAMOUS_NEWS_SOURCES } from "../src/services/newsService.js";
 import { autoNewsBotService } from "../src/services/autoNewsBotService.js";
 import { botNameStylesService } from "../src/services/botNameStylesService.js";
 import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, BOT_COLOR_PRESETS, hexToDiscordDecimal } from "../src/types/nameStyles.js";
@@ -239,19 +238,19 @@ async function runTests() {
 
   // 22. AutoNews: Verified Exactly 13 Famous Newspaper Sources
   const expectedSources = [
-    "BBC",
+    "BBC News",
     "The New York Times",
     "The Wall Street Journal",
     "The Guardian",
     "The Washington Post",
-    "The Times of India",
-    "The Yomiuri Shimbun",
-    "Le Monde",
+    "Reuters",
+    "CNN",
+    "The Economist",
     "Financial Times",
-    "The Asahi Shimbun",
-    "El País",
-    "Daily Mail",
-    "The Daily Telegraph",
+    "Bloomberg",
+    "Associated Press",
+    "NPR",
+    "TIME Magazine",
   ];
   assert(
     FAMOUS_NEWS_SOURCES.length === 13,

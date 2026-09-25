@@ -88,6 +88,7 @@ export const setupCommand = {
     let ownerRole: string | null = null;
     let adminRoles: string[] = [];
     let modRoles: string[] = [];
+    let hasSyncedThisSession = Boolean(isAlreadyConfigured);
 
     const collector = message.createMessageComponentCollector({
       componentType: ComponentType.RoleSelect,
@@ -95,89 +96,111 @@ export const setupCommand = {
     });
 
     collector.on("collect", async (menuInteraction) => {
+      // 1. Immediately acknowledge the interaction to prevent Discord 3000ms timeout (DiscordAPIError 10062)
+      try {
+        if (!menuInteraction.deferred && !menuInteraction.replied) {
+          await menuInteraction.deferUpdate();
+        }
+      } catch (deferErr: any) {
+        // Safe catch if already acknowledged
+      }
+
       if (menuInteraction.user.id !== interaction.user.id) {
-        return menuInteraction.reply({
-          content: "Only the administrator who invoked /setup can configure roles.",
-          flags: MessageFlags.Ephemeral,
+        try {
+          await menuInteraction.followUp({
+            content: "Only the administrator who invoked /setup can configure roles.",
+            flags: MessageFlags.Ephemeral,
+          });
+        } catch {
+          // Ignore
+        }
+        return;
+      }
+
+      try {
+        const customId = menuInteraction.customId;
+        const selected = menuInteraction.values;
+
+        if (customId.includes(":owner:")) {
+          ownerRole = selected[0] || null;
+        } else if (customId.includes(":admin:")) {
+          adminRoles = selected;
+        } else if (customId.includes(":mod:")) {
+          modRoles = selected;
+        }
+
+        // Save role mapping
+        roleService.saveGuildRoles(interaction.guildId!, ownerRole, adminRoles, modRoles);
+
+        // Dynamically unlock and register moderation commands in this server (only once per session)
+        if (syncCommands && !hasSyncedThisSession) {
+          hasSyncedThisSession = true;
+          syncCommands(interaction.guildId!, true).catch((e) => {
+            console.warn("[Setup Command] Command sync error:", e?.message || e);
+          });
+        }
+
+        // Auto-create or ensure dedicated #mod-logs channel
+        const staffRoles = [...adminRoles, ...modRoles];
+        if (ownerRole) staffRoles.push(ownerRole);
+
+        const logChannel = await loggingService.ensureLogChannel(
+          interaction.guild!,
+          staffRoles
+        );
+
+        // Commit to permanent disk memory so reboots never prompt /setup again
+        await guildMemoryService.saveServerSetup(
+          interaction.guildId!,
+          interaction.guild!.name,
+          ownerRole,
+          adminRoles,
+          modRoles,
+          logChannel.id,
+          logChannel.name
+        );
+
+        const updatedEmbed = new EmbedBuilder()
+          .setTitle("✅ AegisMod Configuration Committed to Permanent Memory")
+          .setColor(0x57f287)
+          .setDescription("Your server role hierarchy and audit log channels are now permanently saved to disk (`guild_memory.json`).")
+          .addFields(
+            {
+              name: "👑 Owner Role",
+              value: ownerRole ? `<@&${ownerRole}>` : "*None selected*",
+              inline: true,
+            },
+            {
+              name: "⚙️ Admin Roles",
+              value: adminRoles.length ? adminRoles.map((r) => `<@&${r}>`).join(", ") : "*None selected*",
+              inline: true,
+            },
+            {
+              name: "🛡️ Moderator Roles",
+              value: modRoles.length ? modRoles.map((r) => `<@&${r}>`).join(", ") : "*None selected*",
+              inline: true,
+            },
+            {
+              name: "📋 Dedicated Log Channel",
+              value: `<#${logChannel.id}> (Bound & Restricted)`,
+              inline: true,
+            },
+            {
+              name: "💾 Persistence Status",
+              value: "🟢 **Locked in Permanent Memory** — Restart immune. Will never demand setup again.",
+              inline: true,
+            }
+          )
+          .setFooter({ text: "AegisMod is active with all 17 commands registered." });
+
+        // Update the setup message via the parent interaction editReply
+        await interaction.editReply({
+          embeds: [updatedEmbed],
+          components: selectRows,
         });
+      } catch (updateErr: any) {
+        console.warn("[Setup Command] Error applying role updates:", updateErr?.message || updateErr);
       }
-
-      const customId = menuInteraction.customId;
-      const selected = menuInteraction.values;
-
-      if (customId.includes(":owner:")) {
-        ownerRole = selected[0] || null;
-      } else if (customId.includes(":admin:")) {
-        adminRoles = selected;
-      } else if (customId.includes(":mod:")) {
-        modRoles = selected;
-      }
-
-      // Save role mapping
-      roleService.saveGuildRoles(interaction.guildId!, ownerRole, adminRoles, modRoles);
-
-      // Dynamically unlock and register moderation commands in this server
-      if (syncCommands) {
-        await syncCommands(interaction.guildId!, true);
-      }
-
-      // Auto-create or ensure dedicated #mod-logs channel
-      const staffRoles = [...adminRoles, ...modRoles];
-      if (ownerRole) staffRoles.push(ownerRole);
-
-      const logChannel = await loggingService.ensureLogChannel(
-        interaction.guild!,
-        staffRoles
-      );
-
-      // Commit to permanent disk memory so reboots never prompt /setup again
-      await guildMemoryService.saveServerSetup(
-        interaction.guildId!,
-        interaction.guild!.name,
-        ownerRole,
-        adminRoles,
-        modRoles,
-        logChannel.id,
-        logChannel.name
-      );
-
-      const updatedEmbed = new EmbedBuilder()
-        .setTitle("✅ AegisMod Configuration Committed to Permanent Memory")
-        .setColor(0x57f287)
-        .setDescription("Your server role hierarchy and audit log channels are now permanently saved to disk (`guild_memory.json`).")
-        .addFields(
-          {
-            name: "👑 Owner Role",
-            value: ownerRole ? `<@&${ownerRole}>` : "*None selected*",
-            inline: true,
-          },
-          {
-            name: "⚙️ Admin Roles",
-            value: adminRoles.length ? adminRoles.map((r) => `<@&${r}>`).join(", ") : "*None selected*",
-            inline: true,
-          },
-          {
-            name: "🛡️ Moderator Roles",
-            value: modRoles.length ? modRoles.map((r) => `<@&${r}>`).join(", ") : "*None selected*",
-            inline: true,
-          },
-          {
-            name: "📋 Dedicated Log Channel",
-            value: `<#${logChannel.id}> (Bound & Restricted)`,
-            inline: true,
-          },
-          {
-            name: "💾 Persistence Status",
-            value: "🟢 **Locked in Permanent Memory** — Restart immune. Will never demand setup again.",
-            inline: true,
-          }
-        )
-        .setFooter({ text: "AegisMod is active with all 17 commands registered." });
-
-      await menuInteraction.update({
-        embeds: [updatedEmbed],
-        components: selectRows,
-      });
     });
 
     collector.on("end", async () => {

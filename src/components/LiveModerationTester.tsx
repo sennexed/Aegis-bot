@@ -306,7 +306,10 @@ export const LiveModerationTester: React.FC = () => {
               className={`p-3 rounded-xl border transition-all ${
                 loading
                   ? "bg-indigo-50/50 border-indigo-300 animate-pulse"
-                  : result?.source === "TIER_1_LOCAL_TRIAGE"
+                  : result?.source === "TIER_1_LOCAL_TRIAGE" ||
+                    (result?.source?.includes("STANDARD_AUTOMOD") &&
+                      result?.category !== "PHISHING_OR_SCAM" &&
+                      result?.category !== "INVITE_LINK_SPAM")
                   ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200"
                   : "bg-white border-zinc-200"
               }`}
