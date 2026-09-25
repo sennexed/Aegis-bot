@@ -301,21 +301,21 @@ export class AutoModService {
           const action = isPredatory ? "TIMEOUT_1H" : "DELETE";
           return {
             triggered: true,
-            ruleName: `Multilingual Safety & Slur Filter (${langLabel})`,
+            ruleName: `Script AutoMod: Multilingual Safety Filter (${langLabel})`,
             category,
             severity: "CRITICAL",
             recommendedAction: action,
-            reason: `Zero-tolerance abusive local speech intercepted (${langLabel}): "${profanity.word}"`,
+            reason: `Script AutoMod (Deterministic Lexicon Engine): Local cuss word intercepted (${langLabel}): "${profanity.word}" [0 tokens]`,
             matchedContent: profanity.word,
           };
         } else if (profanity.severity === "MEDIUM") {
           return {
             triggered: true,
-            ruleName: `Multilingual Profanity Filter (${langLabel})`,
+            ruleName: `Script AutoMod: Multilingual Profanity Filter (${langLabel})`,
             category: profanity.category || "SEVERE_PROFANITY_OR_ABUSE",
             severity: "HIGH",
             recommendedAction: "DELETE",
-            reason: `Heavy profanity or abusive language detected (${langLabel}): "${profanity.word}"`,
+            reason: `Script AutoMod (Deterministic Lexicon Engine): Local profanity detected (${langLabel}): "${profanity.word}" [0 tokens]`,
             matchedContent: profanity.word,
           };
         }

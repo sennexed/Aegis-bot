@@ -414,11 +414,11 @@ function runLocalTriage(text: string): {
     const lang = profanityMatch.language || "Local Speech";
     return {
       status: "LOCAL_FLAG",
-      ruleName: `Multilingual Cuss Filter (${lang})`,
+      ruleName: `Script AutoMod (${lang} Lexicon)`,
       category: profanityMatch.category || "SEVERE_PROFANITY_OR_ABUSE",
       severity: isCritical ? "HIGH" : "MEDIUM",
       recommendedAction: "DELETE",
-      reason: `Prohibited abusive local speech detected (${lang}): "${profanityMatch.word}"`,
+      reason: `Script AutoMod (Deterministic Lexicon Engine): Intercepted prohibited ${lang} cuss word "${profanityMatch.word}" locally (0 tokens consumed, no AI call required).`,
       highlightedPhrases: [profanityMatch.word],
     };
   }

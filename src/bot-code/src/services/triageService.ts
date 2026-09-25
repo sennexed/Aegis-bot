@@ -135,14 +135,14 @@ export class TriageService {
         category: profanityMatch.category || "SEVERE_PROFANITY_OR_ABUSE",
         severity: isCritical ? ("HIGH" as const) : ("MEDIUM" as const),
         recommendedAction: "DELETE" as const,
-        reason: `Tier-1 Multilingual AutoMod intercepted abusive speech (${lang}): "${profanityMatch.word}"`
+        reason: `Script AutoMod (Deterministic Lexicon Engine): Intercepted ${lang} cuss word "${profanityMatch.word}" (0 tokens consumed).`
       };
 
       this.cacheVerdict(normalized, verdict);
       return {
         shouldCallGemini: false,
         localVerdict: verdict,
-        reason: `Fast filter: Prohibited ${lang} profanity intercepted without consuming API tokens.`
+        reason: `Script AutoMod Fast Filter: Prohibited ${lang} profanity intercepted locally without calling Gemini AI.`
       };
     }
 
