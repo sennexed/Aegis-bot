@@ -51,16 +51,53 @@ export class PhishingFilter {
   }
 
   /**
+   * Helper to check if a domain is a legitimate official Discord domain
+   */
+  public isLegitimateDiscordDomain(domainOrUrl: string): boolean {
+    const lower = domainOrUrl.toLowerCase().trim();
+    return (
+      lower === "discord.com" ||
+      lower === "discordapp.com" ||
+      lower === "discordapp.net" ||
+      lower === "discord.gg" ||
+      lower === "discord.media" ||
+      lower === "discordstatus.com" ||
+      lower.endsWith(".discord.com") ||
+      lower.endsWith(".discordapp.com") ||
+      lower.endsWith(".discordapp.net")
+    );
+  }
+
+  /**
    * Scans a string for malicious links or unauthorized server invites
    */
   public checkContent(content: string, currentGuildId?: string): PhishingCheckResult {
-    const lower = content.toLowerCase();
-
-    // 0. Whitelist recognized safe GIF platforms (Tenor, Giphy, Discord media/cdn)
-    const isPureSafeGif = /^(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com)\/[^\s]+$/i.test(content.trim());
-    if (isPureSafeGif) {
+    const trimmed = (content || "").trim();
+    if (!trimmed) {
       return { isMalicious: false, type: "NONE" };
     }
+
+    // Strip code blocks (```...```), inline backticks (`...`), quotes (> ...), and outer brackets [ ... ]
+    let cleanContent = trimmed
+      .replace(/^```[a-z]*\n?/i, "")
+      .replace(/```$/, "")
+      .replace(/^`|`$/g, "")
+      .replace(/^>\s*/gm, "")
+      .replace(/^[\[\(<]+|[\]\)>]+$/g, "")
+      .trim();
+
+    // 0. Whitelist recognized safe GIF platforms and official Discord CDN / media URLs
+    const safeMediaRegex = /(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com|imgur\.com)\/[^\s]+|(?:https?:\/\/)?(?:cdn\.discordapp\.com|media\.discordapp\.net|([a-z0-9-]+\.)?discordapp\.com|([a-z0-9-]+\.)?discord\.com)\/(?:attachments|emojis|avatars|icons|app-assets|stickers|banners|discovery-splashes)\/[^\s]+|(?:https?:\/\/)[^\s]+\.(?:gif|mp4|webm|mov|png|jpe?g|webp)(?=[?#\s]|$)/gi;
+
+    // If message is purely a safe media link, attachment, or GIF
+    const textWithoutMedia = cleanContent.replace(safeMediaRegex, "").replace(/[\[\]`]/g, "").trim();
+    if (!textWithoutMedia || /^[\s\p{Emoji}\[\]`]+$/u.test(textWithoutMedia)) {
+      return { isMalicious: false, type: "NONE" };
+    }
+
+    // Work on text with safe Discord CDN media links removed to prevent false positives from attachment paths
+    const textToScan = textWithoutMedia;
+    const lower = textToScan.toLowerCase();
 
     // 1. Check token grabbers & IP loggers
     for (const domain of this.tokenGrabberDomains) {
@@ -76,8 +113,14 @@ export class PhishingFilter {
 
     // 2. Check phishing regex patterns
     for (const pattern of this.suspiciousDomainPatterns) {
-      const match = content.match(pattern);
+      const match = textToScan.match(pattern);
       if (match) {
+        const matchedStr = match[0].toLowerCase();
+        // Explicitly safeguard legitimate Discord domains (discord.com, discordapp.com, etc.)
+        if (this.isLegitimateDiscordDomain(matchedStr)) {
+          continue;
+        }
+
         return {
           isMalicious: true,
           type: "PHISHING_NITRO",
@@ -88,7 +131,7 @@ export class PhishingFilter {
     }
 
     // 3. Check unauthorized Discord invite links
-    const inviteMatch = content.match(/(?:https?:\/\/)?(?:www\.)?(?:discord\.(?:gg|io|me|li)|discord(?:app)?\.com\/invite)\/([a-zA-Z0-9_-]+)/i);
+    const inviteMatch = textToScan.match(/(?:https?:\/\/)?(?:www\.)?(?:discord\.(?:gg|io|me|li)|discord(?:app)?\.com\/invite)\/([a-zA-Z0-9_-]+)/i);
     if (inviteMatch) {
       const code = inviteMatch[1];
       if (currentGuildId && this.isInviteAllowed(currentGuildId, code)) {

@@ -52,13 +52,22 @@ export class TriageService {
       };
     }
 
-    // 0. Check for recognized safe GIF URLs (Tenor, Giphy, Discord media/CDN, etc.)
-    const isPureSafeGif =
-      /^(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com)\/[^\s]+$/i.test(trimmed) ||
-      /^(?:https?:\/\/)?(?:cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\/[^\s]+\.gif(?=[?#\s]|$)/i.test(trimmed) ||
-      /^(?:https?:\/\/)[^\s]+\.gif(?=[?#\s]|$)/i.test(trimmed);
+    // Clean code blocks (```...```), inline backticks (`...`), quotes (> ...), and outer brackets [ ... ]
+    const cleanContent = trimmed
+      .replace(/^```[a-z]*\n?/i, "")
+      .replace(/```$/, "")
+      .replace(/^`|`$/g, "")
+      .replace(/^>\s*/gm, "")
+      .replace(/^[\[\(<]+|[\]\)>]+$/g, "")
+      .trim();
 
-    if (isPureSafeGif) {
+    // 0. Check for recognized safe GIF URLs (Tenor, Giphy, Discord media/CDN, etc.)
+    const isSafeMediaUrl = (str: string) =>
+      /^(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com|imgur\.com)\/[^\s]+$/i.test(str) ||
+      /^(?:https?:\/\/)?(?:cdn\.discordapp\.com|media\.discordapp\.net|([a-z0-9-]+\.)?discordapp\.com|([a-z0-9-]+\.)?discord\.com)\/(?:attachments|emojis|avatars|icons|app-assets|stickers|banners|discovery-splashes)\/[^\s]+$/i.test(str) ||
+      /^(?:https?:\/\/)[^\s]+\.(?:gif|mp4|webm|mov|png|jpe?g|webp)(?=[?#\s]|$)/i.test(str);
+
+    if (isSafeMediaUrl(trimmed) || isSafeMediaUrl(cleanContent)) {
       return {
         shouldCallGemini: false,
         localVerdict: {
@@ -66,9 +75,9 @@ export class TriageService {
           category: "NONE",
           severity: "NONE",
           recommendedAction: "ALLOW",
-          reason: "Triage Tier-1: Verified safe animated GIF (Tenor/Giphy). Clean pass (0 tokens)."
+          reason: "Triage Tier-1: Verified safe media / GIF link. Clean pass (0 tokens)."
         },
-        reason: "Fast filter: Safe GIF media allowed (0 tokens consumed)"
+        reason: "Fast filter: Safe media link allowed (0 tokens consumed)"
       };
     }
 

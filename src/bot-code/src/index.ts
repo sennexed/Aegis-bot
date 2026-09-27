@@ -64,7 +64,7 @@ import { handleGuildMemberAdd } from "./events/guildMemberAdd.js";
 
 
 // 1. Initialize Discord Client with Required Gateway Intents & Low-Memory Sweepers
-export const client = new Client({
+export const client: Client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,

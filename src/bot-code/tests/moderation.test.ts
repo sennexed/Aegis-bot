@@ -236,6 +236,52 @@ async function runTests() {
     "Phishing filter must whitelist Tenor media domains"
   );
 
+  const discordCdnPhishingCheck = PHISHING_FILTER.checkContent(
+    "https://cdn.discordapp.com/attachments/1463236749491835054/1552695514590486528/caption.gif",
+    "guild1"
+  );
+  assert(
+    discordCdnPhishingCheck.isMalicious === false,
+    "Phishing filter must allow Discord CDN attachments and GIFs without false phishing flags"
+  );
+
+  const quoteItBotCheck = PHISHING_FILTER.checkContent(
+    "[ ```https://cdn.discordapp.com/attachments/1463236749491835054/1552695514590486528/caption.gif``` ]",
+    "guild1"
+  );
+  assert(
+    quoteItBotCheck.isMalicious === false,
+    "Phishing filter must allow Quote-It Bot formatted code block quotes"
+  );
+
+  const autoModDiscordCdnCheck = autoMod.checkContent(
+    "https://cdn.discordapp.com/attachments/1463236749491835054/1552695514590486528/caption.gif",
+    "user_cdn",
+    "guild1"
+  );
+  assert(
+    autoModDiscordCdnCheck.triggered === false,
+    "AutoMod must allow Discord CDN GIF URLs without blocking"
+  );
+
+  const autoModQuoteItCheck = autoMod.checkContent(
+    "[ ```https://cdn.discordapp.com/attachments/1463236749491835054/1552695514590486528/caption.gif``` ]",
+    "user_quote",
+    "guild1"
+  );
+  assert(
+    autoModQuoteItCheck.triggered === false,
+    "AutoMod must allow Quote-It Bot quotes without blocking"
+  );
+
+  const triageDiscordCdnCheck = triage.evaluate(
+    "https://cdn.discordapp.com/attachments/1463236749491835054/1552695514590486528/caption.gif"
+  );
+  assert(
+    triageDiscordCdnCheck.shouldCallGemini === false && triageDiscordCdnCheck.localVerdict?.flagged === false,
+    "Triage must cleanly pass Discord CDN GIF attachments (0 tokens)"
+  );
+
   // 22. AutoNews: Verified Exactly 13 Famous Newspaper Sources
   const expectedSources = [
     "BBC News",
