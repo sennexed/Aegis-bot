@@ -221,21 +221,29 @@ export class AutoModService {
     mentionCount: number = 0
   ): AutoModCheckResult {
     const config = this.getConfig(guildId);
-    let trimmed = content.trim();
+    let trimmed = (content || "").trim();
 
-    // Support safe GIF culture: Tenor, Giphy, Discord GIF embeds
-    const gifUrlRegex = /(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com)\/[^\s]+|(?:https?:\/\/)?(?:cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\/[^\s]+\.gif(?=[?#\s]|$)|(?:https?:\/\/)[^\s]+\.gif(?=[?#\s]|$)/gi;
-    const containsGif = gifUrlRegex.test(trimmed);
+    // Strip code block wrappers (```...``` or `...`), markdown quotes (> ...), and brackets around URLs (e.g. [ ```url``` ])
+    let cleanContent = trimmed
+      .replace(/^```[a-z]*\n?/i, "")
+      .replace(/```$/, "")
+      .replace(/^`|`$/g, "")
+      .replace(/^>\s*/gm, "")
+      .trim();
 
-    if (config.allowGifs && containsGif) {
-      const textWithoutGifs = trimmed.replace(gifUrlRegex, "").trim();
-      // If the message only consists of verified GIF links (with optional spaces/emojis)
-      if (!textWithoutGifs || /^[\s\p{Emoji}]+$/u.test(textWithoutGifs)) {
+    // Support safe GIF & Media culture: Tenor, Giphy, Discord CDN attachments, video links, quote-it bot quotes
+    const mediaUrlRegex = /(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com|youtube\.com|youtu\.be)\/[^\s]+|(?:https?:\/\/)?(?:cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\/[^\s]+|(?:https?:\/\/)[^\s]+\.(?:gif|mp4|webm|mov)(?=[?#\s]|$)/gi;
+    
+    // Test both trimmed and cleanContent for media / cdn links / GIFs
+    const containsMedia = mediaUrlRegex.test(trimmed) || mediaUrlRegex.test(cleanContent);
+
+    if (config.allowGifs && containsMedia) {
+      const textWithoutMedia = cleanContent.replace(mediaUrlRegex, "").replace(/[\[\]`]/g, "").trim();
+      // If the message only consists of verified media/GIF/CDN links (with optional spaces/emojis/brackets/backticks)
+      if (!textWithoutMedia || /^[\s\p{Emoji}\[\]`]+$/u.test(textWithoutMedia)) {
         return { triggered: false };
       }
-      // If user typed actual text alongside the GIF, check only their typed text,
-      // NOT the automated slug/filename in the GIF URL (which might have words like "clown", "dumb", etc.)
-      trimmed = textWithoutGifs;
+      trimmed = textWithoutMedia;
     }
 
     const normalized = this.normalizeEvasion(trimmed);

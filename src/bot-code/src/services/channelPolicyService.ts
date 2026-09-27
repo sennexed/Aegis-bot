@@ -4,7 +4,7 @@
  * (e.g. Strict in #general, relaxed in #gaming-chat, compassionate in #support).
  */
 
-export type ChannelPolicyProfile = "STRICT_TEEN" | "GAMING_BANTER" | "CRISIS_SUPPORT" | "MEDIA_ONLY";
+export type ChannelPolicyProfile = "STRICT_TEEN" | "GAMING_BANTER" | "CRISIS_SUPPORT" | "MEDIA_ONLY" | "PARLIAMENT_ANNOUNCEMENTS";
 
 export interface ChannelPolicyConfig {
   profile: ChannelPolicyProfile;
@@ -12,6 +12,7 @@ export interface ChannelPolicyConfig {
   blockAllProfanity: boolean;
   priorityHelplineResponse: boolean;
   requireImageScreening: boolean;
+  announcementWhitelist?: boolean;
 }
 
 export const POLICY_DEFINITIONS: Record<ChannelPolicyProfile, ChannelPolicyConfig> = {
@@ -42,6 +43,14 @@ export const POLICY_DEFINITIONS: Record<ChannelPolicyProfile, ChannelPolicyConfi
     blockAllProfanity: true,
     priorityHelplineResponse: false,
     requireImageScreening: true,
+  },
+  PARLIAMENT_ANNOUNCEMENTS: {
+    profile: "PARLIAMENT_ANNOUNCEMENTS",
+    allowMildBanter: true,
+    blockAllProfanity: false,
+    priorityHelplineResponse: false,
+    requireImageScreening: false,
+    announcementWhitelist: true,
   },
 };
 

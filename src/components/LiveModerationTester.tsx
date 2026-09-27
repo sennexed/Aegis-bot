@@ -34,6 +34,18 @@ const PRESET_MESSAGES = [
     expected: "Fast Triage Pass (0 Tokens)",
   },
   {
+    label: "Quote-It Bot: Discord CDN GIF Quote",
+    author: "QuoteItBot",
+    content: "[ ```https://cdn.discordapp.com/attachments/1463236749491835054/1552695514590486528/caption.gif``` ]",
+    expected: "Fast Pass: Safe Media & Bot Quote (ALLOW)",
+  },
+  {
+    label: "Parliament Announcement (@everyone)",
+    author: "SpeakerOfParliament",
+    content: "@everyone Official parliamentary announcement: the new community voting bill is now in session.",
+    expected: "Fast Pass: Parliament Whitelist (@everyone)",
+  },
+  {
     label: "AutoMod: Invite Link Spam",
     author: "RaidBot",
     content: "Join our active trading server discord.gg/free-nitro-deals right now!!",

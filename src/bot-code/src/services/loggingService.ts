@@ -34,6 +34,20 @@ export class LoggingService {
     const mediaList: string[] = [];
     let imageAttachmentName: string | undefined = undefined;
 
+    // Scan message.content for GIF and Video links (tenor, giphy, cdn.discordapp, .gif, .mp4, .webm, .mov)
+    const mediaUrlRegex = /(?:https?:\/\/)?(?:[a-zA-Z0-9.-]+\.)?(?:tenor\.com|giphy\.com|youtube\.com|youtu\.be)\/[^\s]+|(?:https?:\/\/)?(?:cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\/[^\s]+|(?:https?:\/\/)[^\s]+\.(?:gif|mp4|webm|mov)(?=[?#\s]|$)/gi;
+    const matches = message.content?.match(mediaUrlRegex);
+    if (matches) {
+      for (const url of matches) {
+        const cleanUrl = url.startsWith("http") ? url : `https://${url}`;
+        const isGif = /\.gif$|tenor\.com|giphy\.com/i.test(cleanUrl);
+        const isVideo = /\.mp4$|\.webm$|\.mov$/i.test(cleanUrl);
+        const emoji = isGif ? "🎞️" : isVideo ? "🎥" : "📎";
+        const label = isGif ? "GIF Link" : isVideo ? "Video Link" : "Media Link";
+        mediaList.push(`${emoji} **[${label}](${cleanUrl})**`);
+      }
+    }
+
     if (!message.attachments || message.attachments.size === 0) {
       return { files, mediaList };
     }
@@ -43,8 +57,14 @@ export class LoggingService {
       const isImg =
         attachment.contentType?.startsWith("image/") ||
         /\.(png|jpe?g|webp|gif)$/i.test(attachment.name || "");
-      const safeName = attachment.name || `attachment_${imgIndex}.${isImg ? "png" : "dat"}`;
+      const isVid =
+        attachment.contentType?.startsWith("video/") ||
+        /\.(mp4|webm|mov)$/i.test(attachment.name || "");
+      
+      const safeName = attachment.name || `attachment_${imgIndex}.${isImg ? "png" : isVid ? "mp4" : "dat"}`;
       imgIndex++;
+
+      const emoji = isImg ? "📷" : isVid ? "🎥" : "📎";
 
       try {
         const controller = new AbortController();
@@ -59,17 +79,17 @@ export class LoggingService {
           if (isImg && !imageAttachmentName) {
             imageAttachmentName = safeName;
           }
-          mediaList.push(`📷 **${safeName}** (${(attachment.size / 1024).toFixed(1)} KB)`);
+          mediaList.push(`${emoji} **${safeName}** (${(attachment.size / 1024).toFixed(1)} KB) - [Direct Link](${attachment.url})`);
         } else {
           files.push(new AttachmentBuilder(attachment.url, { name: safeName }));
-          mediaList.push(`📎 **[${safeName}](${attachment.url})** (${(attachment.size / 1024).toFixed(1)} KB)`);
+          mediaList.push(`${emoji} **[${safeName}](${attachment.url})** (${(attachment.size / 1024).toFixed(1)} KB)`);
           if (isImg && !imageAttachmentName) {
             imageAttachmentName = safeName;
           }
         }
       } catch {
         files.push(new AttachmentBuilder(attachment.url, { name: safeName }));
-        mediaList.push(`📎 **[${safeName}](${attachment.url})**`);
+        mediaList.push(`${emoji} **[${safeName}](${attachment.url})**`);
         if (isImg && !imageAttachmentName) {
           imageAttachmentName = safeName;
         }

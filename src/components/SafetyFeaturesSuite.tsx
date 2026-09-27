@@ -710,8 +710,8 @@ export const SafetyFeaturesSuite: React.FC = () => {
             Different channels have different social norms. AegisMod lets admins assign specific safety profiles using `/channelpolicy set channel:#gaming profile:GAMING_BANTER`.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
-            {(["STRICT_TEEN", "GAMING_BANTER", "CRISIS_SUPPORT", "MEDIA_ONLY"] as ChannelPolicyProfile[]).map((prof) => {
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-2">
+            {(["STRICT_TEEN", "GAMING_BANTER", "CRISIS_SUPPORT", "MEDIA_ONLY", "PARLIAMENT_ANNOUNCEMENTS"] as ChannelPolicyProfile[]).map((prof) => {
               const conf = POLICY_DEFINITIONS[prof];
               const isSel = activeChannelProfile === prof;
               return (
@@ -730,6 +730,7 @@ export const SafetyFeaturesSuite: React.FC = () => {
                     {prof === "GAMING_BANTER" && "Permits casual gaming trash talk while strictly blocking hate speech."}
                     {prof === "CRISIS_SUPPORT" && "Directs distress to certified teen crisis helplines."}
                     {prof === "MEDIA_ONLY" && "Requires multimodal vision scanning on all files."}
+                    {prof === "PARLIAMENT_ANNOUNCEMENTS" && "Whitelists official announcements & links requiring @everyone or common role."}
                   </div>
                 </button>
               );
@@ -738,7 +739,7 @@ export const SafetyFeaturesSuite: React.FC = () => {
 
           <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 text-xs space-y-2">
             <div className="font-bold text-zinc-800">Active Profile Details: `{activeChannelProfile}`</div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
               <div className="bg-white p-2.5 rounded border border-zinc-200">
                 <span className="text-zinc-500 block">Casual Banter Allowed:</span>
                 <span className="font-bold text-zinc-900">{POLICY_DEFINITIONS[activeChannelProfile].allowMildBanter ? "Yes" : "No"}</span>
@@ -754,6 +755,10 @@ export const SafetyFeaturesSuite: React.FC = () => {
               <div className="bg-white p-2.5 rounded border border-zinc-200">
                 <span className="text-zinc-500 block">Vision Image Inspection:</span>
                 <span className="font-bold text-zinc-900">{POLICY_DEFINITIONS[activeChannelProfile].requireImageScreening ? "Required" : "Standard"}</span>
+              </div>
+              <div className="bg-white p-2.5 rounded border border-zinc-200">
+                <span className="text-zinc-500 block">Announcement Whitelist:</span>
+                <span className="font-bold text-zinc-900">{POLICY_DEFINITIONS[activeChannelProfile].announcementWhitelist ? "Whitelisted (@everyone)" : "Disabled"}</span>
               </div>
             </div>
           </div>

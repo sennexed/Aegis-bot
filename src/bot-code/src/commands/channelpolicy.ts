@@ -42,7 +42,8 @@ export const channelPolicyCommand = {
               { name: "Strict Teen (Standard - zero toxicity/slurs)", value: "STRICT_TEEN" },
               { name: "Gaming Banter (Relaxed - allows mild slang, blocks slurs)", value: "GAMING_BANTER" },
               { name: "Crisis Support (Supportive - prioritized helpline guidance)", value: "CRISIS_SUPPORT" },
-              { name: "Media Only (Requires image scans, restricts link spam)", value: "MEDIA_ONLY" }
+              { name: "Media Only (Requires image scans, restricts link spam)", value: "MEDIA_ONLY" },
+              { name: "Parliament Announcements (Whitelist channel for official announcements / @everyone)", value: "PARLIAMENT_ANNOUNCEMENTS" }
             )
         )
     )

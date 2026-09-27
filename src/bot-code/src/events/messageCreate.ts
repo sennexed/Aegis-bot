@@ -40,6 +40,11 @@ export async function handleMessageCreate(
     const rawContent = message.content || "";
     const channelPolicy = channelPolicyService?.getChannelPolicy(message.channel.id);
 
+    // Whitelist check for announcements by people of parliament (requires @everyone or role everyone has in announcement whitelist channel)
+    if (channelPolicy?.announcementWhitelist && (message.mentions.everyone || message.member?.roles.cache.has(message.guild.id))) {
+      return;
+    }
+
     // Image Attachment Multimodal Screening
     if (message.attachments.size > 0 && geminiService) {
       for (const [, attachment] of message.attachments) {
