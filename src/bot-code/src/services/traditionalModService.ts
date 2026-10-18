@@ -237,6 +237,32 @@ export class TraditionalModService {
   }
 
   /**
+   * Unmutes (removes timeout) from a member
+   */
+  public async unmute(
+    moderator: GuildMember,
+    target: GuildMember,
+    reason: string = "Timeout removed by moderator"
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!this.roleService.canModerate(moderator, target)) {
+      return { success: false, error: "Cannot moderate a member with an equal or higher role." };
+    }
+    try {
+      await target.timeout(null, `${moderator.user.tag}: ${reason}`);
+      await this.loggingService.logTraditionalModAction(
+        target.guild,
+        target.user,
+        moderator.user,
+        "UNMUTE",
+        reason
+      );
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
    * Issues an official warning to a member
    */
   public async warn(

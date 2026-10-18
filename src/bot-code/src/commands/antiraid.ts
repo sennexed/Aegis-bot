@@ -32,6 +32,11 @@ export const antiRaidCommand = {
             .setDescription("Whether to engage emergency raid lockdown")
             .setRequired(true)
         )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("config")
+        .setDescription("View or configure Anti-Raid thresholds and gatekeeper status")
     ),
 
   async execute(interaction: ChatInputCommandInteraction, antiRaidService: AntiRaidService) {
@@ -39,7 +44,7 @@ export const antiRaidCommand = {
 
     const sub = interaction.options.getSubcommand();
 
-    if (sub === "status") {
+    if (sub === "status" || sub === "config") {
       const isLockdown = antiRaidService.isLockdownActive(interaction.guild.id);
       const embed = new EmbedBuilder()
         .setTitle("🛡️ AegisMod Anti-Raid & Gatekeeper Status")

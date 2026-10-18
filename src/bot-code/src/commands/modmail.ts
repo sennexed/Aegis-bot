@@ -53,6 +53,37 @@ export const modMailCommand = {
     )
     .addSubcommand((sub) =>
       sub
+        .setName("open")
+        .setDescription("Open a confidential private support ticket with server staff")
+        .addStringOption((opt) =>
+          opt
+            .setName("subject")
+            .setDescription("Brief topic or issue summary (e.g. Harassment in #gaming-chat)")
+            .setMaxLength(100)
+            .setRequired(true)
+        )
+        .addStringOption((opt) =>
+          opt
+            .setName("message")
+            .setDescription("Detailed message or context for the moderation team")
+            .setMinLength(10)
+            .setMaxLength(1500)
+            .setRequired(true)
+        )
+        .addStringOption((opt) =>
+          opt
+            .setName("category")
+            .setDescription("Category of inquiry")
+            .addChoices(
+              { name: "Cyberbullying or Harassment", value: "BULLYING_HARASSMENT" },
+              { name: "Personal Safety or Privacy Concern", value: "SAFETY_CONCERN" },
+              { name: "Infraction Appeal Question", value: "APPEAL_INQUIRY" },
+              { name: "General Server Help / Question", value: "GENERAL_HELP" }
+            )
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
         .setName("reply")
         .setDescription("Staff reply to an active ModMail ticket")
         .addStringOption((opt) =>
@@ -120,8 +151,8 @@ export const modMailCommand = {
 
     const subcommand = interaction.options.getSubcommand();
 
-    // 1. Create Ticket (/modmail create) - Available to all members
-    if (subcommand === "create") {
+    // 1. Create/Open Ticket (/modmail create or /modmail open) - Available to all members
+    if (subcommand === "create" || subcommand === "open") {
       const subject = interaction.options.getString("subject", true);
       const message = interaction.options.getString("message", true);
       const category = (interaction.options.getString("category") || "BULLYING_HARASSMENT") as TicketCategory;

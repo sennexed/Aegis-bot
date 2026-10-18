@@ -88,6 +88,32 @@ export const newsCommand = {
             .setDescription("Enable or disable automatic scheduled news broadcasts")
             .setRequired(false)
         )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("config")
+        .setDescription("View or configure automated news broadcasting for this server (Admins only)")
+        .addChannelOption((opt) =>
+          opt
+            .setName("channel")
+            .setDescription("The channel to receive scheduled news broadcasts")
+            .addChannelTypes(ChannelType.GuildText)
+            .setRequired(false)
+        )
+        .addIntegerOption((opt) =>
+          opt
+            .setName("interval_hours")
+            .setDescription("Broadcast interval in hours (1 to 24)")
+            .setMinValue(1)
+            .setMaxValue(24)
+            .setRequired(false)
+        )
+        .addBooleanOption((opt) =>
+          opt
+            .setName("enabled")
+            .setDescription("Enable or disable automatic scheduled news broadcasts")
+            .setRequired(false)
+        )
     ),
 
   async execute(interaction: ChatInputCommandInteraction) {
@@ -210,7 +236,7 @@ export const newsCommand = {
       return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
 
-    if (subcommand === "configure") {
+    if (subcommand === "configure" || subcommand === "config") {
       if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
         return interaction.reply({
           content: "❌ You need `Manage Server` permission to configure auto-news broadcasting.",
@@ -221,6 +247,23 @@ export const newsCommand = {
       const targetChannel = interaction.options.getChannel("channel");
       const interval = interaction.options.getInteger("interval_hours");
       const enabled = interaction.options.getBoolean("enabled");
+
+      // If no options provided, display current configuration nicely
+      if (!targetChannel && (interval === null || interval === undefined) && (enabled === null || enabled === undefined)) {
+        const conf = autoNewsBotService.getConfig();
+        const embed = new EmbedBuilder()
+          .setTitle("⚙️ Auto-News Broadcaster Configuration")
+          .setColor(conf.enabled ? 0x57f287 : 0xed4245)
+          .setDescription("Current automated news broadcasting settings for this server.")
+          .addFields(
+            { name: "Broadcasting", value: conf.enabled ? "🟢 **Enabled**" : "🔴 **Disabled**", inline: true },
+            { name: "Interval", value: `Every **${conf.intervalHours}** hour(s)`, inline: true },
+            { name: "Target Channel", value: conf.channelId ? `<#${conf.channelId}>` : `\`#${conf.channelName}\``, inline: true }
+          )
+          .setFooter({ text: "To update, run /news config channel:#news interval_hours:4 enabled:true" })
+          .setTimestamp();
+        return interaction.reply({ embeds: [embed] });
+      }
 
       const updates: any = {};
       if (targetChannel) {

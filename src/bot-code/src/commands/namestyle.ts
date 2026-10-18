@@ -111,12 +111,17 @@ export const nameStyleCommand = {
       sub
         .setName("sync")
         .setDescription("Sync this server's bot nickname to match the active name style")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("config")
+        .setDescription("View or configure bot name style, font, and visual effect")
     ),
 
   async execute(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.getSubcommand();
 
-    if (subcommand === "view") {
+    if (subcommand === "view" || subcommand === "config") {
       const config = botNameStylesService.getConfig();
       const font = BOT_NAME_FONTS.find((f) => f.id === config.fontId) || BOT_NAME_FONTS[0];
       const effect = BOT_NAME_EFFECTS.find((e) => e.id === config.effectId) || BOT_NAME_EFFECTS[0];

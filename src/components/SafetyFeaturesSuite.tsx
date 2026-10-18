@@ -30,6 +30,7 @@ import {
 import { PHISHING_FILTER } from "../bot-code/src/config/phishingFilter";
 import { POLICY_DEFINITIONS, ChannelPolicyProfile } from "../bot-code/src/services/channelPolicyService";
 import { MultilingualBlacklistManager } from "./MultilingualBlacklistManager";
+import { VerificationGatekeeperSimulator } from "./VerificationGatekeeperSimulator";
 
 export const SafetyFeaturesSuite: React.FC = () => {
   const [selectedSubTab, setSelectedSubTab] = useState<string>("blacklist");
@@ -307,6 +308,7 @@ export const SafetyFeaturesSuite: React.FC = () => {
         {/* Feature Sub-Navigation */}
         <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-zinc-100">
           {[
+            { id: "verification", label: "🛡️ Verification Gatekeeper (/verify)", icon: CheckCircle2 },
             { id: "blacklist", label: "🌍 Multilingual Blacklist (JSON)", icon: Globe },
             { id: "duty", label: "Staff Duty Tracker (/duty)", icon: Clock },
             { id: "loa", label: "Leave of Absence (/loa)", icon: Calendar },
@@ -2247,6 +2249,9 @@ export const SafetyFeaturesSuite: React.FC = () => {
 
       {/* SUB-VIEW: CENTRAL MULTILINGUAL BLACKLIST MANAGER */}
       {selectedSubTab === "blacklist" && <MultilingualBlacklistManager />}
+
+      {/* SUB-VIEW: VERIFICATION GATEKEEPER SIMULATOR */}
+      {selectedSubTab === "verification" && <VerificationGatekeeperSimulator />}
     </div>
   );
 };

@@ -63,12 +63,37 @@ export const channelPolicyCommand = {
       sub
         .setName("list")
         .setDescription("List all channels with custom safety sensitivity policies")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("config")
+        .setDescription("View or configure channel safety policy overrides")
+        .addChannelOption((opt) =>
+          opt
+            .setName("channel")
+            .setDescription("Optional channel to configure")
+            .addChannelTypes(ChannelType.GuildText)
+            .setRequired(false)
+        )
+        .addStringOption((opt) =>
+          opt
+            .setName("profile")
+            .setDescription("The sensitivity profile to apply")
+            .setRequired(false)
+            .addChoices(
+              { name: "Strict Teen (Standard - zero toxicity/slurs)", value: "STRICT_TEEN" },
+              { name: "Gaming Banter (Relaxed - allows mild slang, blocks slurs)", value: "GAMING_BANTER" },
+              { name: "Crisis Support (Supportive - prioritized helpline guidance)", value: "CRISIS_SUPPORT" },
+              { name: "Media Only (Requires image scans, restricts link spam)", value: "MEDIA_ONLY" },
+              { name: "Parliament Announcements (Whitelist channel for official announcements / @everyone)", value: "PARLIAMENT_ANNOUNCEMENTS" }
+            )
+        )
     ),
 
   async execute(interaction: ChatInputCommandInteraction, policyService: ChannelPolicyService) {
     const sub = interaction.options.getSubcommand();
 
-    if (sub === "set") {
+    if (sub === "set" || (sub === "config" && interaction.options.getChannel("channel") && interaction.options.getString("profile"))) {
       const targetChannel = interaction.options.getChannel("channel", true);
       const profile = interaction.options.getString("profile", true) as ChannelPolicyProfile;
       policyService.setChannelPolicy(targetChannel.id, profile);

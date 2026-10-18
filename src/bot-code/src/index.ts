@@ -17,6 +17,10 @@ import {
   EmbedBuilder,
   Options,
   PermissionFlagsBits,
+  ActionRowBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
 } from "discord.js";
 import dotenv from "dotenv";
 
@@ -52,9 +56,11 @@ import { reportCommand } from "./commands/report.js";
 import { loaCommand } from "./commands/loa.js";
 import { newsCommand } from "./commands/news.js";
 import { nameStyleCommand } from "./commands/namestyle.js";
+import { verifyCommand } from "./commands/verify.js";
 import { autoNewsBotService } from "./services/autoNewsBotService.js";
 import { newsService } from "./services/newsService.js";
 import { botNameStylesService } from "./services/botNameStylesService.js";
+import { verificationService } from "./services/verificationService.js";
 import { BOT_NAME_FONTS, BOT_NAME_EFFECTS, hexToDiscordDecimal } from "./types/nameStyles.js";
 
 import { handleMessageCreate } from "./events/messageCreate.js";
@@ -134,6 +140,7 @@ const FULL_COMMANDS = [
   loaCommand.data.toJSON(),
   newsCommand.data.toJSON(),
   nameStyleCommand.data.toJSON(),
+  verifyCommand.data.toJSON(),
   ...moderationCommands.map((c) => c.data.toJSON()),
 ];
 
@@ -288,6 +295,41 @@ client.on(Events.InteractionCreate, async (interaction) => {
           flags: MessageFlags.Ephemeral,
         });
       }
+
+      if (interaction.customId === "verify_captcha_modal") {
+        if (!interaction.guild || !interaction.member) return;
+        const userInput = interaction.fields.getTextInputValue("captcha_input");
+        const verifyResult = verificationService.verifyCaptcha(interaction.user.id, userInput, interaction.guild.id);
+        if (verifyResult.success) {
+          await verificationService.grantVerifiedRoles(interaction.member as GuildMember, interaction.guild.id);
+          return await interaction.reply({
+            content: "✅ **Captcha Solved!** You have been verified and granted full access to the server. Welcome!",
+            flags: MessageFlags.Ephemeral,
+          });
+        } else {
+          return await interaction.reply({
+            content: `❌ ${verifyResult.error}`,
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+      }
+
+      if (interaction.customId === "verify_pledge_modal") {
+        if (!interaction.guild || !interaction.member) return;
+        const userInput = interaction.fields.getTextInputValue("pledge_input");
+        if (userInput.toLowerCase().includes("agree")) {
+          await verificationService.grantVerifiedRoles(interaction.member as GuildMember, interaction.guild.id);
+          return await interaction.reply({
+            content: "🤝 **Safety Pledge Accepted!** You are now a verified member of our community.",
+            flags: MessageFlags.Ephemeral,
+          });
+        } else {
+          return await interaction.reply({
+            content: "⚠️ Verification incomplete. Please type 'I agree' to confirm your adherence to community safety standards.",
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+      }
     }
 
   // C. Interactive Button Clicks (Quick Actions & Appeals)
@@ -381,6 +423,87 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       return interaction.update({
         embeds: [embed],
+      });
+    }
+
+    // Verification Gatekeeper Interactive Buttons (Accessible to all server members & newcomers)
+    if (interaction.customId === "verify_button_click") {
+      if (!interaction.guild || !interaction.member) return;
+      const config = verificationService.getConfig(interaction.guild.id);
+
+      if (config.mode === "BUTTON") {
+        await verificationService.grantVerifiedRoles(interaction.member as GuildMember, interaction.guild.id);
+        return await interaction.reply({
+          content: "🎉 **Verification Complete!** You have accepted the server rules and received full access. Welcome to the community!",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      if (config.mode === "CAPTCHA") {
+        const code = verificationService.createCaptchaSession(interaction.user.id);
+        const modal = new ModalBuilder()
+          .setCustomId("verify_captcha_modal")
+          .setTitle("Anti-Bot Verification Challenge");
+
+        const input = new TextInputBuilder()
+          .setCustomId("captcha_input")
+          .setLabel(`Code: ${code} (Type the 6 characters)`)
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder(code)
+          .setMinLength(6)
+          .setMaxLength(6)
+          .setRequired(true);
+
+        const row = new ActionRowBuilder<TextInputBuilder>().addComponents(input);
+        modal.addComponents(row);
+        return await interaction.showModal(modal);
+      }
+
+      if (config.mode === "ANTI_ALT") {
+        const evalRes = verificationService.evaluateMemberJoin(interaction.member as GuildMember, interaction.guild.id);
+        if (evalRes.action === "QUARANTINE") {
+          return await interaction.reply({
+            content: `⚠️ **Quarantine Notice**: ${evalRes.reason}\nPlease click **'Need Help? (Staff ModMail)'** to request manual review by staff.`,
+            flags: MessageFlags.Ephemeral,
+          });
+        } else {
+          await verificationService.grantVerifiedRoles(interaction.member as GuildMember, interaction.guild.id);
+          return await interaction.reply({
+            content: "🎉 **Account Verified!** Your account passed maturity criteria. Welcome to the community!",
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+      }
+
+      if (config.mode === "AI_PLEDGE") {
+        const modal = new ModalBuilder()
+          .setCustomId("verify_pledge_modal")
+          .setTitle("Community Safety Pledge");
+
+        const input = new TextInputBuilder()
+          .setCustomId("pledge_input")
+          .setLabel("Type 'I agree to protect member safety'")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("I agree to protect member safety")
+          .setRequired(true);
+
+        const row = new ActionRowBuilder<TextInputBuilder>().addComponents(input);
+        modal.addComponents(row);
+        return await interaction.showModal(modal);
+      }
+    }
+
+    if (interaction.customId === "verify_rules_click") {
+      return await interaction.reply({
+        content: `📜 **Community Guidelines & Safety Standards**\n1. **Zero Grooming & PII Sharing:** Never request or reveal phone numbers, home locations, or private social media accounts.\n2. **No Harassment:** Slurs, targeted intimidation, and doxxing result in immediate bans.\n3. **Anti-Scam:** Never post phishing or unsolicited Discord Nitro/Steam links.\n4. **Staff Authority:** Follow moderator instructions at all times.`,
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    if (interaction.customId === "verify_modmail_click") {
+      return await interaction.reply({
+        content: `📩 **Need Help with Verification?**\nUse the command \`/modmail open category:GENERAL_SUPPORT subject:Verification Help\` to contact our on-duty moderation team privately.`,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -507,6 +630,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (commandName === "news") {
       return newsCommand.execute(interaction);
+    }
+
+    if (commandName === "verify") {
+      return verifyCommand.execute(interaction);
     }
 
     // Safety guard: if guild is not configured yet, only allow administrators/owners or check permanent memory

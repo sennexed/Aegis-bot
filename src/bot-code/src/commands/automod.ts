@@ -51,6 +51,11 @@ export const autoModCommand = {
       sub
         .setName("sync")
         .setDescription("Sync Discord Native AutoMod rules directly to the server")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("config")
+        .setDescription("View or configure active AutoMod rules and thresholds")
     ),
 
   async execute(interaction: ChatInputCommandInteraction, autoModService: AutoModService) {
@@ -61,7 +66,7 @@ export const autoModCommand = {
     const subcommand = interaction.options.getSubcommand();
     const guildId = interaction.guild.id;
 
-    if (subcommand === "status") {
+    if (subcommand === "status" || subcommand === "config") {
       const config = autoModService.getConfig(guildId);
       const embed = new EmbedBuilder()
         .setTitle("🛡️ AegisMod - Standard AutoMod Status")

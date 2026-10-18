@@ -39,6 +39,11 @@ export const dutyCommand = {
       sub
         .setName("list")
         .setDescription("View currently on-duty moderation staff and active shifts")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("status")
+        .setDescription("View active staff on-duty roster and shift statistics")
     ),
 
   async execute(
@@ -124,8 +129,8 @@ export const dutyCommand = {
       return interaction.reply({ embeds: [embed] });
     }
 
-    // 3. List On-Duty Staff (/duty list)
-    if (subcommand === "list") {
+    // 3. List On-Duty Staff (/duty list or /duty status)
+    if (subcommand === "list" || subcommand === "status") {
       const activeList = dutyService.getOnDutyStaff(interaction.guild.id);
 
       const embed = new EmbedBuilder()

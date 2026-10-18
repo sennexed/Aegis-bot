@@ -8,7 +8,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "tsx tests/moderation.test.ts"
+    "test": "tsx tests/moderation.test.ts && tsx tests/verification.test.ts"
   },
   "dependencies": {
     "discord.js": "^14.16.3",

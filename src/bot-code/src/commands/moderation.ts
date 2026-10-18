@@ -187,4 +187,35 @@ export const moderationCommands = [
       return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     },
   },
+
+  // 6. /unmute command
+  {
+    data: new SlashCommandBuilder()
+      .setName("unmute")
+      .setDescription("Remove timeout / mute restriction from a member")
+      .addUserOption((opt) => opt.setName("target").setDescription("Member to unmute").setRequired(true))
+      .addStringOption((opt) => opt.setName("reason").setDescription("Reason for unmuting").setRequired(false))
+      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+
+    async execute(interaction: ChatInputCommandInteraction, modService: TraditionalModService) {
+      const targetUser = interaction.options.getUser("target", true);
+      const reason = interaction.options.getString("reason") || "Timeout removed by moderator";
+
+      const targetMember = interaction.guild?.members.cache.get(targetUser.id);
+      if (!targetMember) {
+        return interaction.reply({ content: "That user is not currently in this server.", flags: MessageFlags.Ephemeral });
+      }
+
+      await interaction.deferReply();
+      const result = await modService.unmute(interaction.member as GuildMember, targetMember, reason);
+
+      if (!result.success) {
+        return interaction.editReply({ content: `❌ Unmute failed: ${result.error}` });
+      }
+
+      return interaction.editReply({
+        content: `🔊 **${targetUser.tag}** has been unmuted.\n**Reason:** ${reason}`,
+      });
+    },
+  },
 ];
