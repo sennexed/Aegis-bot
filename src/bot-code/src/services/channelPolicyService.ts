@@ -1,8 +1,14 @@
 /**
  * Channel-Specific Safety Sensitivity Profiles Service
  * Allows servers to tailor moderation strictness per channel
- * (e.g. Strict in #general, relaxed in #gaming-chat, compassionate in #support).
+ * (e.g. Strict in #general, relaxed in #gaming-chat, compassionate in #support, parliament announcements).
+ * 
+ * Includes persistent disk storage so channel settings survive bot restarts.
  */
+
+import fs from "fs";
+import path from "path";
+import { getPersistentDataDir } from "../utils/storagePath.js";
 
 export type ChannelPolicyProfile = "STRICT_TEEN" | "GAMING_BANTER" | "CRISIS_SUPPORT" | "MEDIA_ONLY" | "PARLIAMENT_ANNOUNCEMENTS";
 
@@ -57,9 +63,55 @@ export const POLICY_DEFINITIONS: Record<ChannelPolicyProfile, ChannelPolicyConfi
 export class ChannelPolicyService {
   // channelId -> ChannelPolicyProfile
   private channelProfiles = new Map<string, ChannelPolicyProfile>();
+  private storageFilePath: string;
+  private isSaving = false;
+  private needsSave = false;
+
+  constructor(customStorageDir?: string) {
+    const dataDir = customStorageDir || getPersistentDataDir();
+    this.storageFilePath = path.join(dataDir, "channel_policies.json");
+    this.loadFromDisk();
+  }
+
+  private loadFromDisk(): void {
+    try {
+      if (fs.existsSync(this.storageFilePath)) {
+        const raw = fs.readFileSync(this.storageFilePath, "utf8");
+        if (raw && raw.trim()) {
+          const parsed: Record<string, ChannelPolicyProfile> = JSON.parse(raw);
+          for (const [channelId, profile] of Object.entries(parsed)) {
+            if (POLICY_DEFINITIONS[profile]) {
+              this.channelProfiles.set(channelId, profile);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[ChannelPolicy] Warning: Could not load channel_policies.json:", err);
+    }
+  }
+
+  private persistToDisk(): void {
+    try {
+      const dataObj: Record<string, ChannelPolicyProfile> = {};
+      this.channelProfiles.forEach((profile, channelId) => {
+        dataObj[channelId] = profile;
+      });
+
+      const dir = path.dirname(this.storageFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      fs.writeFileSync(this.storageFilePath, JSON.stringify(dataObj, null, 2), "utf8");
+    } catch (err) {
+      console.error("[ChannelPolicy] Failed to write channel_policies.json to disk:", err);
+    }
+  }
 
   public setChannelPolicy(channelId: string, profile: ChannelPolicyProfile): void {
     this.channelProfiles.set(channelId, profile);
+    this.persistToDisk();
   }
 
   public getChannelPolicy(channelId: string): ChannelPolicyConfig {

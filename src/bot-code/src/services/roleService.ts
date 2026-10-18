@@ -13,6 +13,7 @@ import {
 } from "discord.js";
 import fs from "fs";
 import path from "path";
+import { getPersistentDataDir } from "../utils/storagePath.js";
 
 export interface GuildRoleMapping {
   guildId: string;
@@ -24,7 +25,7 @@ export interface GuildRoleMapping {
 
 export class RoleService {
   private guildRoles = new Map<string, GuildRoleMapping>();
-  private dataFilePath = path.join(process.cwd(), "guild_roles.json");
+  private dataFilePath = path.join(getPersistentDataDir(), "guild_roles.json");
   private writeQueue: Promise<void> = Promise.resolve();
 
   constructor() {
@@ -33,11 +34,16 @@ export class RoleService {
 
   private async loadFromDisk(): Promise<void> {
     try {
-      if (fs.existsSync(this.dataFilePath)) {
-        const raw = await fs.promises.readFile(this.dataFilePath, "utf8");
-        const parsed = JSON.parse(raw);
-        for (const key of Object.keys(parsed)) {
-          this.guildRoles.set(key, parsed[key]);
+      // Check canonical path first, then fallback to root cwd
+      const pathsToCheck = [this.dataFilePath, path.join(process.cwd(), "guild_roles.json")];
+      for (const p of pathsToCheck) {
+        if (fs.existsSync(p)) {
+          const raw = await fs.promises.readFile(p, "utf8");
+          const parsed = JSON.parse(raw);
+          for (const key of Object.keys(parsed)) {
+            this.guildRoles.set(key, parsed[key]);
+          }
+          break;
         }
       }
     } catch (err) {

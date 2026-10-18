@@ -64,6 +64,8 @@ export interface AutoModCheckResult {
   matchedContent?: string;
 }
 
+import { getPersistentDataDir } from "../utils/storagePath.js";
+
 export class AutoModService {
   private configMap = new Map<string, AutoModConfig>();
   private messageHistory = new Map<string, { timestamp: number; content: string }[]>();
@@ -101,7 +103,7 @@ export class AutoModService {
   ];
 
   constructor(storageDir?: string) {
-    const dir = storageDir || path.resolve(process.cwd(), "data");
+    const dir = storageDir || getPersistentDataDir();
     if (!fs.existsSync(dir)) {
       try {
         fs.mkdirSync(dir, { recursive: true });

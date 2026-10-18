@@ -829,6 +829,29 @@ app.post("/api/news/config", (req: Request, res: Response) => {
   res.json({ success: true, config: autoNewsConfig });
 });
 
+// Periodic auto-broadcaster interval loop in server.ts
+const serverAutoNewsTimer = setInterval(async () => {
+  if (!autoNewsConfig.enabled) return;
+  const intervalMs = (autoNewsConfig.intervalHours || 6) * 3600 * 1000;
+  const lastTime = autoNewsConfig.lastDispatchedAt ? new Date(autoNewsConfig.lastDispatchedAt).getTime() : 0;
+  if (Date.now() - lastTime >= intervalMs) {
+    try {
+      const articles = await newsService.fetchAll13Newspapers(true);
+      autoNewsConfig.lastDispatchedAt = new Date().toISOString();
+      autoNewsConfig.totalBroadcastsSent += 1;
+      addWispbyteLog(
+        "DISCORD",
+        `[AutoNews Scheduler]: Automated periodic broadcast delivered 13 newspaper articles to #${autoNewsConfig.channelName}!`
+      );
+    } catch (e: any) {
+      console.warn("[AutoNews Scheduler] Error during auto-broadcast:", e?.message);
+    }
+  }
+}, 60 * 1000);
+if (typeof serverAutoNewsTimer.unref === "function") {
+  serverAutoNewsTimer.unref();
+}
+
 // POST /api/news/broadcast - Dispatches news broadcast
 app.post("/api/news/broadcast", async (req: Request, res: Response) => {
   try {
@@ -1596,7 +1619,8 @@ Output structured JSON strictly matching the provided schema.`;
 
     const now = Date.now();
     const allCandidateModels = [
-      process.env.GEMINI_MODEL || "gemini-3.1-flash-lite",
+      process.env.GEMINI_MODEL || "gemini-2.5-flash-lite",
+      "gemini-2.5-flash-lite",
       "gemini-flash-latest",
       "gemini-2.5-flash",
     ];

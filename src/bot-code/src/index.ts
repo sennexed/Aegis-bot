@@ -16,6 +16,7 @@ import {
   GuildMember,
   EmbedBuilder,
   Options,
+  PermissionFlagsBits,
 } from "discord.js";
 import dotenv from "dotenv";
 
@@ -116,38 +117,33 @@ const auditExportService = new AuditExportService();
 const loaService = new LoaService();
 
 // 3. Register Slash Commands
+const FULL_COMMANDS = [
+  setupCommand.data.toJSON(),
+  autoModCommand.data.toJSON(),
+  testModCommand.data.toJSON(),
+  userInfoCommand.data.toJSON(),
+  antiRaidCommand.data.toJSON(),
+  channelPolicyCommand.data.toJSON(),
+  reportMessageContextMenu.data.toJSON(),
+  appealCommand.data.toJSON(),
+  modStatsCommand.data.toJSON(),
+  dutyCommand.data.toJSON(),
+  modMailCommand.data.toJSON(),
+  exportLogsCommand.data.toJSON(),
+  reportCommand.data.toJSON(),
+  loaCommand.data.toJSON(),
+  newsCommand.data.toJSON(),
+  nameStyleCommand.data.toJSON(),
+  ...moderationCommands.map((c) => c.data.toJSON()),
+];
+
 export async function syncGuildCommands(guildId: string, isSetupComplete: boolean) {
   const token = process.env.DISCORD_BOT_TOKEN;
   const clientId = process.env.DISCORD_CLIENT_ID;
   if (!token || !clientId) return;
 
   const rest = new REST({ version: "10", timeout: 30000 }).setToken(token);
-
-  // If server is not setup yet, ONLY expose /setup command
-  // Once setup is completed, expose the full suite of moderation, protection & utility tools
-  const fullCommands = [
-    setupCommand.data.toJSON(),
-    autoModCommand.data.toJSON(),
-    testModCommand.data.toJSON(),
-    userInfoCommand.data.toJSON(),
-    antiRaidCommand.data.toJSON(),
-    channelPolicyCommand.data.toJSON(),
-    reportMessageContextMenu.data.toJSON(),
-    appealCommand.data.toJSON(),
-    modStatsCommand.data.toJSON(),
-    dutyCommand.data.toJSON(),
-    modMailCommand.data.toJSON(),
-    exportLogsCommand.data.toJSON(),
-    reportCommand.data.toJSON(),
-    loaCommand.data.toJSON(),
-    newsCommand.data.toJSON(),
-    nameStyleCommand.data.toJSON(),
-    ...moderationCommands.map((c) => c.data.toJSON()),
-  ];
-
-  const commandsToRegister = isSetupComplete
-    ? fullCommands
-    : [setupCommand.data.toJSON()];
+  const commandsToRegister = FULL_COMMANDS;
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -184,11 +180,11 @@ async function registerSlashCommands() {
   while (attempts < 3) {
     attempts++;
     try {
-      // Clear global moderation commands and register only /setup as base
+      // Register all moderation, protection & utility commands globally
       await rest.put(Routes.applicationCommands(clientId), {
-        body: [setupCommand.data.toJSON()],
+        body: FULL_COMMANDS,
       });
-      console.log("✅ Global commands synchronized successfully with Discord API.");
+      console.log(`✅ Global commands synchronized successfully with Discord API (${FULL_COMMANDS.length} commands).`);
 
       // Sync each joined guild based on whether /setup has been completed in permanent memory
       for (const [guildId, guild] of client.guilds.cache) {
@@ -227,8 +223,9 @@ client.once(Events.ClientReady, async (readyClient) => {
     triageTimer.unref();
   }
 
-  // Initialize AutoNews bot client
+  // Initialize AutoNews bot client and start automated scheduler
   autoNewsBotService.setClient(readyClient);
+  autoNewsBotService.startScheduler(readyClient);
 
   // Sync bot display nickname style & nametag role color across connected guilds on startup
   try {
@@ -512,11 +509,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return newsCommand.execute(interaction);
     }
 
-    // Safety guard: if guild is not configured yet, decline execution and prompt /setup
-    if (guildId && !roleService.isGuildConfigured(guildId)) {
+    // Safety guard: if guild is not configured yet, only allow administrators/owners or check permanent memory
+    const isServerConfigured = guildId && (roleService.isGuildConfigured(guildId) || guildMemoryService.isServerSetup(guildId));
+    const hasAdminPerms =
+      interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) ||
+      interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ||
+      (interaction.guild && interaction.user.id === interaction.guild.ownerId);
+
+    if (guildId && !isServerConfigured && !hasAdminPerms) {
       return interaction.reply({
         content:
-          "⚠️ **AegisMod is not set up on this server yet.**\nAn Administrator must run `/setup` first to configure staff roles and `#mod-logs` before moderation commands are unlocked.",
+          "⚠️ **AegisMod is not set up on this server yet.**\nAn Administrator should run `/setup` first to configure custom staff roles and `#mod-logs`.",
         flags: MessageFlags.Ephemeral,
       });
     }

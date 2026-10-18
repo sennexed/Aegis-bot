@@ -23,10 +23,11 @@ export interface AIAnalysisOutput {
 
 export class GeminiModerationService {
   private ai: GoogleGenAI;
-  private readonly primaryModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  private readonly primaryModel = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
   private readonly fallbackModels = [
-    "gemini-flash-latest",   // General latest alias
-    "gemini-2.5-flash",      // Established high-availability flash
+    "gemini-2.5-flash-lite", // Primary high-speed flash lite
+    "gemini-flash-latest",    // General latest alias
+    "gemini-2.5-flash",       // High availability fallback
   ];
   private hasApiKey: boolean;
   private authFailureCooldownUntil: number = 0;

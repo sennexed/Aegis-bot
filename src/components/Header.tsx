@@ -84,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
       title: "AI Safety & Teen Protection",
       items: [
         { id: "safety-suite", label: "Safety Suite 2.0 (10 Updates)", icon: Shield, badge: "10-IN-1", desc: "Self-harm, anti-phishing, anti-invite, doxxing" },
-        { id: "live-tester", label: "Live AI Moderation Tester", icon: Zap, desc: "Real-time Gemini 3.8 Flash classification tester" },
+        { id: "live-tester", label: "Live AI Moderation Tester", icon: Zap, desc: "Real-time Gemini 2.5 Flash Lite classification tester" },
         { id: "token-efficiency", label: "Multi-Tier Token Calculator", icon: Activity, desc: "Fast triage cache & cost optimization matrix" },
       ],
     },

@@ -70,7 +70,7 @@ export const WispbyteDashboard: React.FC = () => {
     nodeVersion: "Node.js v20.18.0 LTS",
     wispbyteNode: "wisp-sg-node01.wispbyte.net (SG-1)",
     containerId: "c8f2a1b9-7b3c",
-    geminiModel: "Gemini 3.8 Flash",
+    geminiModel: "Gemini 2.5 Flash Lite",
     port: 10734,
     subdomain: "aegisbot.wispbyte.app",
     webpageUrl: "https://aegisbot.wispbyte.app/",

@@ -252,7 +252,7 @@ export const LiveModerationTester: React.FC = () => {
               Live AI Moderation Sandbox
             </h2>
             <p className="text-xs text-zinc-500 mt-1">
-              Test real Discord messages against the live Gemini 3.1 Flash-Lite backend and see real-time Triage tier decisions, token efficiency stats, and the generated Discord Embed log.
+              Test real Discord messages against the live Gemini 2.5 Flash Lite backend and see real-time Triage tier decisions, token efficiency stats, and the generated Discord Embed log.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -366,7 +366,7 @@ export const LiveModerationTester: React.FC = () => {
                 <span className="text-[10px] font-extrabold text-zinc-400 uppercase">Stage 3</span>
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
               </div>
-              <span className="text-xs font-bold text-zinc-900 block mt-1">Gemini 3.8 Flash AI</span>
+              <span className="text-xs font-bold text-zinc-900 block mt-1">Gemini 2.5 Flash Lite AI</span>
               <span className="text-[10px] text-zinc-500 block mt-0.5">Deep Semantic Context & Slang</span>
             </div>
           </div>
@@ -479,7 +479,7 @@ export const LiveModerationTester: React.FC = () => {
                 <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-center">
                   <span className="text-[10px] uppercase font-bold text-zinc-400 block">Triage Stage</span>
                   <span className="text-xs font-bold text-zinc-800 mt-1 block">
-                    {result.source === "TIER_1_LOCAL_TRIAGE" ? "Tier 1: Fast Filter" : "Tier 3: Gemini 3.8"}
+                    {result.source === "TIER_1_LOCAL_TRIAGE" ? "Tier 1: Fast Filter" : "Tier 3: Gemini 2.5 Flash Lite"}
                   </span>
                 </div>
 
@@ -675,7 +675,7 @@ export const LiveModerationTester: React.FC = () => {
                     </div>
 
                     <div className="text-[10px] text-zinc-400 pt-1 flex items-center justify-between">
-                      <span>AegisMod AI Engine • Powered by Gemini 3.8 Flash</span>
+                      <span>AegisMod AI Engine • Powered by Gemini 2.5 Flash Lite</span>
                       <span>{result.tokensUsed} tokens</span>
                     </div>
                   </div>

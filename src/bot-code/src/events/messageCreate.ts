@@ -48,7 +48,20 @@ export async function handleMessageCreate(
     // Image Attachment Multimodal Screening
     if (message.attachments.size > 0 && geminiService) {
       for (const [, attachment] of message.attachments) {
-        const isImage = attachment.contentType?.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(attachment.name || "");
+        const isGif =
+          attachment.contentType === "image/gif" ||
+          /\.gif$/i.test(attachment.name || "");
+        
+        // GIFs are treated with lesser priority (recreational memes/captions like Quote-It caption.gif):
+        // Skip heavy AI vision blocking on GIFs to prevent false positive deletions
+        if (isGif) {
+          continue;
+        }
+
+        const isImage =
+          attachment.contentType?.startsWith("image/") ||
+          /\.(png|jpe?g|webp)$/i.test(attachment.name || "");
+
         if (isImage) {
           try {
             // Fetch image buffer and convert to base64

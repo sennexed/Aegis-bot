@@ -184,6 +184,19 @@ export const ServerPowerCard: React.FC<ServerPowerCardProps> = ({
                 <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
                 {botDetails.policyLevel}
               </span>
+
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                {botDetails.geminiModel || "Gemini 2.5 Flash Lite"}
+              </span>
+
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                <span>💾 Disk Persisted</span>
+              </span>
+
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
+                <span>🎞️ GIF Low-Priority Pass</span>
+              </span>
             </div>
 
             {/* Server Meta Info Bar */}

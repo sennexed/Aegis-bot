@@ -1,6 +1,7 @@
 /**
  * /news Discord Slash Command
- * Allows server members and moderators to view or broadcast the 13 famous newspapers news briefing
+ * Allows server members and moderators to view or broadcast the 13 famous newspapers news briefing,
+ * configure automated broadcasting, and check scheduler status.
  */
 
 import {
@@ -12,6 +13,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   MessageFlags,
+  ChannelType,
 } from "discord.js";
 import { newsService } from "../services/newsService.js";
 import { autoNewsBotService } from "../services/autoNewsBotService.js";
@@ -55,6 +57,37 @@ export const newsCommand = {
       sub
         .setName("broadcast")
         .setDescription("Broadcast the 13-newspaper digest to the current channel (Moderators only)")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("status")
+        .setDescription("View automated news broadcasting schedule, targets, and status")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("configure")
+        .setDescription("Configure automated news broadcasting for this server (Admins only)")
+        .addChannelOption((opt) =>
+          opt
+            .setName("channel")
+            .setDescription("The channel to receive scheduled news broadcasts")
+            .addChannelTypes(ChannelType.GuildText)
+            .setRequired(false)
+        )
+        .addIntegerOption((opt) =>
+          opt
+            .setName("interval_hours")
+            .setDescription("Broadcast interval in hours (1 to 24)")
+            .setMinValue(1)
+            .setMaxValue(24)
+            .setRequired(false)
+        )
+        .addBooleanOption((opt) =>
+          opt
+            .setName("enabled")
+            .setDescription("Enable or disable automatic scheduled news broadcasts")
+            .setRequired(false)
+        )
     ),
 
   async execute(interaction: ChatInputCommandInteraction) {
@@ -122,11 +155,102 @@ export const newsCommand = {
       const embed = autoNewsBotService.create13NewspapersDigestEmbed(articles, 1, 5);
       const paginationRow = autoNewsBotService.createPaginationRow(1, totalPages);
 
-      await interaction.editReply({
+      return interaction.editReply({
         content: "📰 **Automated Global News Digest Broadcast (Page 1 of 3 — 5 News Per Page)**",
         embeds: [embed],
         components: [paginationRow],
       });
+    }
+
+    if (subcommand === "status") {
+      const config = autoNewsBotService.getConfig();
+      const nextTime = config.lastDispatchedAt
+        ? new Date(new Date(config.lastDispatchedAt).getTime() + config.intervalHours * 3600 * 1000).toLocaleString()
+        : "Immediately pending next cycle";
+
+      const embed = new EmbedBuilder()
+        .setTitle("📰 AegisMod Auto-News Broadcaster Status")
+        .setColor(config.enabled ? 0x57f287 : 0xed4245)
+        .setDescription("Automated dispatching of daily world news from 13 premier international newspapers.")
+        .addFields(
+          {
+            name: "Status",
+            value: config.enabled ? "🟢 **Active & Scheduled**" : "🔴 **Paused / Disabled**",
+            inline: true,
+          },
+          {
+            name: "Interval",
+            value: `Every **${config.intervalHours} hour(s)**`,
+            inline: true,
+          },
+          {
+            name: "Total Dispatched",
+            value: `**${config.totalBroadcastsSent}** press digests`,
+            inline: true,
+          },
+          {
+            name: "Default Channel",
+            value: config.channelId ? `<#${config.channelId}>` : `\`#${config.channelName}\``,
+            inline: true,
+          },
+          {
+            name: "Last Dispatched",
+            value: config.lastDispatchedAt ? new Date(config.lastDispatchedAt).toLocaleString() : "*None recorded yet*",
+            inline: true,
+          },
+          {
+            name: "Next Scheduled Dispatch",
+            value: config.enabled ? nextTime : "*Disabled*",
+            inline: true,
+          }
+        )
+        .setFooter({ text: "Use /news configure to change target channel or interval" })
+        .setTimestamp();
+
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    }
+
+    if (subcommand === "configure") {
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+        return interaction.reply({
+          content: "❌ You need `Manage Server` permission to configure auto-news broadcasting.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      const targetChannel = interaction.options.getChannel("channel");
+      const interval = interaction.options.getInteger("interval_hours");
+      const enabled = interaction.options.getBoolean("enabled");
+
+      const updates: any = {};
+      if (targetChannel) {
+        updates.channelId = targetChannel.id;
+        updates.channelName = targetChannel.name;
+        autoNewsBotService.registerChannel(targetChannel.id, targetChannel.name);
+      }
+      if (interval !== null && interval !== undefined) {
+        updates.intervalHours = interval;
+      }
+      if (enabled !== null && enabled !== undefined) {
+        updates.enabled = enabled;
+      }
+
+      autoNewsBotService.updateConfig(updates);
+      const conf = autoNewsBotService.getConfig();
+
+      const embed = new EmbedBuilder()
+        .setTitle("⚙️ Auto-News Broadcaster Configured")
+        .setColor(0x57f287)
+        .setDescription("Successfully updated automated news broadcast settings. Persisted to disk across bot restarts.")
+        .addFields(
+          { name: "Broadcasting", value: conf.enabled ? "✅ Enabled" : "❌ Disabled", inline: true },
+          { name: "Interval", value: `${conf.intervalHours} hours`, inline: true },
+          { name: "Target Channel", value: conf.channelId ? `<#${conf.channelId}>` : "*Default channel*", inline: true }
+        )
+        .setFooter({ text: "Settings saved permanently to auto_news_config.json" })
+        .setTimestamp();
+
+      return interaction.reply({ embeds: [embed] });
     }
   },
 };

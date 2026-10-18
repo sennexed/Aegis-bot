@@ -254,14 +254,16 @@ export const AutoNewsFeature: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500">Auto-Interval:</span>
-            <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-xs font-semibold text-zinc-800 border border-zinc-200">
-              Every {config.intervalHours} Hours
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-xs font-semibold text-emerald-800 border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Auto-Broadcaster: Active (Every {config.intervalHours}h)
             </span>
-            <span className="text-xs text-zinc-500 ml-2">Channel:</span>
-            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-xs font-semibold text-indigo-700 border border-indigo-200">
-              #{config.channelName}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 text-xs font-semibold text-indigo-700 border border-indigo-200">
+              Channel: #{config.channelName}
+            </span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-zinc-100 text-xs font-semibold text-zinc-700 border border-zinc-200">
+              💾 Stored in auto_news_config.json
             </span>
           </div>
         </div>

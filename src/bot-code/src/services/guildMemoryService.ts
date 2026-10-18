@@ -9,10 +9,11 @@
 import fs from "fs";
 import path from "path";
 import { ServerMemoryRecord } from "../types/serverMemory.js";
+import { getPersistentDataDir } from "../utils/storagePath.js";
 
 export class GuildMemoryService {
   private servers = new Map<string, ServerMemoryRecord>();
-  private dataDir = path.join(process.cwd(), "data");
+  private dataDir = getPersistentDataDir();
   private storageFilePath = path.join(this.dataDir, "guild_memory.json");
   private writeQueue: Promise<void> = Promise.resolve();
 

@@ -387,7 +387,25 @@ async function runTests() {
   const nick = botNameStylesService.formatFormattedNickname(defaultCfg);
   assert(nick.includes("[") && nick.includes("AEGIS"), "Formatted nickname must include clan tag brackets");
 
-  console.log("\n🎉 All 29 AegisMod, AutoNews & Bot Name Styles Automated Tests Passed Successfully!\n");
+  // 11. AutoNews Scheduler and Persistence Suite
+  console.log("\n📰 Testing AutoNews Scheduler & Settings Persistence...");
+  autoNewsBotService.updateConfig({ intervalHours: 4, channelName: "daily-briefing" });
+  const updatedNewsCfg = autoNewsBotService.getConfig();
+  assert(updatedNewsCfg.intervalHours === 4, "AutoNews config intervalHours must update and persist");
+  assert(updatedNewsCfg.channelName === "daily-briefing", "AutoNews config channelName must update and persist");
+
+  // 12. ChannelPolicy Persistent Storage
+  const { ChannelPolicyService } = await import("../src/services/channelPolicyService.js");
+  const testPolicyService = new ChannelPolicyService();
+  testPolicyService.setChannelPolicy("test-chan-999", "PARLIAMENT_ANNOUNCEMENTS");
+  const reloadedPolicyService = new ChannelPolicyService();
+  const reloadedPolicy = reloadedPolicyService.getChannelPolicy("test-chan-999");
+  assert(
+    reloadedPolicy.profile === "PARLIAMENT_ANNOUNCEMENTS" && reloadedPolicy.announcementWhitelist === true,
+    "ChannelPolicyService must retain channel policies across service restarts"
+  );
+
+  console.log("\n🎉 All AegisMod, AutoNews & Bot Name Styles Automated Tests Passed Successfully!\n");
 }
 
 runTests().catch((err) => {

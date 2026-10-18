@@ -4,6 +4,8 @@
  * for message deletions, edits, AI auto-mod flags, and traditional moderation commands.
  */
 
+import fs from "fs";
+import path from "path";
 import {
   ActionRowBuilder,
   AttachmentBuilder,
@@ -18,9 +20,50 @@ import {
   User,
 } from "discord.js";
 import { AIAnalysisOutput } from "./geminiModerationService.js";
+import { getPersistentDataDir } from "../utils/storagePath.js";
 
 export class LoggingService {
   private logChannelCache = new Map<string, string>(); // guildId -> channelId
+  private storageFilePath: string;
+
+  constructor(customStorageDir?: string) {
+    const dataDir = customStorageDir || getPersistentDataDir();
+    this.storageFilePath = path.join(dataDir, "log_channels.json");
+    this.loadFromDisk();
+  }
+
+  private loadFromDisk(): void {
+    try {
+      if (fs.existsSync(this.storageFilePath)) {
+        const raw = fs.readFileSync(this.storageFilePath, "utf8");
+        const parsed = JSON.parse(raw);
+        for (const [guildId, channelId] of Object.entries(parsed)) {
+          if (typeof channelId === "string") {
+            this.logChannelCache.set(guildId, channelId);
+          }
+        }
+        console.log(`[LoggingService] 💾 Loaded ${this.logChannelCache.size} log channel bindings from permanent storage.`);
+      }
+    } catch (err) {
+      console.warn("[LoggingService] Warning: Could not load log_channels.json:", err);
+    }
+  }
+
+  private persistToDisk(): void {
+    try {
+      const dir = path.dirname(this.storageFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const dataObj: Record<string, string> = {};
+      this.logChannelCache.forEach((channelId, guildId) => {
+        dataObj[guildId] = channelId;
+      });
+      fs.writeFileSync(this.storageFilePath, JSON.stringify(dataObj, null, 2), "utf8");
+    } catch (err) {
+      console.error("[LoggingService] Failed to persist log_channels.json:", err);
+    }
+  }
 
   /**
    * Helper to safely fetch attachment buffers for permanent audit log archiving in #mod-logs
@@ -54,6 +97,9 @@ export class LoggingService {
 
     let imgIndex = 1;
     for (const [, attachment] of message.attachments) {
+      const isGif =
+        attachment.contentType === "image/gif" ||
+        /\.gif$/i.test(attachment.name || "");
       const isImg =
         attachment.contentType?.startsWith("image/") ||
         /\.(png|jpe?g|webp|gif)$/i.test(attachment.name || "");
@@ -61,14 +107,16 @@ export class LoggingService {
         attachment.contentType?.startsWith("video/") ||
         /\.(mp4|webm|mov)$/i.test(attachment.name || "");
       
-      const safeName = attachment.name || `attachment_${imgIndex}.${isImg ? "png" : isVid ? "mp4" : "dat"}`;
+      const safeName = attachment.name || `attachment_${imgIndex}.${isGif ? "gif" : isImg ? "png" : isVid ? "mp4" : "dat"}`;
       imgIndex++;
 
-      const emoji = isImg ? "📷" : isVid ? "🎥" : "📎";
+      const emoji = isGif ? "🎞️" : isImg ? "📷" : isVid ? "🎥" : "📎";
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s timeout
+        // GIFs have lesser priority / fast direct link fallback (1200ms vs 3500ms) to prevent event loop delay
+        const timeoutMs = isGif ? 1200 : 3500;
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         const res = await fetch(attachment.url, { signal: controller.signal });
         clearTimeout(timeoutId);
 
@@ -121,6 +169,7 @@ export class LoggingService {
 
     if (existing) {
       this.logChannelCache.set(guild.id, existing.id);
+      this.persistToDisk();
       return existing;
     }
 
@@ -165,6 +214,7 @@ export class LoggingService {
     });
 
     this.logChannelCache.set(guild.id, newChannel.id);
+    this.persistToDisk();
 
     // Post welcome embed
     const welcomeEmbed = new EmbedBuilder()
