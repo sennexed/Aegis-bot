@@ -244,9 +244,8 @@ export class TraditionalModService {
     target: GuildMember,
     reason: string = "Timeout removed by moderator"
   ): Promise<{ success: boolean; error?: string }> {
-    if (!this.roleService.canModerate(moderator, target)) {
-      return { success: false, error: "Cannot moderate a member with an equal or higher role." };
-    }
+    const check = this.roleService.canModerateMember(moderator, target, "MUTE");
+    if (!check.allowed) return { success: false, error: check.reason };
     try {
       await target.timeout(null, `${moderator.user.tag}: ${reason}`);
       await this.loggingService.logTraditionalModAction(

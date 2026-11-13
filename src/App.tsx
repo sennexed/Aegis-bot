@@ -38,6 +38,9 @@ const TokenEfficiencyCalculator = lazy(() =>
 const WispbyteGuide = lazy(() =>
   import("./components/WispbyteGuide").then((m) => ({ default: m.WispbyteGuide }))
 );
+const DiscordBotPanel = lazy(() =>
+  import("./components/DiscordBotPanel").then((m) => ({ default: m.DiscordBotPanel }))
+);
 
 const TabLoader: React.FC = () => (
   <div className="flex flex-col items-center justify-center min-h-[360px] bg-white/60 backdrop-blur-xs rounded-2xl border border-zinc-200/80 p-8 shadow-xs">
@@ -79,6 +82,7 @@ export default function App() {
               {activeTab === "setup-sim" && <DiscordSetupSimulator />}
               {activeTab === "traditional-mod" && <TraditionalModSandbox />}
               {activeTab === "token-efficiency" && <TokenEfficiencyCalculator />}
+              {activeTab === "discord-panel" && <DiscordBotPanel />}
               {activeTab === "wispbyte" && <WispbyteGuide />}
             </motion.div>
           </AnimatePresence>

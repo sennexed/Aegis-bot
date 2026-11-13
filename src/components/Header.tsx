@@ -74,6 +74,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     {
       title: "Discord Bot Features",
       items: [
+        { id: "discord-panel", label: "Discord Native UI Panel (/panel)", icon: Terminal, badge: "V2", desc: "9-module professional Discord bot administration interface" },
         { id: "bot-chat", label: "Interactive Bot Chat Sandbox", icon: MessageSquare, badge: "CHAT", desc: "Simulate Discord messaging with AI intelligence" },
         { id: "namestyles", label: "Discord Name Styles & Fonts", icon: Sparkles, badge: "STYLES", desc: "Rich font rendering and color preset generator" },
         { id: "setup-sim", label: "Interactive Setup Wizard", icon: Sliders, desc: "Step-by-step role hierarchy & permissions guide" },
