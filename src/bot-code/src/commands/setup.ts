@@ -1,6 +1,6 @@
 /**
- * /setup Command
- * Interactive Server Onboarding Wizard with Discord Role Select Menus and Auto Log Channel Creation
+ * /setup Command - Single-Message Discord Setup Wizard
+ * Unified interactive configuration interface for AegisMod bot.
  */
 
 import {
@@ -8,17 +8,25 @@ import {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  RoleSelectMenuBuilder,
+  ChannelSelectMenuBuilder,
+  StringSelectMenuBuilder,
   ComponentType,
   MessageFlags,
+  ChannelType,
 } from "discord.js";
 import { RoleService } from "../services/roleService.js";
 import { LoggingService } from "../services/loggingService.js";
 import { guildMemoryService } from "../services/guildMemoryService.js";
+import { setupSessionService, SetupDraft } from "../services/setupSessionService.js";
 
 export const setupCommand = {
   data: new SlashCommandBuilder()
     .setName("setup")
-    .setDescription("Configure AegisMod roles and initialize the dedicated #mod-logs audit channel")
+    .setDescription("Launch the AEGIS Single-Message Interactive Setup Wizard")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(
@@ -36,176 +44,427 @@ export const setupCommand = {
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    // Check if this guild is already remembered in permanent storage
-    const existingMemory = guildMemoryService.getServer(interaction.guild.id);
+    const guildId = interaction.guild.id;
+    const existingMemory = guildMemoryService.getServer(guildId);
     const isAlreadyConfigured = existingMemory?.isSetupComplete;
 
-    // 1. Generate Interactive Role Select Menus
-    const selectRows = roleService.createSetupRoleSelects(interaction.guild.id);
+    // Create or reset session draft
+    const draft = setupSessionService.createSession(
+      guildId,
+      interaction.guild.name,
+      interaction.user.id,
+      interaction.user.tag
+    );
 
-    const setupEmbed = new EmbedBuilder()
-      .setTitle(
-        isAlreadyConfigured
-          ? "🛡️ AegisMod Server Setup (Stored in Permanent Memory)"
-          : "🛡️ AegisMod Server Setup Wizard"
-      )
-      .setDescription(
-        isAlreadyConfigured
-          ? `ℹ️ **Server Already Setup:** This server's configuration was previously saved on <t:${Math.floor((existingMemory.configuredAt || Date.now()) / 1000)}:d> and is **immune to bot restarts**. You can modify staff role assignments below.`
-          : "Welcome to **AegisMod**! Please configure your server's role hierarchy below. Once completed, your settings will be stored in **permanent memory** so you will never need to run `/setup` again after bot reboots."
-      )
-      .setColor(isAlreadyConfigured ? 0x57f287 : 0x5865f2)
-      .addFields(
-        {
-          name: "1. Owner / Executive Role",
-          value: "Bypasses all moderation checks and has full emergency override.",
-        },
-        {
-          name: "2. Administrator Roles",
-          value: "Can run `/setup`, `/cases`, and manage bot settings.",
-        },
-        {
-          name: "3. Moderator Roles",
-          value: "Can execute `/ban`, `/kick`, `/mute`, `/warn`, and read `#mod-logs`.",
-        },
-        {
-          name: "4. Dedicated Audit Log Channel",
-          value: "The bot will automatically create or bind `#mod-logs` visible only to staff.",
-        },
-        {
-          name: "💾 Permanent Memory Guarantee",
-          value: "All bindings are committed to persistent disk storage (`guild_memory.json`). Upon any bot crash or server restart, all 17 commands and configurations are restored automatically.",
-        }
-      )
-      .setFooter({ text: "Select options below within 5 minutes to commit changes." });
+    // Populate draft with existing settings if configured
+    if (existingMemory) {
+      draft.ownerRoleId = existingMemory.ownerRoleId || null;
+      draft.adminRoleIds = existingMemory.adminRoleIds || [];
+      draft.moderatorRoleIds = existingMemory.moderatorRoleIds || [];
+      if (existingMemory.modLogChannelId) {
+        draft.loggingChannels.modLogs = existingMemory.modLogChannelId;
+      }
+    }
 
-    const message = await interaction.editReply({
-      embeds: [setupEmbed],
-      components: selectRows,
-    });
+    const buildWizardPayload = (d: SetupDraft) => {
+      const embed = new EmbedBuilder()
+        .setTitle("🛡️ AEGIS — Single-Message Discord Setup Wizard")
+        .setColor(d.currentTab === "home" ? 0x5865f2 : 0xfee75c)
+        .setThumbnail(interaction.guild?.iconURL() || null);
 
-    // Handle interactive selections
-    let ownerRole: string | null = null;
-    let adminRoles: string[] = [];
-    let modRoles: string[] = [];
-    let hasSyncedThisSession = Boolean(isAlreadyConfigured);
+      const components: ActionRowBuilder<any>[] = [];
 
+      // Navigation Row (Tabs)
+      const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`setup:tab:home:${guildId}`)
+          .setLabel("Overview")
+          .setStyle(d.currentTab === "home" ? ButtonStyle.Primary : ButtonStyle.Secondary)
+          .setEmoji("🏠"),
+        new ButtonBuilder()
+          .setCustomId(`setup:tab:permissions:${guildId}`)
+          .setLabel("Permissions")
+          .setStyle(d.currentTab === "permissions" ? ButtonStyle.Primary : ButtonStyle.Secondary)
+          .setEmoji("🛡️"),
+        new ButtonBuilder()
+          .setCustomId(`setup:tab:moderation:${guildId}`)
+          .setLabel("Moderation")
+          .setStyle(d.currentTab === "moderation" ? ButtonStyle.Primary : ButtonStyle.Secondary)
+          .setEmoji("⚙️"),
+        new ButtonBuilder()
+          .setCustomId(`setup:tab:logging:${guildId}`)
+          .setLabel("Logging")
+          .setStyle(d.currentTab === "logging" ? ButtonStyle.Primary : ButtonStyle.Secondary)
+          .setEmoji("📋"),
+        new ButtonBuilder()
+          .setCustomId(`setup:tab:features:${guildId}`)
+          .setLabel("Features")
+          .setStyle(d.currentTab === "features" ? ButtonStyle.Primary : ButtonStyle.Secondary)
+          .setEmoji("🚀")
+      );
+      components.push(navRow);
+
+      // Action Row (Confirm / Reset / Cancel)
+      const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`setup:action:confirm:${guildId}`)
+          .setLabel("Confirm Setup")
+          .setStyle(ButtonStyle.Success)
+          .setEmoji("✅"),
+        new ButtonBuilder()
+          .setCustomId(`setup:action:reset:${guildId}`)
+          .setLabel("Reset Draft")
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji("🔄"),
+        new ButtonBuilder()
+          .setCustomId(`setup:action:cancel:${guildId}`)
+          .setLabel("Cancel")
+          .setStyle(ButtonStyle.Danger)
+          .setEmoji("❌")
+      );
+      components.push(actionRow);
+
+      if (d.currentTab === "home") {
+        embed.setDescription(
+          isAlreadyConfigured
+            ? `ℹ️ **Server Configured:** This server was previously set up on <t:${Math.floor((existingMemory?.configuredAt || Date.now()) / 1000)}:d>. You are modifying active settings.`
+            : "Welcome to **AegisMod**! Use the tabs above to configure staff permissions, moderation modules, log channels, and additional features in **one single message**, then click **Confirm Setup**."
+        );
+        embed.addFields(
+          { name: "🏢 Server Name", value: d.guildName, inline: true },
+          { name: "🆔 Server ID", value: guildId, inline: true },
+          { name: "👤 Initiated By", value: `<@${d.adminUserId}>`, inline: true },
+          {
+            name: "👑 Configured Roles",
+            value: `Owner: ${d.ownerRoleId ? `<@&${d.ownerRoleId}>` : "*None*"}\nAdmins: ${d.adminRoleIds.length ? d.adminRoleIds.map((r) => `<@&${r}>`).join(", ") : "*None*"}\nMods: ${d.moderatorRoleIds.length ? d.moderatorRoleIds.map((r) => `<@&${r}>`).join(", ") : "*None*"}`,
+            inline: false,
+          },
+          {
+            name: "📋 Log Channels",
+            value: `Mod Logs: ${d.loggingChannels.modLogs ? `<#${d.loggingChannels.modLogs}>` : "*Not set (Auto-create on confirm)*"}`,
+            inline: false,
+          },
+          {
+            name: "💾 Persistence Status",
+            value: isAlreadyConfigured ? "🟢 Active & Permanent (Restart Immune)" : "🟡 Pending Configuration Draft",
+            inline: false,
+          }
+        );
+      } else if (d.currentTab === "permissions") {
+        embed.setDescription("Configure staff roles for server administration and moderation.");
+        embed.addFields(
+          { name: "1. Owner / Executive Role", value: d.ownerRoleId ? `<@&${d.ownerRoleId}>` : "Not selected", inline: false },
+          { name: "2. Administrator Roles", value: d.adminRoleIds.length ? d.adminRoleIds.map((r) => `<@&${r}>`).join(", ") : "Not selected", inline: false },
+          { name: "3. Moderator Roles", value: d.moderatorRoleIds.length ? d.moderatorRoleIds.map((r) => `<@&${r}>`).join(", ") : "Not selected", inline: false }
+        );
+
+        // Role select components
+        const ownerSelect = new RoleSelectMenuBuilder()
+          .setCustomId(`setup:role:owner:${guildId}`)
+          .setPlaceholder("Select Server Owner / Executive Role")
+          .setMinValues(1)
+          .setMaxValues(1);
+
+        const adminSelect = new RoleSelectMenuBuilder()
+          .setCustomId(`setup:role:admin:${guildId}`)
+          .setPlaceholder("Select Administrator Roles")
+          .setMinValues(1)
+          .setMaxValues(5);
+
+        const modSelect = new RoleSelectMenuBuilder()
+          .setCustomId(`setup:role:mod:${guildId}`)
+          .setPlaceholder("Select Moderator Roles")
+          .setMinValues(1)
+          .setMaxValues(10);
+
+        components.push(
+          new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(ownerSelect),
+          new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(adminSelect),
+          new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(modSelect)
+        );
+      } else if (d.currentTab === "moderation") {
+        embed.setDescription("Enable or disable core moderation modules.");
+        const modStatus = (val: boolean) => (val ? "🟢 Enabled" : "🔴 Disabled");
+        embed.addFields(
+          { name: "Traditional Moderation", value: modStatus(d.modules.traditionalMod), inline: true },
+          { name: "AI Moderation", value: modStatus(d.modules.aiModeration), inline: true },
+          { name: "Automatic Moderation", value: modStatus(d.modules.autoMod), inline: true },
+          { name: "Anti-Spam", value: modStatus(d.modules.antiSpam), inline: true },
+          { name: "Anti-Link", value: modStatus(d.modules.antiLink), inline: true },
+          { name: "Anti-Raid", value: modStatus(d.modules.antiRaid), inline: true },
+          { name: "Phishing Protection", value: modStatus(d.modules.phishingProtection), inline: true },
+          { name: "Multilingual Blacklist", value: modStatus(d.modules.multilingualBlacklist), inline: true },
+          { name: "Strike Escalation", value: modStatus(d.modules.strikeEscalation), inline: true }
+        );
+
+        const modToggleRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId(`setup:toggle:mods:${guildId}`)
+            .setPlaceholder("Toggle Moderation Modules")
+            .addOptions([
+              { label: "Toggle Traditional Moderation", value: "traditionalMod", description: `Current: ${d.modules.traditionalMod ? "Enabled" : "Disabled"}` },
+              { label: "Toggle AI Moderation", value: "aiModeration", description: `Current: ${d.modules.aiModeration ? "Enabled" : "Disabled"}` },
+              { label: "Toggle AutoMod", value: "autoMod", description: `Current: ${d.modules.autoMod ? "Enabled" : "Disabled"}` },
+              { label: "Toggle Anti-Spam", value: "antiSpam", description: `Current: ${d.modules.antiSpam ? "Enabled" : "Disabled"}` },
+              { label: "Toggle Anti-Link", value: "antiLink", description: `Current: ${d.modules.antiLink ? "Enabled" : "Disabled"}` },
+              { label: "Toggle Anti-Raid", value: "antiRaid", description: `Current: ${d.modules.antiRaid ? "Enabled" : "Disabled"}` },
+              { label: "Toggle Phishing Protection", value: "phishingProtection", description: `Current: ${d.modules.phishingProtection ? "Enabled" : "Disabled"}` },
+              { label: "Toggle Multilingual Blacklist", value: "multilingualBlacklist", description: `Current: ${d.modules.multilingualBlacklist ? "Enabled" : "Disabled"}` },
+              { label: "Toggle Strike Escalation", value: "strikeEscalation", description: `Current: ${d.modules.strikeEscalation ? "Enabled" : "Disabled"}` },
+            ])
+        );
+        components.push(modToggleRow);
+      } else if (d.currentTab === "logging") {
+        embed.setDescription("Configure dedicated audit log channels.");
+        embed.addFields(
+          { name: "Moderation Logs (#mod-logs)", value: d.loggingChannels.modLogs ? `<#${d.loggingChannels.modLogs}>` : "Auto-create on confirm", inline: true },
+          { name: "Security Logs", value: d.loggingChannels.securityLogs ? `<#${d.loggingChannels.securityLogs}>` : "Default to Mod Logs", inline: true }
+        );
+
+        const channelSelect = new ChannelSelectMenuBuilder()
+          .setCustomId(`setup:channel:modLogs:${guildId}`)
+          .setPlaceholder("Select Dedicated Moderation Log Channel")
+          .setChannelTypes([ChannelType.GuildText])
+          .setMinValues(1)
+          .setMaxValues(1);
+
+        components.push(new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(channelSelect));
+      } else if (d.currentTab === "features") {
+        embed.setDescription("Enable or disable secondary advanced bot features.");
+        const featStatus = (val: boolean) => (val ? "🟢 Enabled" : "🔴 Disabled");
+        embed.addFields(
+          { name: "Staff Duty System", value: featStatus(d.features.staffDuty), inline: true },
+          { name: "Anonymous Modmail", value: featStatus(d.features.anonymousModmail), inline: true },
+          { name: "User Verification", value: featStatus(d.features.userVerification), inline: true },
+          { name: "User Passport", value: featStatus(d.features.userPassport), inline: true },
+          { name: "Trust Score", value: featStatus(d.features.trustScore), inline: true },
+          { name: "Appeals System", value: featStatus(d.features.appealsSystem), inline: true },
+          { name: "Automatic News Broadcaster", value: featStatus(d.features.autoNews), inline: true }
+        );
+
+        const featToggleRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId(`setup:toggle:features:${guildId}`)
+            .setPlaceholder("Toggle Additional Features")
+            .addOptions([
+              { label: "Toggle Staff Duty System", value: "staffDuty", description: `Current: ${d.features.staffDuty ? "Enabled" : "Disabled"}` },
+              { label: "Toggle Anonymous Modmail", value: "anonymousModmail", description: `Current: ${d.features.anonymousModmail ? "Enabled" : "Disabled"}` },
+              { label: "Toggle User Verification", value: "userVerification", description: `Current: ${d.features.userVerification ? "Enabled" : "Disabled"}` },
+              { label: "Toggle User Passport", value: "userPassport", description: `Current: ${d.features.userPassport ? "Enabled" : "Disabled"}` },
+              { label: "Toggle Trust Score", value: "trustScore", description: `Current: ${d.features.trustScore ? "Enabled" : "Disabled"}` },
+              { label: "Toggle Appeals System", value: "appealsSystem", description: `Current: ${d.features.appealsSystem ? "Enabled" : "Disabled"}` },
+              { label: "Toggle Auto News", value: "autoNews", description: `Current: ${d.features.autoNews ? "Enabled" : "Disabled"}` },
+            ])
+        );
+        components.push(featToggleRow);
+      }
+
+      return { embeds: [embed], components };
+    };
+
+    const initialPayload = buildWizardPayload(draft);
+    const message = await interaction.editReply(initialPayload);
+
+    // Create message component collector
     const collector = message.createMessageComponentCollector({
-      componentType: ComponentType.RoleSelect,
-      time: 5 * 60 * 1000,
+      time: 15 * 60 * 1000, // 15 minutes
     });
 
-    collector.on("collect", async (menuInteraction) => {
-      // 1. Immediately acknowledge the interaction to prevent Discord 3000ms timeout (DiscordAPIError 10062)
+    collector.on("collect5", () => {}); // placeholder if needed
+
+    collector.on("collect", async (i) => {
+      // 1. Immediately acknowledge interaction to prevent Discord 3000ms timeout (DiscordAPIError 10062)
       try {
-        if (!menuInteraction.deferred && !menuInteraction.replied) {
-          await menuInteraction.deferUpdate();
+        if (!i.deferred && !i.replied) {
+          await i.deferUpdate();
         }
-      } catch (deferErr: any) {
+      } catch {
         // Safe catch if already acknowledged
       }
 
-      if (menuInteraction.user.id !== interaction.user.id) {
+      // 2. Validate user authorization
+      if (i.user.id !== draft.adminUserId) {
         try {
-          await menuInteraction.followUp({
-            content: "Only the administrator who invoked /setup can configure roles.",
+          await i.followUp({
+            content: "Only the administrator who initiated `/setup` can configure this wizard.",
             flags: MessageFlags.Ephemeral,
           });
-        } catch {
-          // Ignore
-        }
+        } catch {}
         return;
       }
 
-      try {
-        const customId = menuInteraction.customId;
-        const selected = menuInteraction.values;
+      const customId = i.customId;
 
-        if (customId.includes(":owner:")) {
-          ownerRole = selected[0] || null;
-        } else if (customId.includes(":admin:")) {
-          adminRoles = selected;
-        } else if (customId.includes(":mod:")) {
-          modRoles = selected;
+      // Handle Tab Navigation
+      if (customId.startsWith("setup:tab:")) {
+        const parts = customId.split(":");
+        const tab = parts[2] as any;
+        if (["home", "permissions", "moderation", "logging", "features"].includes(tab)) {
+          draft.currentTab = tab;
         }
-
-        // Save role mapping
-        roleService.saveGuildRoles(interaction.guildId!, ownerRole, adminRoles, modRoles);
-
-        // Dynamically unlock and register moderation commands in this server (only once per session)
-        if (syncCommands && !hasSyncedThisSession) {
-          hasSyncedThisSession = true;
-          syncCommands(interaction.guildId!, true).catch((e) => {
-            console.warn("[Setup Command] Command sync error:", e?.message || e);
-          });
-        }
-
-        // Auto-create or ensure dedicated #mod-logs channel
-        const staffRoles = [...adminRoles, ...modRoles];
-        if (ownerRole) staffRoles.push(ownerRole);
-
-        const logChannel = await loggingService.ensureLogChannel(
-          interaction.guild!,
-          staffRoles
-        );
-
-        // Commit to permanent disk memory so reboots never prompt /setup again
-        await guildMemoryService.saveServerSetup(
-          interaction.guildId!,
-          interaction.guild!.name,
-          ownerRole,
-          adminRoles,
-          modRoles,
-          logChannel.id,
-          logChannel.name
-        );
-
-        const updatedEmbed = new EmbedBuilder()
-          .setTitle("✅ AegisMod Configuration Committed to Permanent Memory")
-          .setColor(0x57f287)
-          .setDescription("Your server role hierarchy and audit log channels are now permanently saved to disk (`guild_memory.json`).")
-          .addFields(
-            {
-              name: "👑 Owner Role",
-              value: ownerRole ? `<@&${ownerRole}>` : "*None selected*",
-              inline: true,
-            },
-            {
-              name: "⚙️ Admin Roles",
-              value: adminRoles.length ? adminRoles.map((r) => `<@&${r}>`).join(", ") : "*None selected*",
-              inline: true,
-            },
-            {
-              name: "🛡️ Moderator Roles",
-              value: modRoles.length ? modRoles.map((r) => `<@&${r}>`).join(", ") : "*None selected*",
-              inline: true,
-            },
-            {
-              name: "📋 Dedicated Log Channel",
-              value: `<#${logChannel.id}> (Bound & Restricted)`,
-              inline: true,
-            },
-            {
-              name: "💾 Persistence Status",
-              value: "🟢 **Locked in Permanent Memory** — Restart immune. Will never demand setup again.",
-              inline: true,
-            }
-          )
-          .setFooter({ text: "AegisMod is active with all 17 commands registered." });
-
-        // Update the setup message via the parent interaction editReply
-        await interaction.editReply({
-          embeds: [updatedEmbed],
-          components: selectRows,
-        });
-      } catch (updateErr: any) {
-        console.warn("[Setup Command] Error applying role updates:", updateErr?.message || updateErr);
       }
+
+      // Handle Role Selections
+      else if (customId.startsWith("setup:role:")) {
+        const parts = customId.split(":");
+        const roleType = parts[2];
+        const selectedValues = (i as any).values || [];
+
+        if (roleType === "owner") {
+          draft.ownerRoleId = selectedValues[0] || null;
+        } else if (roleType === "admin") {
+          draft.adminRoleIds = selectedValues;
+        } else if (roleType === "mod") {
+          draft.moderatorRoleIds = selectedValues;
+        }
+      }
+
+      // Handle Channel Selections
+      else if (customId.startsWith("setup:channel:")) {
+        const parts = customId.split(":");
+        const channelType = parts[2];
+        const selectedValues = (i as any).values || [];
+
+        if (channelType === "modLogs") {
+          draft.loggingChannels.modLogs = selectedValues[0] || null;
+        }
+      }
+
+      // Handle Module Toggles
+      else if (customId.startsWith("setup:toggle:mods:")) {
+        const selectedVal = (i as any).values?.[0];
+        if (selectedVal && selectedVal in draft.modules) {
+          (draft.modules as any)[selectedVal] = !(draft.modules as any)[selectedVal];
+        }
+      }
+
+      // Handle Feature Toggles
+      else if (customId.startsWith("setup:toggle:features:")) {
+        const selectedVal = (i as any).values?.[0];
+        if (selectedVal && selectedVal in draft.features) {
+          (draft.features as any)[selectedVal] = !(draft.features as any)[selectedVal];
+        }
+      }
+
+      // Handle Actions (Confirm, Reset, Cancel)
+      else if (customId.startsWith("setup:action:")) {
+        const action = customId.split(":")[2];
+
+        if (action === "cancel") {
+          setupSessionService.removeSession(guildId);
+          const cancelEmbed = new EmbedBuilder()
+            .setTitle("❌ Setup Cancelled")
+            .setDescription("The setup session was cancelled. No changes were saved.")
+            .setColor(0xed4245);
+          await interaction.editReply({ embeds: [cancelEmbed], components: [] });
+          collector.stop("cancelled");
+          return;
+        }
+
+        if (action === "reset") {
+          // Reset draft to defaults
+          const fresh = setupSessionService.createSession(guildId, interaction.guild!.name, interaction.user.id, interaction.user.tag);
+          draft.ownerRoleId = fresh.ownerRoleId;
+          draft.adminRoleIds = fresh.adminRoleIds;
+          draft.moderatorRoleIds = fresh.moderatorRoleIds;
+          draft.modules = fresh.modules;
+          draft.features = fresh.features;
+          draft.currentTab = "home";
+        }
+
+        if (action === "confirm") {
+          // 1. Ensure log channel
+          const staffRoles = [...draft.adminRoleIds, ...draft.moderatorRoleIds];
+          if (draft.ownerRoleId) staffRoles.push(draft.ownerRoleId);
+
+          let logChannelId = draft.loggingChannels.modLogs;
+          let logChannelName = "mod-logs";
+
+          try {
+            const ensuredChannel = await loggingService.ensureLogChannel(
+              interaction.guild!,
+              staffRoles
+            );
+            logChannelId = ensuredChannel.id;
+            logChannelName = ensuredChannel.name;
+          } catch (err) {
+            console.warn("[Setup Command] Warning ensuring log channel:", err);
+          }
+
+          // 2. Save roles to roleService
+          roleService.saveGuildRoles(
+            guildId,
+            draft.ownerRoleId,
+            draft.adminRoleIds,
+            draft.moderatorRoleIds
+          );
+
+          // 3. Save to permanent disk memory
+          await guildMemoryService.saveServerSetup(
+            guildId,
+            interaction.guild!.name,
+            draft.ownerRoleId,
+            draft.adminRoleIds,
+            draft.moderatorRoleIds,
+            logChannelId,
+            logChannelName
+          );
+
+          // 4. Register commands in guild if sync callback provided
+          if (syncCommands) {
+            syncCommands(guildId, true).catch((e) => {
+              console.warn("[Setup Command] Command sync error:", e?.message || e);
+            });
+          }
+
+          // 5. Display Final Success Screen
+          const successEmbed = new EmbedBuilder()
+            .setTitle("✅ AEGIS Setup Completed Successfully")
+            .setDescription("Your configuration has been verified and committed to **permanent disk storage**. AegisMod is fully operational and restart-immune.")
+            .setColor(0x57f287)
+            .addFields(
+              {
+                name: "👑 Configured Staff Roles",
+                value: `Owner: ${draft.ownerRoleId ? `<@&${draft.ownerRoleId}>` : "*None*"}\nAdmins: ${draft.adminRoleIds.length ? draft.adminRoleIds.map((r) => `<@&${r}>`).join(", ") : "*None*"}\nMods: ${draft.moderatorRoleIds.length ? draft.moderatorRoleIds.map((r) => `<@&${r}>`).join(", ") : "*None*"}`,
+                inline: false,
+              },
+              {
+                name: "📋 Dedicated Audit Log",
+                value: logChannelId ? `<#${logChannelId}>` : "*#mod-logs*",
+                inline: true,
+              },
+              {
+                name: "⚙️ Active Modules",
+                value: Object.entries(draft.modules)
+                  .filter(([_, v]) => v)
+                  .map(([k]) => k)
+                  .join(", "),
+                inline: false,
+              },
+              {
+                name: "💾 Persistence Guarantee",
+                value: "🟢 Locked in `guild_memory.json`. All 17 bot commands unlocked.",
+                inline: false,
+              }
+            )
+            .setFooter({ text: `Completed by ${interaction.user.tag} on ${new Date().toUTCString()}` });
+
+          await interaction.editReply({ embeds: [successEmbed], components: [] });
+          setupSessionService.removeSession(guildId);
+          collector.stop("completed");
+          return;
+        }
+      }
+
+      // Update the original wizard message
+      const updatedPayload = buildWizardPayload(draft);
+      await interaction.editReply(updatedPayload);
     });
 
-    collector.on("end", async () => {
-      // Disable components after timeout
-      await interaction.editReply({ components: [] }).catch(() => null);
+    collector.on("end", async (_, reason) => {
+      if (reason !== "completed" && reason !== "cancelled") {
+        await interaction.editReply({ components: [] }).catch(() => null);
+      }
     });
   },
 };
